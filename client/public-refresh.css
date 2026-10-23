@@ -1,0 +1,108 @@
+/* Marketing presentation only. Inner pages: light intro, charcoal content,
+   light Explore and charcoal footer. Homepage retains six alternating bands. */
+.public-refresh{background:#f5f6f2;color:#193326;font-weight:400}
+.public-refresh :is(h1,h2,h3,h4){font-weight:500}
+.public-refresh>.public-primary{padding:84px 0 90px;background:#10191a;color:#f4f8ef}
+.public-refresh .public-primary-heading{max-width:790px;margin:0 0 34px}
+.public-refresh .public-primary-heading :is(.eyebrow,.detail-kicker){color:#b4d4b6}
+.public-refresh .public-primary-heading h2{font-size:clamp(34px,3.7vw,50px);line-height:1.15;letter-spacing:-.045em;color:#f4f8ef;margin:18px 0 0}
+.public-refresh .public-primary-heading>p{font-size:16px;line-height:1.85;color:#d1e3d5;margin-top:22px;max-width:740px}
+.public-refresh .public-channel-list{display:flex;flex-wrap:wrap;gap:9px;list-style:none;margin:25px 0 0;padding:0}
+.public-refresh .public-channel-list :is(li,span){display:flex;align-items:center;gap:9px;min-height:38px;padding:8px 12px;border:1px solid #d6ded5;border-radius:7px;background:#f0f2ed;color:#31573b;font-size:12px;line-height:1.5}
+.public-refresh .public-channel-list .icon{width:16px;height:16px}
+.public-refresh .public-primary .public-channel-list :is(li,span){border-color:#c5d2c548;background:#ffffff08;color:#e0f0df}
+.public-refresh .public-ai-value{display:block;margin-top:20px;padding:14px 17px;border:1px solid #c4d4ca38;border-radius:9px;background:#ffffff06;color:#d0e6d3;font-size:13px;line-height:1.8}
+.public-refresh .public-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:23px;margin-top:34px}
+.public-refresh .public-feature{min-width:0;padding:27px;border:1px solid #dce2d9;border-radius:14px;background:#f5f6f2;color:#284b34}
+.public-refresh .public-feature :is(h2,h3,h4){color:#24492f;line-height:1.3;letter-spacing:-.025em}
+.public-refresh .public-feature .detail-kicker{color:#52734c}
+.public-refresh .public-primary .detail-preview-note{color:#c5dcc9}
+.public-refresh .public-feature .detail-preview-note{color:#50694f}
+.public-refresh .public-feature h2{font-size:27px;margin:0 0 15px}
+.public-refresh .public-feature h3{font-size:23px;margin:0 0 14px}
+.public-refresh .public-feature p{color:#50694f;font-size:14px;line-height:1.85;margin-top:14px}
+.public-refresh .public-feature .public-ai-value{color:#325b3b;background:#e9ede6;border-color:#d7dfd2;font-size:13px}
+.public-refresh .public-primary .text-link{color:#d5ebd2}
+.public-refresh .public-feature .text-link,.public-refresh .public-feature .text-link-light{color:#28643c}
+.public-refresh .public-primary>.detail-container>.detail-split{gap:68px}
+.public-refresh .public-primary .detail-copy>h2{color:#f3f8ef}
+.public-refresh .public-primary .detail-copy>p{color:#d0e3d2}
+.public-refresh .public-primary .detail-copy>.detail-kicker{color:#b4d4b6}
+.public-refresh .public-feature>.public-example,.public-refresh .public-feature>.ig-preview{margin:22px 0 0;padding:22px;min-width:0}
+.public-refresh .public-feature details{border-top:1px solid #d7e2d1;margin-top:20px;padding-top:7px;min-width:0}
+.public-refresh .public-feature details>summary{display:list-item;min-height:44px;padding:13px 0;color:#285d38;font-size:13px;font-weight:500;cursor:pointer}
+.public-refresh .public-feature details[open]>summary{margin-bottom:8px}
+.public-refresh .public-feature details :is(.ig-preview,.public-example){margin:0;box-shadow:none}
+.public-refresh .public-feature details>summary:focus-visible{outline:3px solid #7aab73;outline-offset:4px}
+.public-refresh .public-primary .ig-demo-disclosure{color:#cde1d0}
+.public-refresh .public-primary .ig-live-status{color:#d3e8d4}
+.public-refresh .public-primary .ig-path-buttons button{min-height:44px}
+.public-refresh :is(.onboarding-demo,.ai-demo){background:#172122;border-color:#3e5050}
+.public-refresh .ig-path-summary{background:#202c2d;border-color:#465b58}
+.public-refresh .public-photo{position:relative;cursor:help;min-width:0;margin:0;border-radius:15px;overflow:hidden;background:#e7ebe4;border:1px solid #d8e1d3}
+.public-refresh .public-photo img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}
+.public-refresh .public-photo figcaption{position:absolute;z-index:4;left:10px;right:10px;bottom:10px;width:fit-content;max-width:calc(100% - 20px);padding:8px 11px;border:1px solid #d8e1d3;border-radius:7px;color:#345239;background:#fcfdf9f5;font-size:10px;line-height:1.7;opacity:0;visibility:hidden;pointer-events:none;translate:0 4px;transition:opacity .15s,translate .15s,visibility .15s}
+.public-refresh .public-photo:is(:hover,:focus-within):not([data-credit-dismissed]) figcaption{opacity:1;visibility:visible;pointer-events:auto;translate:0 0}
+.public-refresh .public-photo:focus-visible{outline:3px solid #83b18c;outline-offset:5px}
+.public-refresh .public-photo figcaption a{text-decoration:underline;text-underline-offset:2px}
+.public-refresh .detail-hero-grid{gap:clamp(38px,5vw,78px);align-items:center}
+.public-refresh .detail-hero-grid>*{min-width:0}
+.public-refresh .public-example-label{color:#526a4c}
+.public-refresh .public-explore{padding:78px 0 84px;background:#f5f6f2;color:#193326}
+.public-refresh .public-explore h2{font-size:clamp(34px,4vw,52px);line-height:1.15;letter-spacing:-.045em;color:#193326;font-weight:500;margin:17px 0 0}
+.public-refresh .public-explore p{max-width:570px;color:#52664f;font-size:16px;line-height:1.85;margin:22px auto 0}
+.public-refresh .public-explore .detail-hero-links{justify-content:center}
+.public-refresh .public-explore .detail-kicker{color:#3f6b45}
+.public-refresh .public-explore .button-primary{background:#237a3b;color:#fff}
+.public-refresh .public-explore .button-primary:hover{background:#1c642f}
+.public-refresh .public-explore .text-link-light{color:#28643c}
+.public-refresh .home-band{background:#f5f6f2}
+.public-refresh .home-band-dark{background:#10191a}
+.public-refresh .home-band .story-layout{gap:clamp(40px,7vw,104px)}
+.public-refresh .home-band .story-copy{max-width:530px}
+.public-refresh .home-band .story-copy h2{font-weight:500}
+.public-refresh .home-band-dark .story-copy>.eyebrow{color:#b3d6b7}
+.public-refresh .home-band-dark .story-copy>p{color:#c5d4c9}
+.public-refresh .home-band-dark .text-link{color:#d5ebd2}
+.public-refresh .home-band .story-copy>.public-ai-value{font-size:13px;line-height:1.85}
+.public-refresh .home-band-light .story-copy>.public-ai-value{color:#3d5c42;background:#e9ede6;border-color:#d7dfd2}
+.public-refresh .home-band .home-process-note{font-size:11px;line-height:1.8;color:#b9c9bc}
+.public-refresh .home-story-media{position:relative;min-width:0;width:100%;max-width:620px;padding:12px 0 0;margin-inline:auto}
+.public-refresh .home-story-media>.public-photo{width:56%;margin-left:auto;box-shadow:0 12px 34px #0002}
+.public-refresh .home-story-media>.public-photo img{aspect-ratio:4/3;object-position:center}
+.public-refresh .home-story-product{position:relative;z-index:2;width:88%;margin-top:-64px}
+.public-refresh .home-story-product>.product-example{width:100%;max-width:none;margin:0;box-shadow:0 16px 48px #0003}
+.public-refresh .home-photo-icon{position:absolute;z-index:3;display:grid;place-items:center;width:46px;height:46px;border:1px solid #dbe4d6;border-radius:13px;background:#fcfdf9;color:#39723e;box-shadow:0 7px 22px #0002;animation:home-photo-float 12s ease-in-out infinite;pointer-events:none}
+.public-refresh .home-photo-icon>.icon{width:22px;height:22px;stroke-width:1.5}
+.public-refresh .home-photo-icon-one{left:40%;top:105px;rotate:-7deg}
+.public-refresh .home-photo-icon-two{right:1%;top:145px;rotate:6deg;animation-delay:-6s}
+.public-refresh>.home-workflow{padding:90px 0;margin:0;background:#10191a}
+.public-refresh .home-workflow .workflow-intro{margin-bottom:40px}
+.public-refresh .home-workflow .workflow-story-step{min-height:250px;padding:28px 0 32px}
+.public-refresh .home-workflow .workflow-story-step:last-child{min-height:250px;padding-bottom:10px}
+.public-refresh .home-workflow .workflow-stage{top:40px}
+.public-refresh .home-workflow :is(.workflow-kicker,.workflow-step-eyebrow,.workflow-step-number){color:#b7d4ba}
+.public-refresh .home-workflow :is(.workflow-intro>p,.workflow-story-step p,.workflow-motion-note){color:#d0e3d2}
+.public-refresh [hidden]{display:none!important}
+@keyframes home-photo-float{0%,100%{translate:0 0}50%{translate:0 -4px}}
+@media(max-width:1100px){.public-refresh .detail-hero-grid{gap:36px}.public-refresh .public-feature{padding:23px}.public-refresh .home-band .story-layout{gap:42px}.public-refresh .home-photo-icon{width:40px;height:40px}}
+@media(max-width:900px){.public-refresh .home-band .story-layout{gap:38px}.public-refresh .home-story-media{max-width:570px}.public-refresh .home-story-product{width:90%;margin-top:-42px}}
+@media(max-width:850px){.public-refresh>.public-primary{padding-block:64px}.public-refresh .detail-hero-grid{grid-template-columns:1fr;gap:36px}.public-refresh .detail-hero-grid .public-photo{max-width:680px}.public-refresh .public-feature-grid{gap:18px}.public-refresh .home-workflow .workflow-layout{gap:35px}}
+@media(max-width:650px){.public-refresh>.public-primary{padding:52px 0 58px}.public-refresh .public-feature-grid{grid-template-columns:1fr;gap:18px}.public-refresh .public-feature{padding:23px}.public-refresh .public-primary-heading h2{font-size:34px}.public-refresh .public-primary-heading>p{font-size:15px}.public-refresh .public-channel-list{gap:7px}.public-refresh .public-channel-list :is(li,span){font-size:11px;padding:7px 9px}.public-refresh .public-explore{padding:58px 0}.public-refresh .public-explore p{font-size:14px}.public-refresh .public-ai-value{padding:13px 14px}.public-refresh .public-photo figcaption{font-size:10px}.public-refresh .home-story-product{width:90%;margin-top:-34px}.public-refresh .home-photo-icon{width:38px;height:38px;border-radius:11px}.public-refresh .home-photo-icon>.icon{width:19px;height:19px}.public-refresh .home-photo-icon-one{left:40%;top:105px}.public-refresh>.home-workflow{padding:66px 0}.public-refresh .home-workflow .workflow-story-step{min-height:0;padding-block:25px}.public-refresh .home-workflow .workflow-story-step:last-child{min-height:0}}
+@media(prefers-reduced-motion:reduce){.public-refresh *,.public-refresh *::before,.public-refresh *::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}.public-refresh .home-workflow .workflow-stage{position:static}}
+
+/* Restrained floating accents for public examples and the shared Explore CTA. */
+.public-refresh .public-floating-visual{position:relative;min-width:0;width:100%;max-width:620px;margin-inline:auto;padding:24px 20px 0 0}
+.public-refresh .public-floating-visual>.product-example{max-width:none;width:100%}
+.public-refresh .public-floating-icons{position:absolute;inset:0;pointer-events:none;user-select:none}
+.public-refresh .public-floating-icon{position:absolute;display:grid;place-items:center;width:42px;height:42px;border:1px solid #dce5d8;border-radius:13px;background:#fcfdf9;color:#47764b;box-shadow:0 8px 23px #0b221412;pointer-events:none;animation:public-accent-float 14s ease-in-out infinite}
+.public-refresh .public-floating-icon>.icon{width:21px;height:21px;stroke-width:1.5}
+.public-refresh .public-floating-icons-visual>.public-floating-icon{top:0;right:0;rotate:7deg}
+.public-refresh .public-floating-icon:nth-child(2){animation-delay:-7s;rotate:-6deg}
+.public-refresh .public-explore{position:relative;overflow:hidden}
+.public-refresh .public-floating-icons-explore>.public-floating-icon:first-child{left:7%;top:44%;rotate:-8deg}
+.public-refresh .public-floating-icons-explore>.public-floating-icon:nth-child(2){right:7%;top:24%}
+@keyframes public-accent-float{0%,100%{translate:0 0}50%{translate:0 -5px}}
+@media(max-width:900px){.public-refresh .public-floating-icons-explore>.public-floating-icon:first-child{left:3%;top:26px}.public-refresh .public-floating-icons-explore>.public-floating-icon:nth-child(2){right:3%;top:26px}}
+@media(max-width:650px){.public-refresh .public-floating-visual{padding:20px 16px 0 0}.public-refresh .public-floating-icon{width:36px;height:36px;border-radius:11px}.public-refresh .public-floating-icon>.icon{width:18px;height:18px}.public-refresh .public-floating-icons-explore>.public-floating-icon:first-child{display:none}.public-refresh .public-floating-icons-explore>.public-floating-icon:nth-child(2){right:22px;top:16px}}
+@media(prefers-reduced-motion:reduce){.public-refresh .public-floating-icon{animation:none}}

@@ -1,0 +1,79 @@
+/* Stage 05b platform story. Scope all preview styles away from the approved admin interface. */
+.platform-page .pf-relationship{margin:0;padding:29px 30px;background:#edf2e8;border:1px solid #dce6d5;border-radius:15px;min-width:0}
+.platform-page .pf-person{display:flex;align-items:center;gap:13px;padding:24px 0 22px;border-bottom:1px solid #d2dfc9}
+.platform-page .pf-avatar{height:44px;width:44px;flex-shrink:0;display:grid;place-items:center;background:#dcebd4;border:1px solid #d1e2c8;border-radius:50%;font-size:13px;line-height:1;font-weight:500;color:#315c32}
+.platform-page .pf-person strong{display:block;font-weight:500;font-size:15px;color:#304e2d;line-height:1.6}
+.platform-page .pf-person>div>span{display:block;font-size:11px;line-height:1.75;color:#556c4e;margin-top:2px}
+.platform-page .pf-relationship-steps{list-style:none;margin:0;padding:8px 0 0}
+.platform-page .pf-relationship-steps li{display:flex;align-items:flex-start;gap:15px;padding:15px 0}
+.platform-page .pf-relationship-steps li>span{display:grid;place-items:center;width:31px;height:31px;flex-shrink:0;background:#f9fcf5;border:1px solid #d5e2cd;border-radius:8px;color:#49753e;margin-top:1px}
+.platform-page .pf-relationship-steps .icon{width:16px;height:16px}
+.platform-page .pf-relationship-steps strong{display:block;font-size:13px;line-height:1.5;font-weight:500;color:#355532}
+.platform-page .pf-relationship-steps p{margin:6px 0 0;font-size:11px;line-height:1.8;color:#556e4d}
+.platform-page .pf-relationship-note{font-size:10px;line-height:1.8;color:#526b4b;border-top:1px solid #d2dfc9;margin:15px 0 0;padding-top:17px}
+.platform-page .pf-example-caption{display:flex;align-items:center;justify-content:space-between;gap:12px;letter-spacing:.08em;font-size:9px;line-height:1.7;margin-bottom:25px}
+.platform-page .pf-illustrative{font-size:9px;letter-spacing:0;background:#edf3e7;border:1px solid #d5e3cc;color:#4c6942;border-radius:5px;padding:3px 6px;flex-shrink:0}
+.platform-page .pf-card-heading{display:flex;gap:13px;align-items:center;padding-bottom:21px;border-bottom:1px solid #dce6d5;min-width:0}
+.platform-page .pf-card-heading h3,.platform-page .pf-preview-heading h3{font-size:17px;line-height:1.5;font-weight:500;letter-spacing:-.025em;color:#2d4c2e;margin:0}
+.platform-page .pf-card-heading p,.platform-page .pf-preview-heading p{font-size:10px;line-height:1.8;color:#5a7152;margin-top:3px}
+.platform-page .pf-status{display:inline-flex;align-items:center;justify-content:center;font-size:9px;line-height:1.65;padding:5px 8px;border:1px solid #d1e3c5;border-radius:5px;background:#e7f0e1;color:#44693b;white-space:nowrap;margin-left:auto}
+.platform-page .pf-status-amber{border-color:#ead9b0;background:#fff4da;color:#775d1f}
+.platform-page .pf-fields{display:grid;grid-template-columns:1fr 1fr;gap:17px 22px;margin:22px 0 0}
+.platform-page .pf-fields dt{font-size:10px;line-height:1.7;color:#607553}
+.platform-page .pf-fields dd{font-size:12px;line-height:1.8;color:#3d5b36;margin:4px 0 0}
+.platform-page .pf-message{margin:23px 0 0;padding:18px 19px;background:#eff4e9;border:1px solid #dce7d3;border-radius:9px}
+.platform-page .pf-message>span{font-size:9px;line-height:1.7;letter-spacing:.08em;color:#567347}
+.platform-page .pf-message p{font-size:13px;line-height:1.9;color:#3d5c36;margin-top:9px}
+.platform-page .pf-next-action{display:flex;align-items:flex-start;gap:12px;padding-top:21px;margin-top:23px;border-top:1px solid #dce6d5}
+.platform-page .pf-next-action>.icon{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:#527445}
+.platform-page .pf-next-action strong{display:block;font-weight:500;font-size:12px;line-height:1.7;color:#35592f}
+.platform-page .pf-next-action p{font-size:11px;line-height:1.85;color:#5a7350;margin-top:5px}
+.platform-page .pf-visual-note{font-size:10px;font-weight:400;line-height:1.85;color:#5d7255;margin:19px 0 0}
+.platform-page .pf-preview-heading{display:flex;align-items:center;gap:13px}
+.platform-page .pf-icon-box{height:41px;width:41px;display:grid;place-items:center;flex-shrink:0;border-radius:10px;background:#eaf2e2;border:1px solid #d8e5ce;color:#537a42}
+.platform-page .pf-icon-box .icon{height:21px;width:21px}
+.platform-page .pf-requested-slot{display:flex;gap:17px;align-items:center;padding:22px 0;margin-top:20px;border-top:1px solid #dce6d5;border-bottom:1px solid #dce6d5}
+.platform-page .pf-day-block{width:55px;flex-shrink:0;text-align:center;background:#eaf2e2;border:1px solid #d8e5ce;border-radius:8px;overflow:hidden}
+.platform-page .pf-day-block>span{display:block;font-size:9px;font-weight:500;letter-spacing:.12em;padding:7px 3px;background:#dfeccf;color:#4f6c40}
+.platform-page .pf-day-block>strong{display:flex;justify-content:center;padding:9px 3px;font-weight:400;color:#4e713d}
+.platform-page .pf-day-block .icon{width:24px;height:24px}
+.platform-page .pf-requested-slot>div>span{display:block;font-size:9px;letter-spacing:.08em;line-height:1.7;color:#5e7552}
+.platform-page .pf-requested-slot>div>strong{display:block;font-size:21px;font-weight:500;line-height:1.5;letter-spacing:-.02em;color:#34562f;margin-top:5px}
+.platform-page .pf-requested-slot p{font-size:10px;color:#647653;line-height:1.75;margin-top:4px}
+.platform-page .pf-slot-checks{list-style:none;padding:0;margin:7px 0 0}
+.platform-page .pf-slot-checks li{display:flex;gap:14px;padding:13px 0}
+.platform-page .pf-slot-checks li>span{font-size:10px;line-height:1.8;color:#5e7951;padding-top:1px;font-variant-numeric:tabular-nums}
+.platform-page .pf-slot-checks strong{font-size:12px;line-height:1.75;font-weight:500;color:#3a5e32}
+.platform-page .pf-slot-checks p{font-size:10px;line-height:1.85;color:#5e7554;margin-top:4px}
+.platform-page .pf-state-strip{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 0 0;border-top:1px solid #dce6d5;margin-top:7px}
+.platform-page .pf-state-strip>span{font-size:10px;line-height:1.8;color:#607653}
+.platform-page .pf-state-strip>strong{font-size:11px;line-height:1.8;font-weight:500;color:#6c5721;text-align:right}
+.platform-page .pf-document-rows{list-style:none;padding:0;margin:23px 0 0}
+.platform-page .pf-document-rows li{display:flex;align-items:center;gap:12px;padding:19px 0;border-top:1px solid #dce6d5}
+.platform-page .pf-document-icon{width:33px;height:39px;flex-shrink:0;display:grid;place-items:center;background:#edf3e7;border:1px solid #d9e6ce;border-radius:6px;color:#5d8050}
+.platform-page .pf-document-icon .icon{height:17px;width:17px}
+.platform-page .pf-document-rows strong{font-weight:500;display:block;font-size:12px;line-height:1.7;color:#3a5e33}
+.platform-page .pf-document-rows p{font-size:10px;line-height:1.85;color:#5e7553;margin-top:4px}
+.platform-page .pf-document-state{font-size:9px;line-height:1.8;color:#5e6f4e;margin-left:auto;text-align:right;padding-left:7px}
+.platform-page .pf-review-boundary{display:flex;align-items:flex-start;gap:12px;padding:18px;background:#eaf2e2;border:1px solid #d7e5cb;border-radius:9px;margin-top:6px}
+.platform-page .pf-review-boundary>.icon{width:18px;height:18px;flex-shrink:0;color:#567845;margin-top:2px}
+.platform-page .pf-review-boundary strong{display:block;font-weight:500;font-size:12px;line-height:1.65;color:#395b30}
+.platform-page .pf-review-boundary p{font-size:11px;line-height:1.85;color:#526d46;margin-top:6px}
+.platform-page .pf-request-topline{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.platform-page .pf-request-topline>span:first-child{font-size:9px;line-height:1.8;letter-spacing:.07em;color:#5c7550}
+.platform-page .pf-operations>h3{font-size:22px;font-weight:500;line-height:1.4;letter-spacing:-.03em;color:#34542f;margin:0}
+.platform-page .pf-operation-home{font-size:11px;line-height:1.8;color:#5c7451;margin-top:7px}
+.platform-page .pf-operation-history{display:flex;gap:10px;align-items:flex-start;margin-top:19px;padding:14px 0;border-top:1px solid #dce6d5;border-bottom:1px solid #dce6d5}
+.platform-page .pf-history-marker{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:6px;background:#698b55}
+.platform-page .pf-operation-history p{font-size:10px;line-height:1.85;color:#5b7350}
+.platform-page .pf-operation-history strong{font-weight:500;color:#3b5e32}
+.platform-page .pf-boundary-columns{display:grid;grid-template-columns:1fr 1fr;gap:65px;margin:42px 0 32px}
+.platform-page .pf-boundary-columns>div{border-top:1px solid #3a5040;padding-top:24px;max-width:520px}
+.platform-page .pf-boundary-columns>div>span{display:grid;place-items:center;width:39px;height:39px;background:#1d3023;border:1px solid #3e5740;color:#b0cfa1;border-radius:9px}
+.platform-page .pf-boundary-columns h3{font-size:21px;line-height:1.5;font-weight:500;color:#edf5e9;letter-spacing:-.02em;margin-top:22px}
+.platform-page .pf-boundary-columns p{font-size:13px;line-height:1.95;color:#b0c2ac;margin-top:14px}
+.platform-page section[id],.platform-page h2[id]{scroll-margin-top:24px}
+@media(max-width:1199px){.platform-page .pf-relationship{padding:25px}.platform-page .pf-example-caption{font-size:8px;gap:8px}.platform-page .pf-card-heading{gap:10px;flex-wrap:wrap}.platform-page .pf-card-heading .pf-status{margin-left:54px}.platform-page .pf-preview-heading h3{font-size:16px}.platform-page .pf-fields{gap:15px}.platform-page .pf-fields dd{font-size:11px}.platform-page .pf-request-topline{align-items:flex-start;flex-wrap:wrap}.platform-page .pf-request-topline .pf-status{margin-left:0}.platform-page .pf-document-rows li{gap:9px}.platform-page .pf-document-rows strong{font-size:11px}.platform-page .pf-document-rows p{font-size:9px}.platform-page .pf-document-state{font-size:8px}.platform-page .pf-boundary-columns{gap:45px}.platform-page .pf-boundary-columns h3{font-size:20px}}
+@media(max-width:900px){.platform-page .pf-relationship{padding:22px}.platform-page .pf-person{padding:20px 0}.platform-page .pf-relationship-steps li{gap:10px;padding:13px 0}.platform-page .pf-relationship-steps strong{font-size:11px}.platform-page .pf-relationship-steps p{font-size:10px}.platform-page .pf-relationship-note{font-size:9px}.platform-page .pf-example-caption{flex-wrap:wrap;margin-bottom:20px}.platform-page .pf-card-heading h3{font-size:16px}.platform-page .pf-fields{grid-template-columns:1fr}.platform-page .pf-message{padding:15px}.platform-page .pf-message p{font-size:12px}.platform-page .pf-requested-slot{gap:12px}.platform-page .pf-requested-slot>div>strong{font-size:18px}.platform-page .pf-requested-slot>div>span{font-size:8px}.platform-page .pf-requested-slot p{font-size:9px}.platform-page .pf-document-rows li{flex-wrap:wrap}.platform-page .pf-document-state{margin-left:42px;padding-left:0;text-align:left}.platform-page .pf-review-boundary{padding:15px;gap:9px}.platform-page .pf-review-boundary strong{font-size:11px}.platform-page .pf-review-boundary p{font-size:10px}.platform-page .pf-operations>h3{font-size:20px}.platform-page .pf-boundary-columns{gap:35px}.platform-page .pf-boundary-columns p{font-size:12px}}
+@media(max-width:700px){.platform-page .pf-relationship{padding:25px;max-width:520px;width:100%;margin-inline:auto}.platform-page .pf-relationship-steps li{gap:15px;padding:15px 0}.platform-page .pf-relationship-steps strong{font-size:13px}.platform-page .pf-relationship-steps p{font-size:11px}.platform-page .pf-relationship-note{font-size:10px}.platform-page .pf-example-caption{font-size:9px;flex-wrap:nowrap;gap:10px}.platform-page .pf-card-heading{flex-wrap:nowrap;gap:12px}.platform-page .pf-card-heading .pf-status{margin-left:auto}.platform-page .pf-fields{grid-template-columns:1fr 1fr;gap:17px 20px}.platform-page .pf-fields dd{font-size:12px}.platform-page .pf-message{padding:18px}.platform-page .pf-message p{font-size:13px}.platform-page .pf-requested-slot{gap:17px}.platform-page .pf-requested-slot>div>strong{font-size:21px}.platform-page .pf-requested-slot>div>span{font-size:9px}.platform-page .pf-requested-slot p{font-size:10px}.platform-page .pf-document-rows li{flex-wrap:nowrap;gap:12px}.platform-page .pf-document-rows strong{font-size:12px}.platform-page .pf-document-rows p{font-size:10px}.platform-page .pf-document-state{font-size:9px;margin-left:auto;padding-left:7px;text-align:right}.platform-page .pf-review-boundary{padding:18px;gap:12px}.platform-page .pf-review-boundary strong{font-size:12px}.platform-page .pf-review-boundary p{font-size:11px}.platform-page .pf-request-topline{flex-wrap:nowrap;align-items:center}.platform-page .pf-request-topline .pf-status{margin-left:auto}.platform-page .pf-operations>h3{font-size:22px}.platform-page .pf-boundary-columns{grid-template-columns:1fr;gap:30px;margin:32px 0 29px}.platform-page .pf-boundary-columns>div{padding-top:22px;max-width:none}.platform-page .pf-boundary-columns h3{font-size:21px;margin-top:18px}.platform-page .pf-boundary-columns p{font-size:13px}}
+@media(max-width:380px){.platform-page .pf-relationship{padding:20px}.platform-page .pf-example-caption{font-size:8px;gap:7px;flex-wrap:wrap}.platform-page .pf-card-heading{gap:11px;flex-wrap:wrap}.platform-page .pf-card-heading .pf-status{margin-left:55px}.platform-page .pf-fields{grid-template-columns:1fr;gap:15px}.platform-page .pf-requested-slot{gap:12px}.platform-page .pf-requested-slot>div>strong{font-size:19px}.platform-page .pf-requested-slot>div>span{font-size:8px}.platform-page .pf-state-strip{gap:10px}.platform-page .pf-state-strip>strong{font-size:10px}.platform-page .pf-document-rows li{gap:10px;flex-wrap:wrap}.platform-page .pf-document-state{margin-left:43px;text-align:left;padding-left:0}.platform-page .pf-request-topline{flex-wrap:wrap;align-items:flex-start}.platform-page .pf-request-topline .pf-status{margin-left:0}.platform-page .pf-operations>h3{font-size:21px}}

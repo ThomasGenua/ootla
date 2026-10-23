@@ -1,0 +1,35 @@
+/* Original approved PNG artwork, separated only by clips through transparent gaps. */
+.wordmark{--brand-width:120px;display:inline-block;width:var(--brand-width);height:calc(var(--brand-width)*405/999);flex-shrink:0;vertical-align:middle;line-height:0;letter-spacing:0}
+.wordmark .brand-art{display:block;position:relative;width:100%;height:100%;overflow:visible}
+.wordmark .brand-art img.brand-source{display:block;position:absolute;left:-47.947948%;top:-44.197531%;width:194.594595%;height:199.753086%;max-width:none;margin:0;object-fit:fill}
+.wordmark .brand-still,.wordmark .brand-motion{position:absolute;inset:0;display:block}
+.wordmark .brand-still{overflow:hidden;animation:ootla-wordmark-still 18s steps(1,end) infinite}
+.wordmark .brand-motion{visibility:hidden;animation:ootla-wordmark-motion 18s steps(1,end) infinite}
+.wordmark .brand-green{position:absolute;inset:0;clip-path:polygon(0 0,32% 0,32% 42%,29.5% 42%,29.5% 100%,0 100%)}
+.wordmark .brand-ink{position:absolute;inset:0;filter:brightness(0) invert(1);clip-path:polygon(32% 0,100% 0,100% 100%,29.5% 100%,29.5% 42%,32% 42%)}
+.wordmark .brand-piece{position:absolute;inset:0;display:block}
+.wordmark .brand-roof{clip-path:polygon(0 0,32% 0,32% 42%,31.2% 42%,17.4% 16.5%,2.4% 42%,0 42%);transform-origin:17.4% 40%;animation:ootla-roof-tip 18s ease-in-out infinite}
+.wordmark .brand-first-o{clip-path:polygon(0 42%,2.4% 42%,17.4% 16.5%,31.2% 42%,29.5% 42%,29.5% 100%,0 100%)}
+.wordmark .brand-letter{animation:ootla-letter-lift 18s ease-in-out infinite}
+.wordmark.wordmark-on-dark .brand-letter{filter:brightness(0) invert(1)}
+.wordmark .brand-letter-o{clip-path:polygon(32% 0,52.75% 0,52.75% 100%,29.5% 100%,29.5% 42%,32% 42%)}
+.wordmark .brand-letter-t{clip-path:inset(0 32.43% 0 52.75%);animation-delay:.12s}
+.wordmark .brand-letter-l{clip-path:inset(0 24.02% 0 67.57%);animation-delay:.24s}
+.wordmark .brand-letter-a{clip-path:inset(0 0 0 75.98%);animation-delay:.36s}
+/* A short greeting after arrival, then more than fourteen seconds of stillness. */
+@keyframes ootla-wordmark-still{0%,20%,100%{visibility:visible}8%{visibility:hidden}}
+@keyframes ootla-wordmark-motion{0%,20%,100%{visibility:hidden}8%{visibility:visible}}
+@keyframes ootla-roof-tip{0%,8%,18%,100%{transform:rotate(0deg)}10.5%{transform:rotate(-5deg)}13%{transform:rotate(2deg)}15.5%{transform:rotate(-.8deg)}}
+@keyframes ootla-letter-lift{0%,10%,16%,100%{transform:translateY(0)}13%{transform:translateY(-3.5%)}}
+.wordmark.admin-wordmark{--brand-width:128px;align-items:initial}
+.login-brand-panel .wordmark{--brand-width:144px}
+.ootla-system .wordmark{--brand-width:94px}
+@media(max-width:850px){.site-header .wordmark{--brand-width:110px}}
+@media(max-width:600px){.admin-header .wordmark.admin-wordmark{--brand-width:104px}.login-brand-panel .wordmark{--brand-width:120px}.ootla-system .wordmark{--brand-width:84px}}
+/* Restore the original unsegmented rendering for the entire quiet interval. */
+/* The inert homepage preview keeps its full desktop logo and stays still. */
+.home-dashboard-preview .homepage-preview-app .wordmark.admin-wordmark{--brand-width:128px}
+.home-dashboard-preview .wordmark :is(.brand-still,.brand-motion,.brand-piece),body[data-account-motion="reduce"] .wordmark :is(.brand-still,.brand-motion,.brand-piece){animation:none!important;transform:none!important}
+.home-dashboard-preview .wordmark .brand-still,body[data-account-motion="reduce"] .wordmark .brand-still{visibility:visible!important}
+.home-dashboard-preview .wordmark .brand-motion,body[data-account-motion="reduce"] .wordmark .brand-motion{visibility:hidden!important}
+@media(prefers-reduced-motion:reduce){.wordmark :is(.brand-still,.brand-motion,.brand-piece){animation:none!important;transform:none!important}.wordmark .brand-still{visibility:visible!important}.wordmark .brand-motion{visibility:hidden!important}}

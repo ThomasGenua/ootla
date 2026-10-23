@@ -1,0 +1,65 @@
+/* Keep the real Stage 04 shell at desktop size inside the clipped public hero.
+   Every override is scoped to this inert example; the signed-in admin is unchanged. */
+.home-dashboard-preview.dashboard-preview{width:1480px;min-width:1480px;max-width:none;transform:none;transform-origin:0 0;border:1px solid #dce4df;border-radius:19px;background:#f5f7f6;box-shadow:0 30px 100px #0000001f,0 3px 16px #0000000a;pointer-events:none;user-select:none}
+.home-dashboard-preview .preview-chrome{height:32px;padding:0 20px;background:#fafcfb;color:#6e7d73;border-bottom:1px solid #e4eae5;font-size:10px}
+.home-dashboard-preview .preview-chrome-tag{font-size:8px;letter-spacing:.14em}
+.home-dashboard-preview .preview-chrome .icon{width:11px;height:11px}
+.home-dashboard-preview .homepage-preview-app{width:1478px;min-width:1478px;max-width:none;min-height:0;padding:19px 28px 22px;font-size:16px;line-height:normal;background:#f5f7f6;color:#0c1018;margin:0;font-family:'Ootla Inter','Segoe UI',system-ui,sans-serif}
+.home-dashboard-preview .homepage-preview-app .admin-header{padding:26px 48px 23px;border-radius:26px}
+.home-dashboard-preview .homepage-preview-app .admin-topline{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:28px;min-height:50px;flex-wrap:nowrap}
+.home-dashboard-preview .homepage-preview-app .admin-topline>.admin-wordmark{justify-self:start;margin-left:32px}
+.home-dashboard-preview .homepage-preview-app .admin-wordmark{font-size:44px;letter-spacing:-2.8px;line-height:1;font-weight:500}
+.home-dashboard-preview .homepage-preview-app .admin-wordmark img{width:38px;height:50px}
+.home-dashboard-preview .homepage-preview-app .admin-top-nav{display:flex;order:0;width:auto;min-width:0;max-width:none;overflow:visible;gap:7px;padding:0;border:0;justify-content:start;grid-template-columns:none}
+.home-dashboard-preview .homepage-preview-app .admin-top-nav>span{padding:14px 24px;font-size:15px;border-radius:40px;line-height:1.4}
+.home-dashboard-preview .homepage-preview-app .admin-header-actions{gap:20px;justify-self:end}
+.home-dashboard-preview .homepage-preview-app .header-icon-button{width:46px;height:46px}
+.home-dashboard-preview .homepage-preview-app .header-icon-button .icon{width:22px;height:22px}
+.home-dashboard-preview .homepage-preview-app .profile-avatar{width:43px;height:43px;font-size:15px}
+.home-dashboard-preview .homepage-preview-app .admin-header-body{margin-top:33px;gap:24px;flex-wrap:nowrap}
+.home-dashboard-preview .homepage-preview-app .admin-header-body>h2{font-size:46px;line-height:1.16;font-weight:500;letter-spacing:-1.8px;margin:0;color:#fcfcfd}
+.home-dashboard-preview .homepage-preview-app .period-control{min-width:156px}
+.home-dashboard-preview .homepage-preview-app .period-preview{min-height:43px;padding:10px 41px 10px 18px;font-size:15px;border-radius:15px;line-height:1.4}
+.home-dashboard-preview .homepage-preview-app .period-control>.icon{width:16px;height:16px;right:15px}
+.home-dashboard-preview .homepage-preview-app .summary-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:20px}
+.home-dashboard-preview .homepage-preview-app .summary-metric,.home-dashboard-preview .homepage-preview-app .summary-metric:first-child{min-height:132px;padding:20px 25px 17px;border:0;border-radius:16px}
+.home-dashboard-preview .homepage-preview-app .metric-label{font-size:17px;line-height:1.4;font-weight:400}
+.home-dashboard-preview .homepage-preview-app .summary-metric strong{font-size:50px;font-weight:500;line-height:1;margin-top:12px;letter-spacing:-1.7px}
+.home-dashboard-preview .homepage-preview-app .summary-metric:has(.metric-note) strong{font-size:44px;margin-top:5px}
+.home-dashboard-preview .homepage-preview-app .metric-icon{right:24px;bottom:21px;width:54px;height:54px}
+.home-dashboard-preview .homepage-preview-app .metric-icon>.icon{width:25px;height:25px}
+.home-dashboard-preview .homepage-preview-app .metric-note{font-size:11px;left:25px;bottom:12px;line-height:1.25}
+.home-dashboard-preview .homepage-preview-app .admin-workspace{grid-template-columns:267px minmax(0,1fr);gap:39px;min-height:0;margin-top:20px}
+.home-dashboard-preview .homepage-preview-app .admin-sidebar{padding:23px 15px 25px;border-radius:16px;border:1px solid #e8edf0;align-self:start}
+.home-dashboard-preview .homepage-preview-app .sidebar-inner{display:block;padding:0}
+.home-dashboard-preview .homepage-preview-app .sidebar-label{font-size:18px;font-weight:500;letter-spacing:-.25px;line-height:1.4;margin:0 11px 18px}
+.home-dashboard-preview .homepage-preview-app .admin-nav{grid-template-columns:1fr;gap:3px}
+.home-dashboard-preview .homepage-preview-app .admin-nav-item{min-height:40px;padding:10px 21px;font-size:15px;gap:17px;border-radius:11px;line-height:1.4}
+.home-dashboard-preview .homepage-preview-app .admin-nav-item>.icon{width:20px;height:20px}
+.home-dashboard-preview .homepage-preview-app .stage-filters{display:block;padding:20px 14px 0;margin:24px 10px 0;gap:0}
+.home-dashboard-preview .homepage-preview-app .stage-filters legend{font-size:15px;font-weight:500;margin:0 0 12px}
+.home-dashboard-preview .homepage-preview-app .stage-filters label{min-height:36px;font-size:15px;gap:15px}
+.home-dashboard-preview .homepage-preview-app .stage-filters input{width:18px;height:18px}
+.home-dashboard-preview .homepage-preview-app .sidebar-bottom{padding:29px 14px 0;margin:24px 10px 0}
+.home-dashboard-preview .homepage-preview-app .sidebar-workspace{font-size:14px;gap:16px}
+.home-dashboard-preview .homepage-preview-app .workspace-content{padding:13px 12px 5px 0}
+.home-dashboard-preview .homepage-preview-app .followup-heading{flex-wrap:nowrap;gap:24px;margin-bottom:20px}
+.home-dashboard-preview .homepage-preview-app .followup-heading h2{font-size:34px;font-weight:500;letter-spacing:-1.1px;line-height:1.2;margin:7px 0 6px}
+.home-dashboard-preview .homepage-preview-app .followup-heading p{font-size:18px;line-height:1.4}
+.home-dashboard-preview .homepage-preview-app .followup-heading .button{min-height:55px;padding:15px 24px;border-radius:15px;font-size:17px;font-weight:500;gap:11px}
+.home-dashboard-preview .homepage-preview-app .followup-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.home-dashboard-preview .homepage-preview-app .followup-card{min-height:372px;padding:23px 27px 25px;border-radius:16px}
+.home-dashboard-preview .homepage-preview-app .followup-card-top{gap:13px;min-height:56px;flex-wrap:wrap}
+.home-dashboard-preview .homepage-preview-app .lead-initials{width:56px;height:56px;font-size:18px;letter-spacing:-.7px}
+.home-dashboard-preview .homepage-preview-app .followup-lead-name{font-size:18px;font-weight:500;line-height:1.3;letter-spacing:-.45px}
+.home-dashboard-preview .homepage-preview-app .lead-stage{min-height:35px;padding:8px 15px;font-size:13px;line-height:1.3}
+.home-dashboard-preview .homepage-preview-app .followup-property{margin-top:20px;padding:18px 0}
+.home-dashboard-preview .homepage-preview-app .followup-property h4{font-size:18px;font-weight:500;letter-spacing:-.45px;line-height:1.4}
+.home-dashboard-preview .homepage-preview-app .followup-property p{font-size:16px;line-height:1.5;margin-top:5px}
+.home-dashboard-preview .homepage-preview-app .followup-next-step{padding:17px 0 24px}
+.home-dashboard-preview .homepage-preview-app .followup-next-step span{font-size:15px;line-height:1.5}
+.home-dashboard-preview .homepage-preview-app .followup-next-step p{font-size:16px;line-height:1.55;margin-top:3px}
+.home-dashboard-preview .homepage-preview-app .followup-view{min-height:52px;padding:13px 15px;border-radius:12px;font-size:15px;line-height:1.4;gap:17px}
+.home-dashboard-preview .homepage-preview-app .followup-bottom{padding-top:27px}
+.home-dashboard-preview .homepage-preview-app .followup-bottom .text-link{font-size:15px;font-weight:400;gap:8px}
+.home-dashboard-preview .homepage-preview-app .workspace-footnote{font-size:12px;line-height:1.5;margin-top:30px}

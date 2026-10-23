@@ -1,0 +1,59 @@
+[
+  {
+    "file": "apartment-exterior.jpg",
+    "cdn": "https://images.unsplash.com/photo-1781512436292-f2687f67f605?auto=format&fit=crop&fm=jpg&q=82&w=1440&h=960",
+    "source": "https://unsplash.com/photos/modern-apartment-building-exterior-with-numerous-windows-and-balconies-lC2Atn-fmow",
+    "photographer": "Achyut",
+    "bytes": 252763,
+    "sha256": "2ca19f8fc8f64e5c1dbb5ff488f8ee9ee8b00acd9f8384fb2af7f085fd56b4dc",
+    "license": "https://unsplash.com/license",
+    "licenseVerified": "2026-10-23",
+    "usage": "Illustrative stock photograph, not a customer property or endorsement"
+  },
+  {
+    "file": "apartment-interior.jpg",
+    "cdn": "https://images.unsplash.com/photo-1560185009-5bf9f2849488?auto=format&fit=crop&fm=jpg&q=82&w=1440&h=960",
+    "source": "https://unsplash.com/photos/interior-of-a-living-room-XyGvEj587Mc",
+    "photographer": "Francesca Tosolini",
+    "bytes": 311392,
+    "sha256": "9e14cce1f6dfd86460fbdf391d56511ebba15e350289f8d74f661dbecf8d6194",
+    "license": "https://unsplash.com/license",
+    "licenseVerified": "2026-10-23",
+    "usage": "Illustrative stock photograph, not a customer property or endorsement"
+  },
+  {
+    "file": "residential-neighborhood.jpg",
+    "cdn": "https://images.unsplash.com/photo-1774836435838-2a6e7ef30206?auto=format&fit=crop&fm=jpg&q=82&w=1440&h=960",
+    "source": "https://unsplash.com/photos/a-suburban-neighborhood-with-houses-and-trees-at-dusk-GGoGr9MXaSk",
+    "photographer": "Srini Somanchi",
+    "bytes": 229619,
+    "sha256": "b61cc796161735d11c8e9efc979191a8decd0bfaca46691eba7a8e8c87f1efd8",
+    "license": "https://unsplash.com/license",
+    "licenseVerified": "2026-10-23",
+    "usage": "Illustrative stock photograph, not a customer property or endorsement"
+  },
+  {
+    "file": "resident-phone.jpg",
+    "cdn": "https://images.pexels.com/photos/5902273/pexels-photo-5902273.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    "source": "https://www.pexels.com/photo/woman-sitting-on-the-sofa-and-using-her-phone-5902273/",
+    "photographer": "Kaboompics.com",
+    "provider": "Pexels",
+    "bytes": 215765,
+    "sha256": "122fd940345e13daa25f90f2ba456c733d00cb2bbbc7b722cec6945d45861697",
+    "license": "https://www.pexels.com/license/",
+    "licenseVerified": "2026-10-23",
+    "usage": "Illustrative stock photograph; subjects are not represented as actual Ootla customers or endorsements"
+  },
+  {
+    "file": "property-viewing.jpg",
+    "cdn": "https://images.pexels.com/photos/8962682/pexels-photo-8962682.jpeg?auto=compress&cs=tinysrgb&w=1440",
+    "source": "https://www.pexels.com/photo/woman-talking-to-the-couple-while-holding-a-clipboard-8962682/",
+    "photographer": "Ivan S",
+    "provider": "Pexels",
+    "bytes": 171858,
+    "sha256": "34adfe0a4bc417204071c2cea3207cb245758f0c1bf16efb21c4014f3c4ce113",
+    "license": "https://www.pexels.com/license/",
+    "licenseVerified": "2026-10-23",
+    "usage": "Illustrative stock photograph; subjects are not represented as actual Ootla customers or endorsements"
+  }
+]

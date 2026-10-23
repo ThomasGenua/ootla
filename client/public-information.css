@@ -1,0 +1,20 @@
+.public-information-page .information-container{max-width:850px}
+.public-information-page .information-container>h2{font-size:clamp(32px,4vw,44px);font-weight:500;line-height:1.2;letter-spacing:-.04em;margin-top:20px}
+.public-information-page .information-container>p{font-size:14px;line-height:1.95;font-weight:400;margin-top:23px;color:#546b50}
+.public-information-page .public-section-dark .information-container>p{color:#b8ccba}
+.public-information-page .information-container>.text-link{margin-top:25px}
+.public-information-page .information-contact-card{display:flex;gap:20px;border:1px solid #d7e3cf;padding:29px;border-radius:13px;background:#fbfcf8;margin-top:36px;align-items:flex-start}
+.public-information-page .information-contact-card>span{display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;border-radius:10px;border:1px solid #d2e2c5;background:#eaf2e2;color:#42663a}
+.public-information-page .information-contact-card h2{font-size:23px;line-height:1.4;font-weight:500;letter-spacing:-.025em;margin:0;color:#315331}
+.public-information-page .information-contact-card p{font-size:13px;line-height:1.9;color:#536c4c;margin:16px 0 0;max-width:none}
+.public-information-page .information-contact-card .text-link{margin-top:18px;overflow-wrap:anywhere}
+.public-information-page .information-contact-card .information-small-note{font-size:11px;color:#586f50;line-height:1.9}
+.public-information-page .information-content{padding-top:0}
+.public-information-page .information-content article{padding:31px 0;border-top:1px solid #d8e3d1}
+.public-information-page .information-content h2{font-size:25px;line-height:1.4;font-weight:500;letter-spacing:-.025em;margin:0;color:#2c4d2e}
+.public-information-page .information-content p{font-size:14px;line-height:1.95;font-weight:400;color:#536b4d;margin-top:20px}
+.public-information-page .information-content .text-link{margin-top:22px}
+.public-information-page code{font-size:12px;border:1px solid #d7e2ce;padding:2px 5px;border-radius:4px;background:#edf3e7;color:#3f6035}
+.public-body .footer-bottom{flex-wrap:wrap;gap:17px}
+.public-body .public-footer-links{display:flex;gap:19px;align-items:center}
+@media(max-width:600px){.public-information-page .information-contact-card{padding:23px;gap:15px;flex-direction:column}.public-information-page .information-contact-card h2{font-size:21px}.public-information-page .information-content h2{font-size:23px}.public-information-page .information-content p,.public-information-page .information-container>p{font-size:13px}.public-information-page .information-contact-card .text-link{font-size:11px}}

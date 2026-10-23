@@ -1,0 +1,40 @@
+{
+  "approved": "2026-10-21",
+  "source": "User-supplied Ootla artwork; originals found in local Downloads and visually matched to the attached images.",
+  "wordmark": {
+    "file": "public/brand/ootla-wordmark.png",
+    "sourceFile": "Forest green Ootla transparent wordmark-2.png",
+    "sha256": "1326aaed6a651dad3634864dea758bcdc12f119bb85c42cf682a45a4d5da6ed3",
+    "canvas": [
+      1944,
+      809
+    ],
+    "displayBounds": [
+      479,
+      179,
+      999,
+      405
+    ]
+  },
+  "icon": {
+    "file": "public/brand/ootla-icon.png",
+    "sourceFile": "Forest Green Roof-O Icon-4.png",
+    "sha256": "a2d08f08fd86225ba64d895f0e666eee87e6181f0fdc589a4c3b042b421e7fc9",
+    "canvas": [
+      1254,
+      1254
+    ],
+    "faviconViewBox": [
+      122,
+      150,
+      1040,
+      1040
+    ]
+  },
+  "lightReference": {
+    "file": "design-reference/assets/ootla-logo-on-white.png",
+    "sourceFile": "Ootla logo in rich forest green-1.png",
+    "sha256": "e7ca1770f4e72c62bf5f559b3ae39a87ebf57e27f91f7f23db781e245b0f6b4c"
+  },
+  "rendering": "Original PNGs are unchanged. CSS trims transparent canvas; dark surfaces preserve the original green mark and render the supplied black lettering in white. Favicon SVG embeds the exact original icon PNG in a tighter square viewBox."
+}
