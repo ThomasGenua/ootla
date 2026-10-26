@@ -17,7 +17,7 @@ const id=(value:unknown)=>parse(z.uuid(),value);
 export function createConnectorRouter(config:ServerConfig,database:Database,requireUser:RequestHandler):Router{
  const router=Router(),connectors=new Connectors(database,config);
  const digest=(request:Request)=>{const value=readSessionDigest(request,config);if(!value)throw new ApiError(401,'AUTH_REQUIRED','Sign in to manage connectors.');return value;};
- router.use(requireUser,(request,response,next)=>{response.setHeader('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(request.method))return protectOrigin(config)(request,response,next);next();});
+ router.use(requireUser,(request,response,next)=>{if(actor(response).organization.role!=='organization_admin')throw new ApiError(403,'OWNER_ADMIN_REQUIRED','Your organization administrator manages these connections.');response.setHeader('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(request.method))return protectOrigin(config)(request,response,next);next();});
  router.get('/',async(request,response)=>response.json(await connectors.overview(actor(response),digest(request))));
  router.get('/yardi/readiness',async(request,response)=>{
   await connectors.overview(actor(response),digest(request));

@@ -1,4 +1,5 @@
-import { api, ApiError, errorMessage } from './api';
+import { api, ApiError} from './api';
+import {productError} from './product-copy';
 import type { ImportBatch, ImportBatchDetail, ImportOnboarding, ImportUndoPreview } from '../../shared/import-contracts';
 import type { Paginated } from '../../shared/property-contracts';
 
@@ -11,7 +12,7 @@ export type ImportsWorkspacePayload =
 export async function loadImportsWorkspace(query: URLSearchParams, signal: AbortSignal): Promise<ImportsWorkspacePayload> {
   let onboarding: ImportOnboarding;
   try { onboarding = await api<ImportOnboarding>(importsApi + '/onboarding', { signal }); }
-  catch (issue) { if (issue instanceof ApiError && issue.status === 403) return { kind: 'denied', message: errorMessage(issue) }; throw issue; }
+  catch (issue) { if (issue instanceof ApiError && issue.status === 403) return { kind: 'denied', message: productError(issue) }; throw issue; }
   if (!onboarding.canImport || onboarding.organization.mode !== 'standalone') return { kind: 'restricted', onboarding };
   const batch = query.get('batch');
   if (!batch) return { kind: 'directory', onboarding, batches: await api<Paginated<ImportBatch>>(importsApi + '?' + new URLSearchParams({ page: query.get('page') ?? '1', pageSize: '25' }), { signal }) };
@@ -91,7 +92,7 @@ export function initializeImportsWorkspace(signal: AbortSignal, navigate: (path:
       const extra: Record<string, string> | undefined = action === 'undo' ? { saved: 'undone' } : action === 'decision' ? { saved: 'decision', rows: 'duplicates', page: new URLSearchParams(location.search).get('page') ?? '1' } : undefined;
       navigate(batchUrl(savedId, next, extra), false, '[data-import-step]');
     } catch (issue) {
-      if (!signal.aborted && error) error.textContent = issue instanceof ApiError && issue.status === 409 ? errorMessage(issue) + ' Refresh the saved batch before trying again.' : errorMessage(issue);
+      if (!signal.aborted && error) error.textContent = issue instanceof ApiError && issue.status === 409 ? productError(issue) + ' Refresh the saved batch before trying again.' : productError(issue);
     } finally {
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     }

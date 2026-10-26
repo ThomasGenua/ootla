@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../server/config/environment.js';
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';

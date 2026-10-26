@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../server/config/environment.js';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {createServer} from 'vite';

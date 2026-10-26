@@ -9,14 +9,14 @@ export function aiWorkflowsPage(): string {
         <div>
           <span class="detail-kicker">OOTLAAI / CONVERSATIONS THAT MOVE WORK FORWARD</span>
           <h1 id="ai-workflows-heading">A helpful reply.<br>A useful next step.</h1>
-          <p>OotlaAI turns SMS, phone and chat inquiries into clear replies, connected records and staff next steps.</p>
-          <div class="public-channel-list" aria-label="Illustrated communication channels"><span>SMS</span><span>Phone &amp; voice</span><span>AI chat responses</span></div>
-          <div class="detail-hero-links"><a href="#ai-demonstrations" class="button button-primary">Try the scenarios ${icon('arrow')}</a>${link('/admin/login', 'Explore demo', 'text-link')}</div>
-          <span class="detail-preview-note">Scripted public demonstrations. SMS, voice and live AI need configuration. Nothing is sent.</span>
+          <p>OotlaAI brings property questions, connected records and staff next steps into one conversation.</p>
+          <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Property questions</span><span>Staff handoffs</span><span>AI assistance</span></div>
+          <div class="detail-hero-links"><a href="#ai-demonstrations" class="button button-primary">Try the scenarios ${icon('arrow')}</a>${link('/try','Try Ootla', 'text-link')}</div>
+          <span class="detail-preview-note">Explore three example conversations and the work that follows.</span>
         </div>
         <div class="ai-intro-visual" aria-label="Illustrated conversation, request and staff handoff">
           <span class="public-example-label">ONE CONVERSATION, CONNECTED WORK</span>
-          <div class="ai-intro-node"><span>${icon('message')}</span><div><strong>A question comes in</strong><p>By SMS, phone or chat.</p></div></div>
+          <div class="ai-intro-node"><span>${icon('message')}</span><div><strong>A question comes in</strong><p>Start with a property question.</p></div></div>
           <div class="ai-intro-line" aria-hidden="true"></div>
           <div class="ai-intro-node"><span>${icon('sparkles')}</span><div><strong>OotlaAI brings the context</strong><p>Clarify details. Prepare a reply.</p></div></div>
           <div class="ai-intro-line" aria-hidden="true"></div>
@@ -30,7 +30,7 @@ export function aiWorkflowsPage(): string {
         <div class="public-primary-heading">
           <span class="detail-kicker">LESS CHASING. MORE FOLLOW-THROUGH.</span>
           <h2 id="ai-examples-heading">See what OotlaAI adds<br>at every next step.</h2>
-          <p>Try three scripted scenarios: response, resulting work and staff handoff.</p>
+          <p>Try three examples: the response, resulting work and staff handoff.</p>
         </div>
         ${aiDemonstrations()}
         <div class="public-feature-grid">
@@ -49,7 +49,7 @@ export function aiWorkflowsPage(): string {
           <article class="public-feature">
             <span class="detail-kicker">PROSPECT VIEWINGS</span>
             <h3>Interest turns into a next step.</h3>
-            <p>OotlaAI gathers budget, bedrooms, move-in preferences and a viewing request from SMS, phone or chat.</p>
+            <p>OotlaAI brings together budget, bedrooms, move-in preferences and a viewing request.</p>
             <p class="public-ai-value">${icon('sparkles')} <span><strong>A request, then confirmation.</strong> Availability and scheduling rules govern booking.</span></p>
           </article>
           <article class="public-feature">

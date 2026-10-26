@@ -1,3 +1,4 @@
+import {sessionCookieName,readSessionCookie} from '../http/session-cookies.js';
 import { createHmac, randomBytes } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
@@ -8,19 +9,14 @@ import { ApiError } from '../http/errors.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 import { isIsolatedDemo } from './demo-environment.js';
 
-const COOKIE_NAME = 'ootla.sid';
 const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
 
-function sessionToken(request: Request): string | null {
-  const value = request.headers.cookie?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE_NAME}=`))?.slice(COOKIE_NAME.length + 1);
-  return value && /^[a-f0-9]{64}$/.test(value) ? value : null;
-}
 function tokenDigest(token: string, config: ServerConfig): string {
   return createHmac('sha256', config.sessionSecret).update(token).digest('hex');
 }
 /** Reuse the opaque-cookie codec for transactional session revalidation. */
 export function readSessionDigest(request: Request, config: ServerConfig): string | null {
-  const token = sessionToken(request);
+  const token = readSessionCookie(request, config);
   return token ? tokenDigest(token, config) : null;
 }
 type UserRow = {
@@ -48,10 +44,10 @@ export class SessionService {
     return tokenDigest(token, this.config);
   }
   private token(request: Request): string | null {
-    return sessionToken(request);
+    return readSessionCookie(request, this.config);
   }
   private cookieOptions() {
-    return { httpOnly: true, sameSite: 'lax' as const, secure: this.config.production, path: '/' };
+    return { httpOnly: true, sameSite: 'lax' as const, secure: this.config.production || this.config.secureCookies, path: '/' };
   }
   private async eligible(row: UserRow, connection: Database | PoolClient = this.database): Promise<boolean> {
     // A mistaken DEMO_MODE switch on a mixed/customer database fails closed for all staff.
@@ -118,7 +114,7 @@ export class SessionService {
       await client.query(`INSERT INTO audit_events (organization_id, actor_user_id, action) VALUES ($1, $2, 'auth.login')`, [row.organization_id, row.id]);
       return toAuthUser(currentUser, expiresAt);
     });
-    response.cookie(COOKIE_NAME, token, { ...this.cookieOptions(), maxAge: SESSION_LIFETIME_MS });
+    response.cookie(sessionCookieName(this.config), token, { ...this.cookieOptions(), maxAge: SESSION_LIFETIME_MS });
     return authenticatedUser;
   }
   async logout(request: Request, response: Response): Promise<void> {
@@ -130,7 +126,7 @@ export class SessionService {
         if (session) await client.query(`INSERT INTO audit_events (organization_id, actor_user_id, action) VALUES ($1, $2, 'auth.logout')`, [session.organization_id, session.user_id]);
       });
     }
-    response.clearCookie(COOKIE_NAME, this.cookieOptions());
+    response.clearCookie(sessionCookieName(this.config), this.cookieOptions());
   }
 }
 

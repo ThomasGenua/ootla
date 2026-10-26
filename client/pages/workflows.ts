@@ -20,9 +20,9 @@ export function leasingPage(): string {
       <div class="detail-container detail-hero-grid">
         <div><span class="detail-kicker">OOTLAAI / LEASING</span><h1 id="leasing-heading">Keep interest moving.<br>Keep the details together.</h1>
           <p>OotlaAI connects inquiries, viewings and applications. Your team owns the relationship and decisions.</p>
-          <div class="public-channel-list" aria-label="Illustrated communication channels"><span>SMS inquiries</span><span>Phone &amp; voice</span><span>AI responses</span></div>
-          <div class="detail-hero-links">${link('/admin/login', 'Explore demo ' + icon('arrow'), 'button button-primary')}<a class="text-link" href="#leasing-inquiry">Follow the journey ${icon('arrow')}</a></div>
-          <span class="detail-preview-note">Illustrated workflow. SMS, voice and live AI need configuration. No messages sent.</span>
+          <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Prospect inquiries</span><span>Staff handoffs</span><span>AI assistance</span></div>
+          <div class="detail-hero-links">${link('/try','Try Ootla ' + icon('arrow'), 'button button-primary')}<a class="text-link" href="#leasing-inquiry">Follow the journey ${icon('arrow')}</a></div>
+          <span class="detail-preview-note">Explore the journey through example records.</span>
         </div>
         ${journey([{ icon:'message', title:'Understand the inquiry', copy:'OotlaAI gathers the prospect\'s stated needs.' }, { icon:'calendar', title:'Arrange a viewing', copy:'Staff confirm availability.' }, { icon:'file', title:'Complete the application', copy:'Track missing documents.' }, { icon:'person', title:'Put people in charge', copy:'Staff decide and record outcomes.' }])}
       </div>
@@ -34,7 +34,7 @@ export function leasingPage(): string {
           <article class="public-feature">
             <span class="detail-kicker">01 / FIRST RESPONSE</span><h3>Understand the inquiry.</h3>
             <p>Capture property, unit, budget, bedrooms and move-in preferences.</p>
-            ${aiValue('Answer property questions by SMS, phone or chat. Gather missing details.')}
+            ${aiValue('Answer property questions by a property conversation. Gather missing details.')}
             <figure class="public-example wf-inquiry">${exampleCaption('An SMS inquiry')}
               <div class="wf-message"><span>PROSPECT &middot; EXAMPLE SMS</span><p>Is Elm Court's one-bedroom available next month?</p></div>
               <div class="wf-message wf-message-ai"><span>${icon('sparkles')} OOTLAAI &middot; ILLUSTRATED REPLY</span><p>When would you like to move and view? Staff will check availability.</p></div>
@@ -86,7 +86,7 @@ export function residentSupportPage(): string {
           <p>OotlaAI clarifies repair, renewal and payment questions with resident context.</p>
           <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Resident SMS</span><span>Phone &amp; voice</span><span>AI responses</span></div>
           <div class="detail-hero-links"><a class="button button-primary" href="#resident-request">Follow a request ${icon('arrow')}</a>${link('/ai-workflows#ai-demonstrations', 'Try the AI examples', 'text-link')}</div>
-          <span class="detail-preview-note">Illustrated workflows. SMS, voice and live AI need configuration. No messages sent.</span>
+          <span class="detail-preview-note">Explore resident requests and the team’s next steps using example records.</span>
         </div>
         ${publicPhoto('neighborhood')}
       </div>
@@ -98,7 +98,7 @@ export function residentSupportPage(): string {
           <article class="public-feature">
             <span class="detail-kicker">01 / THE REQUEST</span><h3>Clarify the request.</h3>
             <p>Connect the issue, home and access preference.</p>
-            ${aiValue('Clarify SMS, phone or chat. Prepare a task.')}
+            ${aiValue('Clarify a property conversation. Prepare a task.')}
             <figure class="public-example wf-service-request">${exampleCaption('A bathroom fan request')}
               <div class="wf-message"><span>RESIDENT &middot; EXAMPLE SMS</span><p>My bathroom fan has stopped working.</p></div>
               <div class="wf-message wf-message-ai"><span>${icon('sparkles')} OOTLAAI &middot; ILLUSTRATED RESPONSE</span><p>Which bathroom is the fan in, and when would access be possible?</p></div>
@@ -132,7 +132,7 @@ export function residentSupportPage(): string {
             <p>Use the existing provider. Show verified status.</p>
             ${aiValue('Guide the external handoff. Route account questions to staff.')}
             <figure class="public-example wf-payment">${exampleCaption('An existing-provider handoff')}
-              <ol class="wf-provider-path"><li><span>${icon('message')}</span><div><h3>The resident asks</h3><p>Where can I make my payment?</p></div></li><li><span>${icon('link')}</span><div><h3>OotlaAI guides</h3><p>Use the configured external provider.</p></div></li><li><span>${icon('lock')}</span><div><h3>The provider handles payment</h3><p>Ootla does not authorize, capture, charge or refund payments.</p></div></li></ol>
+              <ol class="wf-provider-path"><li><span>${icon('message')}</span><div><h3>The resident asks</h3><p>Where can I make my payment?</p></div></li><li><span>${icon('link')}</span><div><h3>OotlaAI guides</h3><p>Use the approved external provider.</p></div></li><li><span>${icon('lock')}</span><div><h3>The provider handles payment</h3><p>Ootla does not authorize, capture, charge or refund payments.</p></div></li></ol>
               <p class="wf-example-note">Illustrative. No payment or status verified. Yardi retains accounting authority.</p>
             </figure>
             ${link('/integrations', 'Explore the integration paths ' + icon('arrow'), 'text-link text-link-light')}

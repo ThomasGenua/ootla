@@ -1,0 +1,30 @@
+import {z} from 'zod';
+import type {AuthUser,RoleDefinition,OrganizationRole} from './contracts.js';
+import type {Paginated} from './property-contracts.js';
+import {aiIntents} from './ai-contracts.js';
+const text=(n:number)=>z.string().trim().max(n).refine(v=>!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v));
+const name=text(200).min(1),key=z.uuid();
+export const organizationAdminPageSchema=z.object({q:text(120).default(''),page:z.coerce.number().int().min(1).max(100000).default(1),pageSize:z.coerce.number().int().min(1).max(50).default(25)}).strict();
+export const organizationAdminOptionsSchema=organizationAdminPageSchema.extend({membershipId:z.uuid().optional(),propertyId:z.uuid().optional()}).strict();
+export const organizationTimeZone=z.string().trim().min(1).max(100).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v}).format();return true;}catch{return false;}});
+const website=z.union([z.literal(''),z.url().max(500).refine(v=>{const u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash;})]);
+export const organizationSettingsSchema=z.object({requestKey:key,version:z.number().int().positive(),name,website,contactEmail:z.union([z.email().max(254),z.literal('')]),phone:text(80),address:text(500),timeZone:organizationTimeZone,quietHours:z.object({enabled:z.boolean(),startHour:z.number().int().min(0).max(23),endHour:z.number().int().min(0).max(23)}).strict(),notifications:z.object({inAppEnabled:z.boolean(),emailEnabled:z.literal(false),smsEnabled:z.literal(false)}).strict()}).strict();
+export const organizationAiTools=['native_read','create_task','automation_reminders','portfolio_reporting','resident_operations','book_viewing'] as const;
+export const organizationAiPolicySchema=z.object({requestKey:key,version:z.number().int().positive(),enabled:z.boolean(),publicEnabled:z.boolean(),operatingRules:text(2000),permittedTools:z.array(z.enum(organizationAiTools)).max(6).refine(v=>new Set(v).size===v.length),permittedIntents:z.array(z.enum(aiIntents)).max(6).refine(v=>new Set(v).size===v.length),mutationConfirmation:z.literal('always'),maxRequestsPerMinute:z.number().int().min(1).max(1000),maxTokensPerRequest:z.number().int().min(128).max(1000000),dailyTokenBudget:z.number().int().min(128).max(2000000000),dailyCostBudgetMicros:z.number().int().min(0).max(2000000000)}).strict();
+export const organizationStaffCreateSchema=z.object({requestKey:key,name,email:z.email().trim().toLowerCase().max(254),initialPassword:z.string().min(12).max(256),role:z.enum(['organization_admin','leasing_agent','property_manager','read_only_analyst']),propertyIds:z.array(z.uuid()).max(100).default([])}).strict();
+export const organizationGroupSchema=z.object({requestKey:key,name}).strict();
+export const organizationPropertyGroupSchema=z.object({requestKey:key,groupId:z.uuid().nullable()}).strict();
+export const organizationKnowledgeQuerySchema=organizationAdminPageSchema.extend({scope:z.enum(['organization','property','all']).default('organization'),propertyId:z.uuid().optional(),status:z.enum(['all','draft','approved','retired']).default('all')}).strict();
+export const organizationKnowledgeSchema=z.object({requestKey:key,propertyId:z.uuid().nullable(),title:text(160).min(1),body:text(4000).min(1),status:z.enum(['draft','approved','retired']),publicEnabled:z.boolean().default(false),version:z.number().int().positive().optional()}).strict();
+export interface OrganizationAdminMember{id:string;userId:string;name:string;email:string;role:OrganizationRole;active:boolean;userActive:boolean;propertyAccessCount:number;updatedAt:string}
+export interface OrganizationAdminSettings{organization:{id:string;name:string;slug:string;environment:'demo'|'live'};profile:{website:string;contactEmail:string;phone:string;address:string};timeZone:string;quietHours:{enabled:boolean;startHour:number;endHour:number};notifications:{inAppEnabled:boolean;emailEnabled:false;smsEnabled:false};version:number;updatedAt:string|null;access:{canManage:boolean};demo:{isolated:boolean;resetAvailable:false;notice:string};roles:RoleDefinition[];aiPolicy:OrganizationAiPolicy;links:{knowledge:string;routing:string;automations:string;integrations:string;retention:string;personalSettings:string}}
+export interface OrganizationAiPolicy{enabled:boolean;publicEnabled:boolean;operatingRules:string;permittedTools:Array<typeof organizationAiTools[number]>;permittedIntents:Array<typeof aiIntents[number]>;mutationConfirmation:'always';maxRequestsPerMinute:number;maxTokensPerRequest:number;dailyTokenBudget:number;dailyCostBudgetMicros:number;version:number;updatedAt:string|null;mode:'simulated'|'configured_unverified'|'not_configured';notice:string;serverCeilings:{maxRequestsPerMinute:number;maxTokensPerRequest:number;dailyTokenBudget:number;dailyCostBudgetMicros:number}}
+export interface OrganizationAdminOptions{properties:Paginated<{id:string;name:string;groupId:string|null}>;groups:Paginated<{id:string;name:string;propertyCount:number}>;members:Paginated<{id:string;userId:string;name:string;role:OrganizationRole}>;teams:Paginated<{id:string;name:string}>}
+export interface OrganizationAdminKnowledge{id:string;propertyId:string|null;propertyName:string|null;title:string;body:string;status:'draft'|'approved'|'retired';publicEnabled:boolean;version:number;approvedAt:string|null;updatedAt:string}
+export interface OrganizationAdminMemberDirectory extends Paginated<OrganizationAdminMember>{roles:RoleDefinition[];organizationId:string}
+export type OrganizationAdminActor=AuthUser;
+
+export const organizationLeadRoutingSchema=z.object({requestKey:z.uuid(),propertyId:z.uuid(),teamId:z.uuid().nullable(),strategy:z.enum(['manual','least_open_leads']),enabled:z.boolean()}).strict();
+export interface OrganizationLeadRoutingRule{id:string;propertyId:string;propertyName:string;teamId:string|null;teamName:string|null;strategy:'manual'|'least_open_leads';enabled:boolean;updatedAt:string}
+
+export const organizationLeadRoutingQuerySchema=organizationAdminPageSchema.extend({propertyId:z.uuid().optional()}).strict();

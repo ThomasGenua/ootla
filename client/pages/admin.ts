@@ -1,3 +1,4 @@
+import {productNotice} from '../lib/product-copy';
 import type { AdminPageSummary, AdminSummaryMetric } from '../../shared/admin-summary-contracts';
 import type { TaskReminder } from '../../shared/task-contracts';
 import type { Paginated } from '../../shared/property-contracts';
@@ -14,77 +15,21 @@ const primaryNavigation = [
 const workspaceNavigation: { path: string; name: string; icon: IconName }[] = [
   { path: '/admin/leads', name: 'My leads', icon: 'person' },
   { path: '/admin/tasks', name: 'Tasks', icon: 'tasks' },
+  { path: '/admin/automations', name: 'Automations', icon: 'clock' },
   { path: '/admin/analytics', name: 'Analytics', icon: 'chart' },
+  { path: '/admin/reports', name: 'Reports', icon: 'file' },
+  { path: '/admin/maintenance', name: 'Maintenance', icon: 'building' },
   { path: '/admin/ai', name: 'AI assistant', icon: 'sparkles' },
+  { path: '/admin/conversations', name: 'Conversations', icon: 'message' },
+  { path: '/admin/voice', name: 'Voice', icon: 'message' },
   { path: '/admin/integrations', name: 'Integrations', icon: 'link' },
+  { path: '/admin/organization', name: 'Organization', icon: 'grid' },
 ];
 
-const moduleContent: Record<string, { title: string; icon: IconName; eyebrow: string; description: string; emptyTitle: string; empty: string; items: [string, string][]; note: string }> = {
-  '/admin/leads': {
-    title: 'Leads', icon: 'leads', eyebrow: 'Every relationship starts somewhere',
-    description: 'A dedicated place for your sales and leasing opportunities.', emptyTitle: 'Your next lead belongs here',
-    empty: 'Lead capture, customer records and pipeline tools will be added in a later stage. No leads have been created.',
-    items: [['One customer record', 'Keep conversations connected to the people and properties they concern.'], ['A clear next step', 'Make ownership, follow-ups and the path to a sale or lease easy to see.']],
-    note: 'Foundation only. Creating, importing, editing and contacting leads are not available yet.'
-  },
-  '/admin/properties': {
-    title: 'Properties', icon: 'building', eyebrow: 'Your portfolio, connected',
-    description: 'Built to keep property records and individual units distinct.', emptyTitle: 'A home for your portfolio',
-    empty: 'Property browsing, units and data imports will be introduced in a later stage. No property records have been imported.',
-    items: [['Properties and units', 'A property and the units within it will have separate records.'], ['Your source of truth', 'Yardi remains authoritative for the records configured to sync from it.']],
-    note: 'Foundation only. There is no live Yardi connection or customer-data import in this stage.'
-  },
-  '/admin/applications': {
-    title: 'Applications', icon: 'file', eyebrow: 'Thoughtful review, clear decisions',
-    description: 'A future workspace for applicant documents and staff review.', emptyTitle: 'Ready for a more organized review',
-    empty: 'Application intake, document uploads and review tools will be added in a later stage. No applications are stored here.',
-    items: [['People make decisions', 'Staff review and consent will remain part of the application process.'], ['Approved screening only', 'Screening requires an approved provider. AI will never approve or reject applicants.']],
-    note: 'Foundation only. No documents, screening requests or applicant decisions can be submitted.'
-  },
-  '/admin/calendar': {
-    title: 'Calendar', icon: 'calendar', eyebrow: 'Make time for the next conversation',
-    description: 'A dedicated place for future viewing and scheduling tools.', emptyTitle: 'Your schedule will take shape here',
-    empty: 'Viewings and calendar connections will be introduced in a later stage. There are no events or invitations.',
-    items: [['Property viewings', 'Future scheduling will connect a viewing to its lead and property.'], ['Google Calendar', 'A provider connection and explicit authorization will be needed before any calendar sync.']],
-    note: 'Foundation only. No events are created and no invitations are sent.'
-  },
-  '/admin/tasks': {
-    title: 'Tasks', icon: 'tasks', eyebrow: 'Less to remember. More to move forward.',
-    description: 'A future home for the follow-ups that keep your team moving.', emptyTitle: 'A clear start for your team',
-    empty: 'Task creation, assignments and reminders will be added in a later stage. No tasks have been created.',
-    items: [['Keep the context', 'Future tasks will link back to the relevant customer or property.'], ['A helpful nudge', 'Ootla-owned AI can help surface pending work when the workflow is implemented.']],
-    note: 'Foundation only. No reminders or external messages are sent.'
-  },
-  '/admin/analytics': {
-    title: 'Analytics', icon: 'chart', eyebrow: 'Understand the work behind the numbers',
-    description: 'A dedicated space for future sales and leasing insights.', emptyTitle: 'Real insights need real records',
-    empty: 'Reporting will be introduced after the underlying CRM workflows. No sample performance figures are presented as real.',
-    items: [['Sales and leasing', 'Future reports will use your organization’s actual records.'], ['Google Analytics', 'Public-site analytics requires a configured integration and an approved measurement approach.']],
-    note: 'Foundation only. Analytics tracking and external reporting are not configured.'
-  },
-  '/admin/ai': {
-    title: 'AI assistant', icon: 'sparkles', eyebrow: 'More support. Your team in control.',
-    description: 'A future home for Ootla-owned assistance inside your CRM.', emptyTitle: 'Helpful intelligence starts with context',
-    empty: 'AI workflows will be added in a later stage. There is no connected AI provider, live assistant or chat session here yet.',
-    items: [['Support the next step', 'Planned assistance includes resident-request drafts and pending-task reminders.'], ['Keep people in charge', 'Staff review sensitive actions. AI does not make applicant screening decisions.']],
-    note: 'Foundation only. No AI requests, automated decisions or external communications occur.'
-  },
-  '/admin/integrations': {
-    title: 'Connections', icon: 'plug', eyebrow: 'Meet your business where it is',
-    description: 'Future connections for Yardi organizations and independent teams.', emptyTitle: 'Your connections start here',
-    empty: 'Provider adapters and standalone imports will be implemented in later stages. No external service is connected.',
-    items: [['Yardi-ready architecture', 'The exact Yardi interfaces must be confirmed before a live adapter can be configured.'], ['A standalone path', 'Organizations without Yardi will be able to import their existing customer data.']],
-    note: 'Foundation only. No simulator or live connection is active. Payment actions remain with an existing approved provider; Ootla will not authorize, charge or refund.'
-  }
-};
-
-function moduleView(path: string): string {
-  const content = moduleContent[path]!;
-  return `<div class="workspace-heading"><div><span class="eyebrow">${content.eyebrow.toUpperCase()}</span><h2>${content.title}</h2><p>${content.description}</p></div><span class="badge badge-neutral">Not configured</span></div>
-    <section class="module-empty card"><div class="empty-icon">${icon(content.icon)}</div><h2>${content.emptyTitle}</h2><p>${content.empty}</p><span class="badge badge-neutral">Not configured yet</span></section>
-    <div class="module-detail-grid">${content.items.map(([title, copy]) => `<article class="card module-detail"><span class="small-green-icon">${icon('check')}</span><h3>${title}</h3><p>${copy}</p></article>`).join('')}</div>
-    <div class="foundation-note">${icon('info')}<p>${content.note}</p></div>`;
+function moduleView(_path:string):string{
+ return '<section class="module-empty card"><div class="empty-icon">'+icon('info')+'</div><h2>This workspace could not be opened</h2><p>Refresh this page or return to Overview to continue.</p>'+link('/admin','Open Overview','button button-primary')+'</section>';
 }
+
 function adminWordmark(): string {
   return wordmark(true, true);
 }
@@ -95,7 +40,7 @@ const summaryIcons: Record<AdminSummaryMetric['icon'], IconName> = {
 function summaryMetric(metric: { key: string; label: string; value: number | string | null; icon: IconName; note?: string }): string {
   const unavailable = metric.value == null;
   const value = unavailable ? '&mdash;' : typeof metric.value === 'number' ? metric.value.toLocaleString() : escapeHtml(metric.value);
-  const note = metric.note ?? (unavailable ? 'Not configured' : undefined);
+  const note = metric.note ? productNotice(metric.note,'Unavailable') : (unavailable ? 'Unavailable' : undefined);
   const longNumber = typeof metric.value === 'number' && metric.value.toLocaleString().length > 4;
   return `<div class="summary-metric ${typeof metric.value === 'string' ? 'metric-text-value' : ''} ${longNumber ? 'metric-long-number' : ''}" data-metric-key="${escapeHtml(metric.key)}"><span class="metric-label">${escapeHtml(metric.label)}</span><strong aria-label="${escapeHtml(metric.label + ': ' + (unavailable ? note : metric.value))}">${value}</strong><span class="metric-icon">${icon(metric.icon)}</span>${note ? note.length > 32 ? `<details class="metric-note"><summary>About this figure</summary><span>${escapeHtml(note)}</span></details>` : `<span class="metric-note">${escapeHtml(note)}</span>` : ''}</div>`;
 }
@@ -103,7 +48,7 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
   const org = user?.organization.name ?? 'Your organization';
   const name = user?.name ?? 'Your workspace';
   const initials = name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
-  const title = path === '/admin/profile' ? 'My profile' : path === '/admin/settings' ? 'Settings' : path === '/admin/imports' ? 'Customer-data import' : path === '/admin/contacts' ? 'Contacts & households' : primaryNavigation.find(item => item.path === path)?.name ?? workspaceNavigation.find(item => item.path === path)?.name ?? 'Overview';
+  const title = path === '/admin/integration-health' ? 'Integration health' : path === '/admin/audit' ? 'Audit history' : path === '/admin/profile' ? 'My profile' : path === '/admin/settings' ? 'Settings' : path === '/admin/imports' ? 'Customer-data import' : path === '/admin/contacts' ? 'Contacts & households' : primaryNavigation.find(item => item.path === path)?.name ?? workspaceNavigation.find(item => item.path === path)?.name ?? 'Overview';
   const period = pageSummary ? pageSummary.period : overview?.dashboard.period ?? 'month';
   const dashboardMetrics = overview?.dashboard.metrics;
   const metrics = pageSummary ? pageSummary.metrics.map(metric => ({ ...metric, icon: summaryIcons[metric.icon] })) : ([
@@ -116,7 +61,8 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
   const content = contentOverride ?? (path === '/admin' ? dashboardOverview(demo, query) : demoContent ?? (path === '/admin/leads' && query.get('view') === 'new' ? `<div class="workspace-heading"><div><h2>Add lead</h2><p>Lead creation is pending a later stage.</p></div></div><section class="card module-empty"><h2>Lead capture is not available yet</h2><p>No record has been created. Your existing leads and demo data are preserved.</p>${link('/admin/leads','Back to leads','button button-secondary')}</section>` : moduleView(path)));
   const topLink = (href: string, label: string): string => preview ? `<span class="${path === href ? 'active' : ''}">${label}</span>` : `<a href="${href}" data-link class="${path === href ? 'active' : ''}" ${path === href ? 'aria-current="page"' : ''}>${label}</a>`;
   const workspaceLink = (item: typeof workspaceNavigation[number]): string => {
-    const selected = path === item.path || (path === '/admin' && item.path === '/admin/leads') || (path === '/admin/imports' && item.path === '/admin/integrations');
+    if (!preview && ['/admin/organization','/admin/integrations'].includes(item.path) && user?.organization.role !== 'organization_admin') return '';
+    const selected = (['/admin/integration-health','/admin/audit'].includes(path) && item.path === '/admin/organization') || path === item.path || (path === '/admin' && item.path === '/admin/leads') || (path === '/admin/imports' && item.path === '/admin/integrations');
     const content = `${icon(item.icon)}<span>${item.name}</span>`;
     return preview ? `<span class="admin-nav-item ${selected ? 'active' : ''}">${content}</span>` : `<a href="${item.path}" data-link class="admin-nav-item ${selected ? 'active' : ''}" ${selected ? 'aria-current="page"' : ''}>${content}</a>`;
   };
@@ -126,6 +72,7 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
         <nav class="admin-top-nav" aria-label="Workspace navigation">${primaryNavigation.map(item => topLink(item.path,item.name)).join('')}</nav>
         <div class="admin-header-actions">
           ${preview ? `<span class="header-icon-button">${icon('search')}</span><span class="header-icon-button">${icon('bell')}</span><span class="profile-avatar">JD</span>` : `
+          <button type="button" class="ask-header-entry" data-ask-ootla aria-label="Ask Ootla" aria-haspopup="dialog" aria-expanded="false" aria-controls="ask-ootla-dialog" title="Ask Ootla">${icon('sparkles')}<span>Ask Ootla</span></button>
           <button type="button" class="header-icon-button" data-action="lead-search" aria-label="Search leads" aria-expanded="false" aria-controls="lead-search-panel">${icon('search')}</button>
           <button type="button" class="header-icon-button" data-action="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-panel">${icon('bell')}</button>
           <button type="button" class="header-icon-button header-summary-toggle" data-action="header-summary" aria-label="${collapsed ? 'Expand page summary' : 'Collapse page summary'}" aria-expanded="${!collapsed}" aria-controls="admin-header-summary" title="${collapsed ? 'Expand page summary' : 'Collapse page summary'}">${icon('chevron-down')}</button>
@@ -144,8 +91,8 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
     </header>
     <div class="admin-workspace"><aside class="admin-sidebar" aria-label="Workspace tools">${preview ? '' : `<button class="sidebar-toggle" type="button" data-action="admin-menu" aria-expanded="false" aria-controls="admin-sidebar-nav">${icon('menu')} Workspace menu ${icon('chevron-down')}</button>`}
       <div class="sidebar-inner" id="${preview ? 'preview-sidebar-nav' : 'admin-sidebar-nav'}"><h2 class="sidebar-label">Workspace</h2><nav class="admin-nav" aria-label="Admin pages">${workspaceNavigation.map(workspaceLink).join('')}</nav>
-        ${path === '/admin/applications' || path === '/admin/calendar' || path === '/admin/leads' || path === '/admin/tasks' || path === '/admin/imports' || path === '/admin/profile' || path === '/admin/settings' || path === '/admin/integrations' ? '' : `<fieldset class="stage-filters"><legend>Filter by stage</legend>${leadStages.map(stage => `<label><input type="checkbox" name="stage" value="${stage.value}" ${selectedStages.has(stage.value) ? 'checked' : ''} ${preview ? 'disabled' : ''}/><span>${stage.label}</span></label>`).join('')}</fieldset>`}
-        <div class="sidebar-bottom"><span class="sidebar-workspace">${icon('building')}<span>${preview ? 'Design preview' : demo?.demo ? 'Demo workspace' : escapeHtml(org)}</span></span></div>
+        ${path === '/admin/organization' || path === '/admin/integration-health' || path === '/admin/audit' || path === '/admin/voice' || path === '/admin/maintenance' || path === '/admin/reports' || path === '/admin/analytics' || path === '/admin/automations' || path === '/admin/conversations' || path === '/admin/applications' || path === '/admin/calendar' || path === '/admin/leads' || path === '/admin/tasks' || path === '/admin/imports' || path === '/admin/profile' || path === '/admin/settings' || path === '/admin/integrations' ? '' : `<fieldset class="stage-filters"><legend>Filter by stage</legend>${leadStages.map(stage => `<label><input type="checkbox" name="stage" value="${stage.value}" ${selectedStages.has(stage.value) ? 'checked' : ''} ${preview ? 'disabled' : ''}/><span>${stage.label}</span></label>`).join('')}</fieldset>`}
+        <div class="sidebar-bottom"><span class="sidebar-workspace">${icon('building')}<span>${preview ? 'Design preview' : escapeHtml(org)}</span></span></div>
       </div>
     </aside><main ${preview ? '' : 'id="main-content" aria-labelledby="workspace-title"'} class="workspace-content">${content.replaceAll('<h1>','<h2>').replaceAll('</h1>','</h2>')}${path === '/admin/integrations' && !preview && !contentOverride ? `<section class="card module-detail"><h2>Bring your existing customer data</h2><p>Standalone organizations can review CSV properties, units, contacts and leads before importing them into this workspace.</p>${link('/admin/imports','Open customer-data import','button button-primary')}</section>` : ''}</main></div>
   </div>`;

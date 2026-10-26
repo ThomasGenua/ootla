@@ -12,7 +12,7 @@ if (existsSync(envPath)) {
     'NODE_ENV=development',
     `DATABASE_URL=postgresql://ootla:${databasePassword}@127.0.0.1:55439/ootla_demo`,
     'PORT=3100',
-    'APP_URL=http://127.0.0.1:5173',
+    'APP_URL=http://127.0.0.1:7673',
     `SESSION_SECRET=${sessionSecret}`,
     'DEMO_MODE=true',
     'INTEGRATIONS_MODE=simulation',

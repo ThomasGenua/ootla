@@ -1,3 +1,4 @@
+import {customerError} from './customer-copy';
 import { api, ApiError, errorMessage } from './api';
 import { applicantErrorPage, applicantInvitationPage, applicantLoginPage } from '../pages/applicant';
 import type { ScreeningConsent } from '../../shared/screening-contracts';
@@ -15,7 +16,7 @@ export function takeApplicantInvitation():string|null{
 }
 function errorIn(form:HTMLElement,issue:unknown):void{
  const output=form.querySelector<HTMLElement>('[data-applicant-error]')??document.querySelector<HTMLElement>('[data-applicant-global-error]');
- if(!output)return;output.textContent=errorMessage(issue);output.tabIndex=-1;output.focus();
+ if(!output)return;output.textContent=customerError(issue);output.tabIndex=-1;output.focus();
 }
 async function enablePortalForm(signal:AbortSignal):Promise<{demoEnabled:boolean;demoCredentials?:{email:string;password:string}}|null>{
  const setup=document.querySelector<HTMLElement>('[data-applicant-setup]'),form=document.querySelector<HTMLFormElement>('[data-applicant-form]');
@@ -24,11 +25,11 @@ async function enablePortalForm(signal:AbortSignal):Promise<{demoEnabled:boolean
   if(signal.aborted)return null;
   const origin=new URL(publicConfig.appUrl);
   if(origin.origin!==publicConfig.appUrl||origin.origin!==location.origin)throw new Error('Open this portal at '+origin.origin+'. Ask your leasing team for a fresh invitation if needed.');
-  if(!publicConfig.databaseReady)throw new Error('The application database is not ready. Please try again or contact your leasing team.');
+  if(!publicConfig.databaseReady)throw new Error('We could not open your application. Please try again or contact your leasing team.');
   if(setup)setup.hidden=true;
   const submit=form?.querySelector<HTMLButtonElement>('button[type=submit]');if(submit)submit.disabled=false;
   return portalConfig;
- }catch(issue){if(!signal.aborted&&setup){setup.classList.add('ap-warning');setup.textContent=errorMessage(issue);}return null;}
+ }catch(issue){if(!signal.aborted&&setup){setup.classList.add('ap-warning');setup.textContent=customerError(issue);}return null;}
 }
 export async function initializeApplicantAuthentication(signal:AbortSignal,navigate:ApplicantNavigate,token:string|null=null):Promise<void>{
  const form=document.querySelector<HTMLFormElement>('[data-applicant-form]');if(!form)return;
@@ -56,8 +57,8 @@ export async function initializeApplicantAuthentication(signal:AbortSignal,navig
  enabled=true;
  const slot=form.querySelector<HTMLElement>('[data-applicant-demo]');
  if(slot&&config.demoEnabled&&config.demoCredentials){
-  const button=document.createElement('button');button.type='button';button.className='ap-button';button.textContent='Fill demo applicant credentials';button.id='fill-demo-applicant';
-  const copy=document.createElement('p');copy.className='ap-muted';copy.textContent='Isolated example applicant. Fills the masked fields; use Sign in to authenticate.';
+  const button=document.createElement('button');button.type='button';button.className='ap-button';button.textContent='Fill applicant preview credentials';button.id='fill-demo-applicant';
+  const copy=document.createElement('p');copy.className='ap-muted';copy.textContent='Try Ootla: an interactive applicant preview with sample records. Fill the fields, then choose Sign in.';
   slot.className='ap-actions';slot.append(button,copy);
   button.addEventListener('click',()=>{const email=form.elements.namedItem('email')as HTMLInputElement|null,password=form.elements.namedItem('password')as HTMLInputElement|null;if(!email||!password||!config.demoCredentials)return;email.value=config.demoCredentials.email;password.value=config.demoCredentials.password;password.type='password';form.querySelector<HTMLButtonElement>('button[type=submit]')?.focus();},{signal});
  }
@@ -66,7 +67,7 @@ export function renderApplicantAuthentication(path:string,token:string|null):str
  return path==='/applicant/invite'?applicantInvitationPage(Boolean(token)):applicantLoginPage();
 }
 export function applicantRouteError(issue:unknown,navigate:ApplicantNavigate):string|null{
- if(issue instanceof ApiError&&issue.status===401){navigate('/applicant/login',true);return null;}return applicantErrorPage(errorMessage(issue));
+ if(issue instanceof ApiError&&issue.status===401){navigate('/applicant/login',true);return null;}return applicantErrorPage(customerError(issue));
 }
 
 import type { ApplicantUser, ApplicationSummary, PortalApplication } from '../../shared/applicant-contracts';

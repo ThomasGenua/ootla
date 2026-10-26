@@ -1,19 +1,22 @@
 /** Public marketing SEO only. No user, organization or provider data belongs here. */
 export const publicPages = {
-  '/': {title:'Real Estate AI Assistant & Leasing CRM | OotlaAI',description:'Explore OotlaAI, an AI-assisted real estate CRM for leasing enquiries, viewing follow-ups, applications and resident support. Try scripted examples.',name:'Real estate AI assistant'},
+  '/': {title:'Real Estate AI Assistant & Leasing CRM | OotlaAI',description:'Explore OotlaAI, an AI-assisted real estate CRM for leasing enquiries, viewing follow-ups, applications and resident support. Explore connected property workflows.',name:'Real estate AI assistant'},
   '/platform': {title:'AI-Assisted Real Estate CRM Platform | OotlaAI',description:'Keep property leads, viewings, applications and staff tasks connected in OotlaAI. Explore the real estate CRM platform and its AI workflow examples.',name:'Real estate CRM platform'},
-  '/ai-workflows': {title:'AI Leasing & Property Management Assistant | OotlaAI',description:'Explore scripted AI assistant workflows for resident requests, staff reminders and prospect viewings, including SMS, phone and staff handoff examples.',name:'AI assistant workflows'},
+  '/ai-workflows': {title:'AI Leasing & Property Management Assistant | OotlaAI',description:'Explore OotlaAI examples for resident requests, staff reminders and prospect viewings, with clear records and staff handoffs.',name:'AI assistant workflows'},
   '/workflows/leasing': {title:'AI-Assisted Leasing & Viewing Workflows | OotlaAI',description:'Follow the leasing journey from property enquiry to viewing, application documents and staff review, with clear examples of how OotlaAI can help.',name:'Leasing workflow'},
-  '/workflows/resident-support': {title:'AI Resident Support & Property Workflows | OotlaAI',description:'See how OotlaAI can support resident requests, maintenance handoffs, renewal conversations and existing-provider payment guidance. Scripted examples.',name:'Resident support workflow'},
+  '/workflows/resident-support': {title:'AI Resident Support & Property Workflows | OotlaAI',description:'See how OotlaAI can support resident requests, maintenance handoffs, renewal conversations and existing-provider payment guidance. Explore the workflow examples.',name:'Resident support workflow'},
   '/integrations': {title:'Yardi-Ready CRM & Property Integrations | OotlaAI',description:'Explore Yardi-ready integration, Google Calendar and standalone CRM imports. Live activation depends on licensed interfaces, permissions and setup.',name:'Property integrations'},
-  '/contact': {title:'Contact Ootla | Real Estate AI Assistant',description:'Talk to Ootla about AI-assisted real estate workflows, leasing, resident support and CRM onboarding. Contact our team or explore the demo.',name:'Contact Ootla'},
-  '/privacy': {title:'Development Preview Privacy & Access | OotlaAI',description:'Learn how the OotlaAI preview handles staff and applicant access, private documents, essential sessions and scripted public AI demonstrations.',name:'Preview privacy'},
+  '/contact': {title:'Contact Ootla | Real Estate AI Assistant',description:'Talk to Ootla about AI-assisted real estate workflows, leasing, resident support and CRM onboarding. Contact our team or explore the workspace.',name:'Contact Ootla'},
+  '/privacy': {title:'Privacy & Account Access | OotlaAI',description:'Learn about OotlaAI account access, private documents, essential sessions and public workflow examples.',name:'Privacy and account access'},
 } as const;
 export type PublicPagePath = keyof typeof publicPages;
 export const publicPagePaths = Object.keys(publicPages) as PublicPagePath[];
 export const privatePagePaths = [
+  '/staff/invite', '/try',
+  '/admin/voice', '/admin/organization', '/admin/integration-health', '/admin/audit',
+  '/resident','/resident/login','/resident/invite','/admin/maintenance',
  '/admin/login','/admin','/admin/leads','/admin/contacts','/admin/properties','/admin/applications','/admin/calendar',
- '/admin/tasks','/admin/imports','/admin/profile','/admin/settings','/admin/analytics','/admin/ai','/admin/integrations',
+ '/admin/reports', '/admin/automations','/admin/conversations','/admin/tasks','/admin/imports','/admin/profile','/admin/settings','/admin/analytics','/admin/ai','/admin/integrations',
  '/applicant','/applicant/login','/applicant/invite','/payment-demo','/book',
 ] as const;
 export type PublicSiteSettings = {origin:string|null;indexing:boolean};

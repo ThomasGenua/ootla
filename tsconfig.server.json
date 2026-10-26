@@ -1,11 +1,28 @@
 {
   "compilerOptions": {
-    "target": "ES2022", "lib": ["ES2022"],
-    "module": "NodeNext", "moduleResolution": "NodeNext",
-    "rootDir": ".", "outDir": "dist/server",
-    "strict": true, "skipLibCheck": true,
-    "types": ["node"], "sourceMap": true,
-    "verbatimModuleSyntax": true, "forceConsistentCasingInFileNames": true
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "outDir": "dist/server",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "sourceMap": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
+    "checkJs": false
   },
-  "include": ["server/**/*.ts", "shared/**/*.ts", "scripts/**/*.ts"]
+  "include": [
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "scripts/**/*.ts",
+    "server/config/environment.js"
+  ]
 }

@@ -44,7 +44,7 @@ export interface WorkspaceDocument {
     createdAt: string;
     downloadUrl: string;
 }
-export type TimelineKind = 'note' | 'call' | 'task_created' | 'task_updated' | 'document_uploaded' | 'staff_decision' | 'lead_created' | 'lead_updated' | 'stage_changed' | 'application_summary' | 'lease_verified' | 'communication' | 'tour' | 'application' | 'provider_update';
+export type TimelineKind = 'conversation' | 'note' | 'call' | 'task_created' | 'task_updated' | 'document_uploaded' | 'staff_decision' | 'lead_created' | 'lead_updated' | 'stage_changed' | 'application_summary' | 'lease_verified' | 'communication' | 'tour' | 'application' | 'provider_update';
 export interface TimelineEvent {
     id: string;
     kind: TimelineKind;

@@ -1,4 +1,20 @@
-﻿import { existsSync } from 'node:fs';
+import {createStaffOnboardingRouter} from './routes/staff-onboarding.js';
+import {installPreviewEntry} from './http/preview-entry.js';
+import {createOperationsRouter} from './routes/operations.js';
+import {createOrganizationAdminRouter} from './routes/organization-admin.js';
+import {createVoiceRouter} from './routes/voice.js';
+﻿import {createResidentPortalRouter} from './routes/resident-portal.js';
+import {createMaintenanceRouter} from './routes/maintenance.js';
+import {residentOperationsAskCapability} from './services/ask-resident.js';
+import { existsSync } from 'node:fs';
+import { createAiRouter } from './routes/ai.js';
+import {createPortfolioReportingRouter} from './routes/portfolio-reporting.js';
+import {portfolioAskCapability} from './services/ask-reporting.js';
+import {createGoogleAnalyticsRouter} from './routes/google-analytics.js';
+import {createAutomationRouter} from './routes/automations.js';
+import {registerAskOotlaCapability} from './services/ask-ootla.js';
+import {automationAskCapability} from './services/ask-automation.js';
+import {createAskRouter,createConversationRouter,createPublicConversationRouter} from './routes/conversations.js';
 import { createApplicantPortalRouter, createApplicationStaffRouter } from './routes/applicant-portal.js';
 import { ApplicantPortal } from './services/applicant-portal.js';
 import { createLeaseWorkflowRouter } from './routes/lease-workflow.js';
@@ -32,30 +48,37 @@ import { adminSummaryQuerySchema } from '../shared/admin-summary-contracts.js';
 import { loadAdminPageSummary } from './services/admin-summary.js';
 
 const frontendRoutes = new Set([
-  '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
+  '/staff/invite',
+  '/admin/organization','/admin/integration-health','/admin/audit',
+  '/admin/voice', '/resident','/resident/login','/resident/invite','/admin/maintenance', '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
   '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar',
-  '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations',
+  '/admin/reports', '/admin/automations', '/admin/conversations', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations',
 ]);
 
 export function createApp(config: ServerConfig, database: Database) {
+  registerAskOotlaCapability(automationAskCapability);
+  registerAskOotlaCapability(portfolioAskCapability);
+  registerAskOotlaCapability(residentOperationsAskCapability);
   const app = express();
   const sessions = new SessionService(database, config);
   const applicantSessions = new ApplicantPortal(database, config);
   app.disable('x-powered-by');
-  app.set('trust proxy', false);
-  app.use((_request, response, next) => {
+  app.set('trust proxy', config.trustProxyLoopback ? 'loopback' : false);
+  app.use((request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.setHeader('X-Frame-Options', 'DENY');
     response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    if (config.production) {
-      response.setHeader('Strict-Transport-Security', 'max-age=31536000');
+    if (config.production || config.serveCompiledClient) {
+      if(config.production || config.secureCookies) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
       response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     }
     next();
   });
   const clientDirectory = path.resolve(process.cwd(), 'dist/client');
   installPublicSiteHttp(app, config, clientDirectory);
+  installPreviewEntry(app,config,database);
+  app.use('/staff/invite',(_request,response,next)=>{response.setHeader('Cache-Control','no-store, private');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');next();});
   app.use('/api', (_request, response, next) => {
     response.setHeader('Cache-Control', 'no-store');
     next();
@@ -174,6 +197,14 @@ export function createApp(config: ServerConfig, database: Database) {
   app.get('/api/demo/data', requireUser, async (_request,response)=> {
     response.json(await loadDemoData(config,database,response.locals.user as AuthUser));
   });
+  app.use('/api/staff-onboarding',createStaffOnboardingRouter(config,database));
+  app.use('/api/operations',createOperationsRouter(config,database,requireUser));
+  app.use('/api/organization-admin',createOrganizationAdminRouter(config,database,requireUser));
+  app.use('/api/voice',createVoiceRouter(config,database,requireUser));
+  app.use('/api/resident',createResidentPortalRouter(config,database));
+  app.use('/api/maintenance',createMaintenanceRouter(config,database,requireUser));
+  app.use('/api/portfolio-reporting',createPortfolioReportingRouter(config,database,requireUser));
+  app.use('/api/google-analytics',createGoogleAnalyticsRouter(config,database,requireUser));
   app.use('/api/google-calendar', createGoogleCalendarRouter(config,database,requireUser));
   app.use('/api/calendar', createCalendarRouter(config,database,requireUser));
   app.use('/api/public/calendar', createPublicBookingRouter(config,database));
@@ -181,6 +212,11 @@ export function createApp(config: ServerConfig, database: Database) {
   app.use('/api/account', createAccountRouter(config, database, requireUser));
   app.use('/api/connectors', createConnectorRouter(config, database, requireUser));
   app.use('/api/imports', createImportRouter(config, database, requireUser));
+  app.use('/api/automations',createAutomationRouter(config,database,requireUser));
+  app.use('/api/ask', createAskRouter(config,database,requireUser));
+  app.use('/api/conversations', createConversationRouter(config,database,requireUser));
+  app.use('/api/public-conversations', createPublicConversationRouter(config,database));
+  app.use('/api/ai', createAiRouter(config, database, requireUser));
   app.use('/api/application-leases', createLeaseWorkflowRouter(config, database, requireUser));
   app.use('/api/application-payments', createStaffPaymentsRouter(config, database, requireUser));
   app.use('/api/applicant/application-payments', createApplicantPaymentsRouter(config, database));
@@ -201,7 +237,7 @@ export function createApp(config: ServerConfig, database: Database) {
     throw new ApiError(404, 'API_NOT_FOUND', 'This API route does not exist.');
   });
 
-  if (config.production) {
+  if (config.production || config.serveCompiledClient) {
     const indexFile = path.join(clientDirectory, 'index.html');
     // Gate page navigation before static serving, so /admin and /admin/... cannot leak a protected view.
     app.use(async (request, response, next) => {
@@ -228,7 +264,7 @@ export function createApp(config: ServerConfig, database: Database) {
     app.use((request, response, next) => {
       const route = request.path.replace(/\/$/, '') || '/';
       if ((request.method === 'GET' || request.method === 'HEAD') && frontendRoutes.has(route) && existsSync(indexFile)) {
-        response.setHeader('Cache-Control', route.startsWith('/applicant') || route === '/payment-demo' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
+        response.setHeader('Cache-Control', route==='/staff/invite'?'no-store, private':route.startsWith('/applicant') || route === '/payment-demo' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
         const publicFile = route === '/' ? indexFile : path.join(clientDirectory, route.slice(1), 'index.html');
         const documentFile = isPublicPage(route) && existsSync(publicFile) ? publicFile : path.join(clientDirectory, 'app-shell.html');
         response.sendFile(documentFile);

@@ -1,0 +1,56 @@
+import{processTaskReminders}from'../server/services/tasks.js';
+import '../server/config/environment.js';
+import assert from 'node:assert/strict';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import path from 'node:path';
+import os from 'node:os';
+import {performance} from 'node:perf_hooks';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium} from '@playwright/test';
+import type {PortfolioReport} from '../shared/reporting-contracts.js';
+import {withConversationFixture} from './lib/conversation-fixture.js';
+const exec=promisify(execFile),round=(v:number)=>Math.round(v*100)/100;
+let phase='owned fixture setup';
+try{await withConversationFixture('browser',async f=>{
+ const env={...process.env,NODE_ENV:'test',DEMO_MODE:'true',DATABASE_URL:f.config.databaseUrl,APP_URL:f.config.appUrl};
+ const args=[path.join(f.root,'node_modules/tsx/dist/cli.mjs'),path.join(f.root,'scripts/seed-property-volume.ts'),'--properties=2700','--units-per-property=0','--confirm='+f.name];
+ const beforeUnits=Number((await f.database.query('SELECT count(*) AS n FROM units')).rows[0].n);
+ phase='volume fixture';const seedStarted=performance.now();await exec(process.execPath,args,{cwd:f.root,windowsHide:true,timeout:120000,env});const seedMs=round(performance.now()-seedStarted);
+ await exec(process.execPath,args,{cwd:f.root,windowsHide:true,timeout:120000,env});
+ const organizationId=f.foreignOrganizationId,membership=(await f.database.query('SELECT m.id FROM organization_memberships m JOIN users u ON u.id=m.user_id WHERE m.organization_id=$1 AND u.email=$2',[organizationId,f.foreignEmail])).rows[0].id;
+ const addedProperties=Number((await f.database.query("SELECT count(*) AS n FROM properties WHERE organization_id=$1 AND seed_key LIKE 'stage06.volume.property.%'",[organizationId])).rows[0].n);assert.equal(addedProperties,2700);
+ assert.equal(Number((await f.database.query('SELECT count(*) AS n FROM units')).rows[0].n),beforeUnits,'The property benchmark must not create or reinterpret units.');
+ phase='native lead fixture';let addedLeads=0;
+ for(let offset=0;offset<2700;offset+=100){
+  const properties=(await f.database.query("SELECT id,seed_key FROM properties WHERE organization_id=$1 AND seed_key LIKE 'stage06.volume.property.%' ORDER BY seed_key LIMIT 100 OFFSET $2",[organizationId,offset])).rows;
+  const result=await f.database.pool!.query("INSERT INTO leads(organization_id,property_id,display_name,email,status,intent,pipeline_stage,source,next_action,next_action_at,owner_membership_id,created_at) SELECT $1,p.id,'Synthetic scale inquiry '||right(p.seed_key,5),'','new','leasing','new_inquiry','demo','Review the synthetic inquiry',clock_timestamp()-interval '1 day',$3,clock_timestamp()-interval '15 days' FROM properties p WHERE p.organization_id=$1 AND p.id=ANY($2::uuid[]) AND NOT EXISTS(SELECT 1 FROM leads l WHERE l.organization_id=p.organization_id AND l.property_id=p.id AND l.source='demo') RETURNING id",[organizationId,properties.map(p=>p.id),membership]).catch((issue:unknown)=>{const e=issue as{code?:string;constraint?:string;routine?:string};console.error('Owned scale SQL diagnostic: '+[e.code,e.constraint,e.routine].filter(v=>typeof v==='string'&&/^[a-zA-Z0-9_]+$/.test(v)).join(' '));throw new Error('Synthetic lead fixture query failed.');});
+  addedLeads+=result.rowCount??0;
+ }
+ assert.equal(addedLeads,2700);await f.database.query('ANALYZE');
+ phase='isolated API startup';const{base}=await f.startBrowser();
+ const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({email:f.foreignEmail,password:f.adminPassword})});assert.equal(login.status,200);const cookie=(login.headers.get('set-cookie')??'').split(';')[0]!;assert(cookie);
+ const read=async(route:string)=>{const start=performance.now(),r=await fetch(base+route,{headers:{Cookie:cookie}}),body=await r.text();assert.equal(r.status,200,route.split('?')[0]);return{data:JSON.parse(body),ms:round(performance.now()-start),bytes:Buffer.byteLength(body)};};
+ const today=new Date().toISOString().slice(0,10),from=new Date(Date.now()-89*86400000).toISOString().slice(0,10);
+ const reportQuery=new URLSearchParams({from,to:today,view:'properties',q:'Fixture property',pageSize:'25'});
+ const directoryPath='/api/property-foundation/properties?'+new URLSearchParams({page:'1',pageSize:'25',q:'Fixture property'});
+ const reportPath='/api/portfolio-reporting?'+reportQuery;
+ const samples:{directory:number[];report:number[]}={directory:[],report:[]};let directoryBytes=0,reportBytes=0;
+ phase='native bounded background work';const taskIds:string[]=[];const taskProperties=(await f.database.query("SELECT id FROM properties WHERE organization_id=$1 AND seed_key LIKE 'stage06.volume.property.%' ORDER BY seed_key LIMIT 3",[organizationId])).rows;for(const p of taskProperties){const r=await fetch(base+'/api/tasks',{method:'POST',headers:{Origin:base,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({propertyId:p.id,title:'Synthetic large-portfolio staff work',dueAt:new Date(Date.now()-60000).toISOString(),ownerMembershipId:membership,assignment:'manual'})});assert.equal(r.status,201);const data=await r.json()as any;taskIds.push(data.task?.id??data.id);}const jobStarted=performance.now();await processTaskReminders(f.database,{batchSize:100});const backgroundFirstMs=round(performance.now()-jobStarted);const notifications=async()=>Number((await f.database.query('SELECT count(*)::int AS n FROM task_notifications n JOIN task_reminders r ON r.id=n.reminder_id WHERE r.task_id=ANY($1::uuid[])',[taskIds])).rows[0].n);assert.equal(await notifications(),3);const repeatStarted=performance.now();await processTaskReminders(f.database,{batchSize:100});const backgroundRepeatMs=round(performance.now()-repeatStarted);assert.equal(await notifications(),3);const backgroundJobs={tasksAdded:3,batchLimit:100,firstPassMs:backgroundFirstMs,repeatPassMs:backgroundRepeatMs,notificationsCreated:3,repeatNoDuplicates:true};
+phase='bounded HTTP measurements';for(let i=0;i<5;i++){const directory=await read(directoryPath),report=await read(reportPath);assert.equal(directory.data.total,2700);assert.equal(directory.data.items.length,25);const result=report.data as PortfolioReport;assert.equal(result.table.total,2700);assert.equal(result.table.items.length,25);assert(result.periodCounts.leadsCreated>=2700);samples.directory.push(directory.ms);samples.report.push(report.ms);directoryBytes=Math.max(directoryBytes,directory.bytes);reportBytes=Math.max(reportBytes,report.bytes);}
+ phase='last pages and search';const lastDirectoryQuery=new URLSearchParams({page:'108',pageSize:'25',q:'Fixture property'});const lastDirectory=await read('/api/property-foundation/properties?'+lastDirectoryQuery);assert.equal(lastDirectory.data.items.length,25);
+ const lastQuery=new URLSearchParams(reportQuery);lastQuery.set('page','108');const lastReport=(await read('/api/portfolio-reporting?'+lastQuery)).data as PortfolioReport;assert.equal(lastReport.table.items.length,25);
+ const search=await read('/api/property-foundation/properties?'+new URLSearchParams({pageSize:'25',q:'Fixture property 02700'}));assert.equal(search.data.total,1);assert.equal(search.data.items.length,1);
+ assert(directoryBytes<256000&&reportBytes<256000,'A normal page must remain bounded instead of carrying the entire portfolio.');
+ phase='native browser readiness';const browser=await chromium.launch({channel:process.env.OOTLA_BROWSER_CHANNEL||'chrome',headless:true}),context=await browser.newContext({viewport:{width:1586,height:1050},reducedMotion:'reduce'}),external:string[]=[];
+ await context.route('**/*',async route=>{const target=new URL(route.request().url());if(/^https?:$/.test(target.protocol)&&target.origin!==base){external.push(target.origin);return route.abort();}return route.continue();});
+ const page=await context.newPage(),pageTimings:Record<string,number>={};try{
+  await page.goto(base+'/admin/login');await page.getByLabel('Email address',{exact:true}).fill(f.foreignEmail);await page.getByLabel('Password',{exact:true}).fill(f.adminPassword);await page.getByRole('button',{name:/Sign in to your workspace/}).click();await page.waitForURL(base+'/admin');
+  for(const[target,name]of[['/admin/properties?q=Fixture+property','properties'],['/admin/reports?'+reportQuery,'reports']]as const){const start=performance.now();await page.goto(base+target);if(name==='reports')await page.locator('[data-portfolio-reports]').waitFor({state:'visible'});else await page.getByRole('heading',{name:/Properties/}).first().waitFor({state:'visible'});await page.locator('main').locator('h2:visible,h3:visible,h4:visible,a:visible,td:visible').filter({hasText:'Fixture property'}).first().waitFor({state:'visible'});pageTimings[name]=round(performance.now()-start);assert(await page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'));}
+  assert.equal(external.length,0);await mkdir('.local/screenshots',{recursive:true});await page.screenshot({path:'.local/screenshots/stage23-scale-portfolio.png',fullPage:false});
+ }finally{await context.close();await browser.close();}
+ const describe=(v:number[])=>({firstMs:v[0],warmMedianMs:[...v.slice(1)].sort((a,b)=>a-b)[Math.floor((v.length-1)/2)],maxMs:Math.max(...v),samplesMs:v});
+ const result={measuredAt:new Date().toISOString(),environment:{platform:os.platform(),architecture:os.arch(),node:process.version,logicalCpuCount:os.cpus().length,totalRamGiB:round(os.totalmem()/1024**3),database:'project-owned local PostgreSQL; disposable database',browser:'installed Chrome, headless',application:'Vite development + Express, loopback'},dataset:{propertiesAdded:addedProperties,unitsAdded:0,leadsAdded:addedLeads,existingFixtureUnitsUnchanged:beforeUnits,tasksAdded:3},seedMs,backgroundJobs,queries:{directory:describe(samples.directory),portfolioReport:describe(samples.report)},pageResponseMaxBytes:{directory:directoryBytes,portfolioReport:reportBytes},browserReadyMs:pageTimings,verified:{repeatSeedNoDuplicates:true,pages25:true,lastPage108:true,searchOneResult:true,noExternalRequests:true},limitations:['Synthetic property and lead workload, not a customer production dataset. No unit count is inferred from property count.','Shared developer machine; other builds/tests may run concurrently. Loopback HTTP and warm database caches differ from an Apache VPS.','No production concurrency, remote latency, high-volume document storage or dense historical activity load was benchmarked. These observations are not an SLA.']};
+ await mkdir('.local',{recursive:true});await writeFile('.local/portfolio-scale-observations.json',JSON.stringify(result,null,2)+'\n','utf8');
+ console.log(JSON.stringify(result,null,2));console.log('PASS isolated 2700-property/2700-lead scale fixture, zero added units, bounded pagination/search and native page readiness.');
+});}catch(issue){console.error('Portfolio scale verification failed during '+phase+': '+(issue instanceof Error?issue.message.replace(/postgres(?:ql)?:\/\/[^\s]+/gi,'[database omitted]').slice(0,220):'check failed'));console.error('Portfolio scale verification failed. Only its owned disposable database was removed; retained data and raw credentials are omitted.');process.exitCode=1;}

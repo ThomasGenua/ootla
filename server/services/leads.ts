@@ -1,7 +1,8 @@
+import {routeNewLead} from './lead-routing.js';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import type { z } from 'zod';
 import type { AuthUser, OrganizationRole } from '../../shared/contracts.js';
-import { leasingStages, salesStages, type LeadAccess, type LeadRecord, type LeadDirectory, type LeadDetail, type LeadEvent, type LeadOptions, type DuplicateSuggestions, type LeadIntent, type StageChoice, type leadCreateSchema, type leadUpdateSchema, type leadStageSchema, type leadDirectorySchema, type leadOptionsSchema, type duplicateSuggestionsSchema, type leaseVerificationSchema } from '../../shared/lead-contracts.js';
+import { leasingStages, salesStages, type LeadAccess, type LeadRecord, type LeadDirectory, type LeadDetail, type LeadEvent, type LeadOptions, type DuplicateSuggestions, type LeadIntent, type StageChoice, leadCreateSchema, type leadUpdateSchema, type leadStageSchema, type leadDirectorySchema, type leadOptionsSchema, type duplicateSuggestionsSchema, type leaseVerificationSchema } from '../../shared/lead-contracts.js';
 import type { Paginated } from '../../shared/property-contracts.js';
 import type { Database } from '../db/pool.js';
 import { ApiError } from '../http/errors.js';
@@ -182,12 +183,16 @@ export class Leads {
         return { owners: owners.map(r => ({ membershipId: r.membership_id, userId: r.user_id, name: r.name, role: r.role })), ownerTotal: owners[0]?.total ?? 0, units: units.map(r => ({ id: r.id, label: r.label })), unitTotal: units[0]?.total ?? 0, properties: props.map(r => ({ id: r.id, name: r.name })), propertyTotal: props[0]?.total ?? 0 };
     }
     async duplicates(u: AuthUser, i: z.infer<typeof duplicateSuggestionsSchema>): Promise<DuplicateSuggestions> { const rows = (await this.database.query(`SELECT c.id,c.display_name,c.email,c.phone,(SELECT count(*)::int FROM leads l WHERE l.contact_id=c.id AND ${scope('l')}) AS lead_count,($4<>'' AND lower(c.display_name)=lower($4)) AS same_name,($5<>'' AND lower(c.email)=lower($5)) AS same_email,(length(regexp_replace($6,'[^0-9]','','g'))>=5 AND regexp_replace(c.phone,'[^0-9]','','g')=regexp_replace($6,'[^0-9]','','g')) AS same_phone FROM contacts c WHERE c.organization_id=$1 AND ($2='organization_admin' OR EXISTS(SELECT 1 FROM contact_property_links cp WHERE cp.contact_id=c.id AND ${scope('cp')})) AND (($4<>'' AND lower(c.display_name)=lower($4)) OR ($5<>'' AND lower(c.email)=lower($5)) OR ($6<>'' AND length(regexp_replace($6,'[^0-9]','','g'))>=5 AND regexp_replace(c.phone,'[^0-9]','','g')=regexp_replace($6,'[^0-9]','','g'))) ORDER BY lower(c.display_name),c.id LIMIT 10`, [...params(u), i.name, i.email, i.phone])).rows; return { items: rows.map(r => ({ contactId: r.id, name: r.display_name, email: r.email, phone: r.phone, reasons: [...(r.same_email ? ['Same email; shared addresses are possible.'] : []), ...(r.same_phone ? ['Same phone; shared numbers are possible.'] : []), ...(r.same_name ? ['Same name; identity is not confirmed.'] : [])], leadCount: r.lead_count })), notice: 'Suggestions only. Choose an existing contact explicitly or create a separate person; names never merge records.' }; }
-    async create(u: AuthUser, i: z.infer<typeof leadCreateSchema>): Promise<LeadRecord> {
-        return this.write(u, async (c, a) => {
+    async create(u: AuthUser, i: z.infer<typeof leadCreateSchema>): Promise<LeadRecord> { return this.write(u,(c,a)=>this.createLinked(c,a,i)); }
+    /** Server-only creation in an authorized domain transaction; public channels pass their revalidated publisher, never a browser actor. */
+    async createLinked(c:PoolClient,a:AuthUser,i:z.infer<typeof leadCreateSchema>):Promise<LeadRecord>{
+        i=leadCreateSchema.parse(i);
+        a=await authorize(c,a);
             const interests = [...new Set([i.propertyId, ...i.interestPropertyIds])];
             if (interests.length > 20)
                 throw new ApiError(400, 'INVALID_INPUT', 'Use at most 20 property interests, including the primary property.');
             await lockProperties(c, a, interests);
+            i={...i,ownerMembershipId:i.ownerMembershipId??await routeNewLead(c,a,i.propertyId,interests)};
             await validateOwner(c, a, i.ownerMembershipId, interests);
             await validateUnit(c, a, i.propertyId, i.unitId);
             let contactId = i.contactId;
@@ -206,7 +211,6 @@ export class Leads {
                 await c.query('INSERT INTO lead_property_interests(organization_id,lead_id,contact_id,property_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING', [a.organization.id, r.id, contactId, propertyId]);
             await event(c, a, r.id, 'created', 'new_inquiry', null, { propertyId: i.propertyId, interestPropertyIds: interests, ownerMembershipId: i.ownerMembershipId, contactId });
             return dto(await this.row(a, r.id, c));
-        });
     }
     async update(u: AuthUser, id: string, i: z.infer<typeof leadUpdateSchema>): Promise<LeadRecord> {
         return this.write(u, async (c, a) => {

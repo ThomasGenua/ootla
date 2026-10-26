@@ -1,0 +1,24 @@
+import {z} from 'zod';
+import type {Paginated} from './property-contracts.js';
+export const automationTriggers=['new_inquiry','tour_follow_up','missed_viewing','missing_document','scheduled_follow_up','overdue_task','unassigned_maintenance'] as const;
+export type AutomationTrigger=typeof automationTriggers[number];
+const id=z.uuid(),text=(n:number)=>z.string().trim().min(1).max(n).refine(v=>!/[\u0000-\u001f\u007f]/.test(v)),key=z.uuid();
+export const automationPageSchema=z.object({page:z.coerce.number().int().min(1).max(100000).default(1),pageSize:z.coerce.number().int().min(1).max(50).default(25)}).strict();
+export const automationDirectorySchema=automationPageSchema.extend({propertyId:id.optional(),enabled:z.enum(['all','true','false']).default('all')}).strict();
+const paragraph=(n:number)=>z.string().trim().min(1).max(n).refine(v=>!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v));
+const fields={name:text(160),propertyId:id.nullable().default(null),trigger:z.enum(automationTriggers),delayMinutes:z.number().int().min(0).max(43200).default(60),assignment:z.enum(['routing','manual']).default('routing'),ownerMembershipId:id.nullable().default(null),channel:z.enum(['in_app','website','email','sms']).default('in_app'),template:paragraph(1000),knowledgeId:id.nullable().default(null),maxAttempts:z.number().int().min(1).max(3).default(3),quietStart:z.number().int().min(0).max(23).default(21),quietEnd:z.number().int().min(0).max(23).default(8),timeZone:z.string().trim().max(100).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v}).format();return true;}catch{return false;}}).default('Africa/Lagos'),requiresApproval:z.boolean().default(true),enabled:z.boolean().default(false)};
+export const automationCreateSchema=z.object({requestKey:key,...fields,templateApproved:z.literal(true)}).strict();
+export const automationUpdateSchema=z.object({requestKey:key,version:z.number().int().positive(),...fields,templateApproved:z.literal(true)}).strict();
+export const automationPauseSchema=z.object({requestKey:key,paused:z.boolean()}).strict();
+export const automationRunSchema=z.object({requestKey:key,limit:z.number().int().min(1).max(100).default(25)}).strict();
+export const automationApprovalSchema=z.object({requestKey:key,body:paragraph(1000).optional()}).strict();
+export const automationActivitySchema=automationPageSchema.extend({ruleId:id.optional(),status:z.enum(['all','awaiting_approval','queued','completed','cancelled','failed']).default('all'),propertyId:id.optional()}).strict();
+export interface AutomationRule{id:string;name:string;propertyId:string|null;propertyName:string|null;trigger:AutomationTrigger;delayMinutes:number;assignment:'routing'|'manual';ownerMembershipId:string|null;channel:'in_app'|'website'|'email'|'sms';template:string;knowledgeId:string|null;maxAttempts:number;quietStart:number;quietEnd:number;timeZone:string;requiresApproval:boolean;enabled:boolean;version:number;createdAt:string;updatedAt:string;pauseConditions:string[];supported:boolean}
+export interface AutomationConfiguration{paused:boolean;canManage:boolean;canApprove:boolean;channels:Array<{key:'in_app'|'website'|'email'|'sms';label:string;configured:boolean}>;triggers:Array<{key:AutomationTrigger;label:string;available:boolean}>;notice:string}
+export interface AutomationOptions{properties:Paginated<{id:string;name:string}>;owners:Array<{membershipId:string;name:string}>;knowledge:Array<{id:string;title:string;propertyId:string;publicEnabled:boolean}>;templates:Array<{trigger:AutomationTrigger;body:string}>}
+export interface AutomationCandidate{subjectKind:'lead'|'tour'|'application'|'task'|'maintenance';subjectId:string;propertyId:string;propertyName:string;label:string;reason:string;eligibleAt:string;eligible:boolean;blockedReason:string|null;url:string}
+export interface AutomationPreview{rule:AutomationRule;candidates:Paginated<AutomationCandidate>;notice:string}
+export interface AutomationJob{id:string;ruleId:string;ruleName:string;propertyId:string;propertyName:string;subjectKind:AutomationCandidate['subjectKind'];subjectId:string;label:string;reason:string;status:'awaiting_approval'|'queued'|'completed'|'cancelled'|'failed';body:string;dueAt:string;attempts:number;maxAttempts:number;lastError:string|null;taskId:string|null;conversationId:string|null;messageId:string|null;url:string;createdAt:string;updatedAt:string;channel:AutomationRule['channel']}
+export interface AutomationDetail{rule:AutomationRule;activity:Paginated<AutomationJob>;configuration:AutomationConfiguration}
+export interface AutomationRunResult{scanned:number;queued:number;completed:number;cancelled:number;failed:number;deferred:number}
+export interface AutomationInsights{items:Array<{id:string;title:string;reason:string;url:string;dueAt:string;status:string}>;total:number;paused:boolean;notice:string}

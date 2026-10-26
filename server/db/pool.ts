@@ -2,13 +2,17 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 import type { DatabaseState } from '../../shared/contracts.js';
 import type { ServerConfig } from '../config/env.js';
 import { ApiError, DatabaseUnavailableError } from '../http/errors.js';
+import {migrationManifest,migrationHistoryMatches,MigrationManifestError,type AppliedMigration} from './migrations.js';
 
 export class Database {
   readonly pool: Pool | null;
+  private readonly databaseName:string|null;
 
   constructor(config: ServerConfig) {
+    this.databaseName=config.databaseName;
     this.pool = config.databaseUrl ? new Pool({
       connectionString: config.databaseUrl,
+      ssl:config.databaseTls.mode==='verify-full'?{rejectUnauthorized:true,minVersion:'TLSv1.2',...(config.databaseTls.ca?{ca:config.databaseTls.ca}:{})}:false,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 2_500,
@@ -19,7 +23,7 @@ export class Database {
   }
 
   async query<T extends QueryResultRow = QueryResultRow>(sql: string, values: unknown[] = []): Promise<QueryResult<T>> {
-    if (!this.pool) throw new DatabaseUnavailableError('PostgreSQL is not configured. Set DATABASE_URL, then run npm run db:migrate and npm run db:seed.');
+    if (!this.pool) throw new DatabaseUnavailableError('PostgreSQL is not configured. Set DATABASE_URL, then run npm run db:migrate.');
     try {
       return await this.pool.query<T>(sql, values);
     } catch {
@@ -28,7 +32,7 @@ export class Database {
   }
 
   async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
-    if (!this.pool) throw new DatabaseUnavailableError('PostgreSQL is not configured. Set DATABASE_URL, then run npm run db:migrate and npm run db:seed.');
+    if (!this.pool) throw new DatabaseUnavailableError('PostgreSQL is not configured. Set DATABASE_URL, then run npm run db:migrate.');
     let client: PoolClient | undefined;
     try {
       client = await this.pool.connect();
@@ -46,89 +50,28 @@ export class Database {
   }
 
   async state(): Promise<DatabaseState> {
-    if (!this.pool) return 'unconfigured';
+    if(!this.pool)return 'unconfigured';
     try {
-      const result = await this.query<{ ready: boolean }>(`
-        SELECT to_regclass('public.organizations') IS NOT NULL
-          AND to_regclass('public.users') IS NOT NULL
-          AND to_regclass('public.organization_memberships') IS NOT NULL
-          AND to_regclass('public.sessions') IS NOT NULL
-          AND to_regclass('public.audit_events') IS NOT NULL
-          AND to_regclass('public.roles') IS NOT NULL
-          AND to_regclass('public.role_permissions') IS NOT NULL
-          AND to_regclass('public.properties') IS NOT NULL
-          AND to_regclass('public.property_access_assignments') IS NOT NULL
-          AND to_regclass('public.units') IS NOT NULL
-          AND to_regclass('public.leads') IS NOT NULL
-          AND to_regclass('public.tasks') IS NOT NULL
-          AND to_regclass('public.viewings') IS NOT NULL
-          AND to_regclass('public.lead_activities') IS NOT NULL
-          AND to_regclass('public.demo_seed_records') IS NOT NULL
-          AND to_regclass('public.property_groups') IS NOT NULL
-          AND to_regclass('public.contacts') IS NOT NULL
-          AND to_regclass('public.households') IS NOT NULL
-          AND to_regclass('public.applications') IS NOT NULL
-          AND to_regclass('public.leases') IS NOT NULL
-          AND to_regclass('public.external_record_mappings') IS NOT NULL
-          AND to_regclass('public.lead_events') IS NOT NULL
-          AND to_regclass('public.lead_property_interests') IS NOT NULL
-          AND to_regclass('public.lead_workspace_events') IS NOT NULL
-          AND to_regclass('public.lead_documents') IS NOT NULL
-          AND to_regclass('public.provider_verified_updates') IS NOT NULL
-          AND to_regclass('public.task_teams') IS NOT NULL
-          AND to_regclass('public.task_team_members') IS NOT NULL
-          AND to_regclass('public.task_routing_rules') IS NOT NULL
-          AND to_regclass('public.task_events') IS NOT NULL
-          AND to_regclass('public.task_reminders') IS NOT NULL
-          AND to_regclass('public.task_notifications') IS NOT NULL
-          AND to_regclass('public.import_batches') IS NOT NULL
-          AND to_regclass('public.import_rows') IS NOT NULL
-          AND to_regclass('public.staff_user_preferences') IS NOT NULL
-          AND to_regclass('public.staff_password_attempt_limits') IS NOT NULL
-          AND to_regclass('public.property_viewing_settings') IS NOT NULL
-          AND to_regclass('public.viewing_staff_availability') IS NOT NULL
-          AND to_regclass('public.viewing_lead_summaries') IS NOT NULL
-          AND to_regclass('public.viewing_invitations') IS NOT NULL
-          AND to_regclass('public.viewing_events') IS NOT NULL
-          AND to_regclass('public.viewing_notification_receipts') IS NOT NULL
-          AND to_regclass('public.viewing_action_receipts') IS NOT NULL
-          AND to_regclass('public.application_participants') IS NOT NULL
-          AND to_regclass('public.application_checklist_items') IS NOT NULL
-          AND to_regclass('public.application_invitations') IS NOT NULL
-          AND to_regclass('public.applicant_sessions') IS NOT NULL
-          AND to_regclass('public.application_documents') IS NOT NULL
-          AND to_regclass('public.application_consents') IS NOT NULL
-          AND to_regclass('public.application_portal_events') IS NOT NULL
-          AND to_regclass('public.google_calendar_connections') IS NOT NULL
-          AND to_regclass('public.google_calendar_oauth_states') IS NOT NULL
-          AND to_regclass('public.google_calendar_selections') IS NOT NULL
-          AND to_regclass('public.google_calendar_event_cache') IS NOT NULL
-          AND to_regclass('public.google_calendar_sync_stage') IS NOT NULL
-          AND to_regclass('public.google_calendar_event_mappings') IS NOT NULL
-          AND to_regclass('public.google_calendar_jobs') IS NOT NULL
-          AND to_regclass('public.connector_connections') IS NOT NULL
-          AND to_regclass('public.connector_jobs') IS NOT NULL
-          AND to_regclass('public.connector_demo_state') IS NOT NULL
-          AND to_regclass('public.connector_demo_records') IS NOT NULL
-          AND to_regclass('public.connector_demo_events') IS NOT NULL
-          AND to_regclass('public.connector_event_receipts') IS NOT NULL
-          AND to_regclass('public.connector_event_logs') IS NOT NULL
-          AND to_regclass('public.connector_conflicts') IS NOT NULL
-          AND to_regclass('public.connector_action_receipts') IS NOT NULL
-          AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='external_record_mappings' AND column_name='connection_id')
-          AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='profile_version')
-          AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='is_demo') AS ready
-      `);
-      return result.rows[0]?.ready ? 'ready' : 'migration-required';
-    } catch {
-      return 'unavailable';
+      const manifest=await migrationManifest();
+      const identity=(await this.query<{database:string;history:boolean}>("SELECT current_database() AS database,to_regclass('public.schema_migrations') IS NOT NULL AS history")).rows[0];
+      if(identity?.database!==this.databaseName)return 'unavailable';
+      if(!identity.history)return 'migration-required';
+      const applied=(await this.query<AppliedMigration>('SELECT name,checksum FROM schema_migrations ORDER BY name')).rows;
+      if(!migrationHistoryMatches(manifest,applied))return 'migration-required';
+      const tables=[...new Set(manifest.flatMap(file=>file.tables))];
+      if(!tables.length)return 'migration-required';
+      const complete=(await this.query<{ready:boolean}>(
+        "SELECT NOT EXISTS(SELECT 1 FROM unnest($1::text[]) AS required(name) WHERE to_regclass('public.'||quote_ident(required.name)) IS NULL) AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='profile_version') AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='is_demo') AS ready",[tables])).rows[0]?.ready;
+      return complete?'ready':'migration-required';
+    } catch(error) {
+      return error instanceof MigrationManifestError?'migration-required':'unavailable';
     }
   }
 
   async requireReady(): Promise<void> {
     const state = await this.state();
     if (state === 'ready') return;
-    if (state === 'migration-required') throw new ApiError(503, 'MIGRATION_REQUIRED', 'Run npm run db:migrate to prepare Ootla authentication and the property/contact/lead/task/import/account/connector/calendar workspace foundation. Existing data will be preserved.');
+    if (state === 'migration-required') throw new ApiError(503, 'MIGRATION_REQUIRED', 'Ootla requires the complete matching migration release. Keep migrations/ with the application and run npm run db:migrate before startup. Existing data is preserved; startup never applies migrations or seeds.');
     throw new DatabaseUnavailableError(state === 'unconfigured' ? 'PostgreSQL is not configured. Set DATABASE_URL and run npm run db:migrate.' : undefined);
   }
 

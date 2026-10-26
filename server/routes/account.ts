@@ -1,3 +1,4 @@
+import {sessionCookieName} from '../http/session-cookies.js';
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import type { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
@@ -44,7 +45,7 @@ export function createAccountRouter(config:ServerConfig,database:Database,requir
     }
     // Match SessionService cookie attributes; the transaction has already revoked
     // every server-side session, including the current one.
-    response.clearCookie('ootla.sid',{httpOnly:true,sameSite:'lax',secure:config.production,path:'/'});
+    response.clearCookie(sessionCookieName(config),{httpOnly:true,sameSite:'lax',secure:config.production || config.secureCookies,path:'/'});
     response.json({signedOut:true});
   });
   return router;

@@ -1,3 +1,6 @@
+import {sessionCookieName,readSessionCookie} from '../http/session-cookies.js';
+import {assertPrivateFileRetained} from './operational-retention.js';
+import {operationalAudit} from './operational-access.js';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
@@ -18,7 +21,7 @@ interface Connection {
 export interface ApplicantPrincipal extends ApplicantUser {
     sessionDigest: string;
 }
-const cookieName = 'ootla.applicant.sid', lifetime = 8 * 60 * 60 * 1000;
+const lifetime = 8 * 60 * 60 * 1000;
 const iso = (v: unknown): string => (v instanceof Date ? v : new Date(String(v))).toISOString();
 const nullableIso = (v: unknown): string | null => v ? iso(v) : null;
 const missing = (): never => {
@@ -43,10 +46,6 @@ const providerOwned = (r: Row): boolean => r.source_system === 'yardi' || r.mapp
 const summary = (r: Row, role?: 'primary' | 'co_applicant'): ApplicationSummary => ({ id: r.id, applicantName: r.contact_name, status: r.status, property: { id: r.property_id, name: r.property_name }, unit: r.unit_id ? { id: r.unit_id, label: r.unit_label } : null, leadId: r.lead_id, portalEnabled: r.portal_enabled, coApplicantsEnabled: r.co_applicants_enabled, version: r.portal_version, lastSavedAt: iso(r.updated_at), submittedAt: nullableIso(r.portal_submitted_at), participantCount: r.participant_count ?? 0, readyCount: r.ready_count ?? 0, ...(role ? { yourRole: role } : {}), sourceSystem: r.source_system, providerOwned: providerOwned(r) });
 const details = (r: Row): ApplicantDetails => ({ displayName: String(r.details?.displayName ?? ''), phone: String(r.details?.phone ?? ''), currentAddress: String(r.details?.currentAddress ?? ''), moveInDate: String(r.details?.moveInDate ?? '') });
 const document = (r: Row, staff = false): ApplicantDocument => ({ id: r.id, checklistId: r.checklist_item_id, name: r.name, mediaType: r.media_type, sizeBytes: r.size_bytes, createdAt: iso(r.created_at), downloadUrl: (staff ? '/api/applications' : '/api/applicant/applications') + '/' + r.application_id + '/documents/' + r.id + '/download' });
-function tokenFrom(r: Request): string | null {
-    const v = r.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith(cookieName + '='))?.slice(cookieName.length + 1);
-    return v && /^[a-f0-9]{64}$/.test(v) ? v : null;
-}
 /** Applicant identities, sessions and explicit grants are separate from every staff authorization pathway. */
 export class ApplicantPortal {
     private readonly dummy: Promise<string>;
@@ -57,7 +56,7 @@ export class ApplicantPortal {
         return createHmac('sha256', this.config.sessionSecret).update('ootla-applicant:' + purpose + ':' + token).digest('hex');
     }
     private cookieOptions() {
-        return { httpOnly: true, sameSite: 'lax' as const, secure: this.config.production, path: '/' };
+        return { httpOnly: true, sameSite: 'lax' as const, secure: this.config.production || this.config.secureCookies, path: '/' };
     }
     private async eligible(r: Row, c: Connection = this.database): Promise<boolean> {
         const isolated = this.config.demoMode && await isIsolatedDemo(this.config, c);
@@ -79,7 +78,7 @@ export class ApplicantPortal {
         return r && await this.eligible(r, c) ? { id: r.id, email: r.email, name: r.name, organization: { id: r.organization_id, name: r.organization_name }, sessionExpiresAt: iso(r.expires_at), sessionDigest: digest } : null;
     }
     async currentUser(request: Request): Promise<ApplicantPrincipal | null> {
-        const t = tokenFrom(request);
+        const t = readSessionCookie(request, this.config, 'applicant');
         return t ? this.principal(this.database, this.digest(t)) : null;
     }
     publicUser(user: ApplicantPrincipal): ApplicantUser {
@@ -89,7 +88,7 @@ export class ApplicantPortal {
     private async newSession(c: PoolClient, request: Request, userId: string, organizationId: string): Promise<{
         token: string;
     }> {
-        const previous = tokenFrom(request);
+        const previous = readSessionCookie(request, this.config, 'applicant');
         if (previous)
             await c.query('UPDATE applicant_sessions SET revoked_at=now() WHERE token_digest=$1', [this.digest(previous)]);
         const token = randomBytes(32).toString('hex');
@@ -114,17 +113,17 @@ export class ApplicantPortal {
             await c.query("INSERT INTO audit_events(organization_id,actor_user_id,action) VALUES($1,$2,'applicant.login')", [r.organization_id, r.id]);
             return s;
         });
-        response.cookie(cookieName, session.token, { ...this.cookieOptions(), maxAge: lifetime });
+        response.cookie(sessionCookieName(this.config, 'applicant'), session.token, { ...this.cookieOptions(), maxAge: lifetime });
         const user = await this.principal(this.database, this.digest(session.token));
         if (!user)
             denied();
         return this.publicUser(user!);
     }
     async logout(request: Request, response: Response): Promise<void> {
-        const t = tokenFrom(request);
+        const t = readSessionCookie(request, this.config, 'applicant');
         if (t)
             await this.database.query('UPDATE applicant_sessions SET revoked_at=now() WHERE token_digest=$1 AND revoked_at IS NULL', [this.digest(t)]);
-        response.clearCookie(cookieName, this.cookieOptions());
+        response.clearCookie(sessionCookieName(this.config, 'applicant'), this.cookieOptions());
     }
     private async invitation(c: Connection, token: string, lock = false): Promise<Row> {
         const r = (await c.query("SELECT i.*,ap.contact_id,ap.user_id,ap.active,ap.role,ap.invited_email AS participant_email,ap.property_id AS grant_property_id,a.property_id AS current_property_id,a.portal_enabled,a.co_applicants_enabled,a.contact_id AS primary_contact_id,a.status,o.environment,p.name AS property_name,EXISTS(SELECT 1 FROM contact_property_links cp WHERE cp.organization_id=a.organization_id AND cp.contact_id=ap.contact_id AND cp.property_id=a.property_id) AS linked FROM application_invitations i JOIN application_participants ap ON ap.id=i.participant_id AND ap.organization_id=i.organization_id AND ap.application_id=i.application_id JOIN applications a ON a.id=i.application_id AND a.organization_id=i.organization_id JOIN organizations o ON o.id=i.organization_id JOIN properties p ON p.id=a.property_id AND p.organization_id=a.organization_id WHERE i.token_digest=$1 " + (lock ? 'FOR UPDATE OF i,ap,a' : ''), [this.digest(token, 'invitation')])).rows[0];
@@ -171,7 +170,7 @@ export class ApplicantPortal {
             await this.event(c, i, u.id, 'applicant', 'invitation_accepted', 'An invited applicant activated their own application access.', i.participant_id);
             return this.newSession(c, request, u.id, i.organization_id);
         });
-        response.cookie(cookieName, session.token, { ...this.cookieOptions(), maxAge: lifetime });
+        response.cookie(sessionCookieName(this.config, 'applicant'), session.token, { ...this.cookieOptions(), maxAge: lifetime });
         const user = await this.principal(this.database, this.digest(session.token));
         if (!user)
             denied();
@@ -397,6 +396,8 @@ export class ApplicantPortal {
             const r = (await c.query('SELECT * FROM application_documents WHERE organization_id=$1 AND application_id=$2 AND participant_id=$3 AND id=$4', [a.organization_id, a.id, p.id, documentId])).rows[0];
             if (!r)
                 missing();
+            await assertPrivateFileRetained(c,a.organization_id,'application_documents',documentId);
+            await operationalAudit(c,a.organization_id,user.id,'application.document_downloaded',{applicationId:id,documentId},'applicant');
             return { document: document(r), content: r.content };
         });
     }
@@ -560,6 +561,7 @@ export class ApplicantPortal {
             if (!r)
                 missing();
             await c.query('INSERT INTO audit_events(organization_id,actor_user_id,action,metadata) VALUES($1,$2,$3,$4)', [a.organization_id, u.id, 'application.document_downloaded', JSON.stringify({ applicationId: a.id, documentId: r.id })]);
+            await assertPrivateFileRetained(c,a.organization_id,'application_documents',documentId);
             return { document: document(r, true), content: r.content };
         });
     }

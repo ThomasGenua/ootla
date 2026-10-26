@@ -1,0 +1,29 @@
+import {createHash,createHmac} from 'node:crypto';
+import type {PoolClient,QueryResultRow} from 'pg';
+import type {ServerConfig} from '../config/env.js';
+import {assertOotlaDatabase} from '../config/env.js';
+import type {Database} from '../db/pool.js';
+import type {StaffInvitationState,OrganizationProvisioningResult} from '../../shared/organization-provisioning-contracts.js';
+import {assertRuntimeDatabaseIsolation} from '../runtime-isolation.js';
+import {ApiError} from '../http/errors.js';
+export type InvitationRow=QueryResultRow;
+export const payloadDigest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+export const invitationDigest=(value:string)=>createHash('sha256').update(value).digest('hex');
+export function invitationToken(config:ServerConfig,id:string,key:string):string{return createHmac('sha256',config.sessionSecret).update('ootla:first-organization-admin:v1:'+id.toLowerCase()+':'+key.toLowerCase()).digest('hex');}
+export async function provisioningRuntime(database:Database,config:ServerConfig):Promise<void>{
+ if(!config.production||config.demoMode||!config.databaseName||/^ootla_demo(?:_|$)/.test(config.databaseName))throw new ApiError(403,'CUSTOMER_PROVISIONING_REQUIRED','First-administrator invitations require the separate customer runtime. No organization or account was changed.');
+ assertOotlaDatabase(config);await database.requireReady();await assertRuntimeDatabaseIsolation(database,config);
+}
+export function invitationState(row:InvitationRow):StaffInvitationState{return row.accepted_at?'accepted':row.revoked_at?'revoked':row.expired===true||new Date(row.expires_at).getTime()<=Date.now()?'expired':'pending';}
+export function unusableInvitation():never{throw new ApiError(410,'STAFF_INVITATION_UNAVAILABLE','This invitation can no longer be used. Ask the person who invited you for a new invitation.');}
+export function invitationTargetPending(row:InvitationRow):boolean{return row.environment==='live'&&!row.user_active&&!row.membership_active&&row.account_kind==='staff'&&!row.is_demo&&row.role==='organization_admin'&&!String(row.administrator_email).endsWith('@demo.ootla.test');}
+export async function invitationById(c:PoolClient,id:string,lock=false):Promise<InvitationRow|null>{return(await c.query("SELECT i.*,o.name AS organization_name,o.slug AS organization_slug,o.environment,u.display_name AS administrator_name,u.email AS administrator_email,u.active AS user_active,u.account_kind,u.is_demo,m.active AS membership_active,m.role,(i.expires_at<=clock_timestamp()) AS expired FROM staff_admin_invitations i JOIN organizations o ON o.id=i.organization_id JOIN users u ON u.id=i.user_id JOIN organization_memberships m ON m.id=i.membership_id AND m.user_id=i.user_id AND m.organization_id=i.organization_id WHERE i.id=$1"+(lock?' FOR UPDATE OF i,u,m FOR SHARE OF o':' FOR SHARE OF i,u,m,o'),[id])).rows[0]??null;}
+export async function invitationResult(c:PoolClient,config:ServerConfig,id:string,replayed:boolean):Promise<OrganizationProvisioningResult>{
+ const row=await invitationById(c,id);if(!row)unusableInvitation();const state=invitationState(row),token=invitationToken(config,row.id,row.request_key);
+ if(state==='pending'&&invitationDigest(token)!==row.token_digest)throw new ApiError(409,'STAFF_INVITATION_KEY_CHANGED','The application invitation key changed. Deliberately issue a new invitation; no password was reset.');
+ return{organization:{id:row.organization_id,name:row.organization_name,slug:row.organization_slug},administrator:{userId:row.user_id,membershipId:row.membership_id,name:row.administrator_name,email:row.administrator_email},invitation:{id:row.id,url:state==='pending'?new URL('/staff/invite#token='+token,config.appUrl).href:null,expiresAt:new Date(row.expires_at).toISOString(),state},replayed};
+}
+export async function provisioningAudit(c:PoolClient,org:string,action:string,key:string,invitationId:string,actorUserId:string|null=null):Promise<void>{await c.query('INSERT INTO audit_events(organization_id,actor_user_id,action,metadata) VALUES($1,$2,$3,$4)',[org,actorUserId,action,JSON.stringify({source:actorUserId?'staff_invitation_acceptance':'operator_cli',requestKey:key,invitationId})]);}
+export async function provisioningReceipt(c:PoolClient,key:string,operation:string,payload:string):Promise<InvitationRow|null>{await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['ootla.provisioning.request:'+key]);const row=(await c.query('SELECT * FROM organization_provisioning_receipts WHERE request_key=$1',[key])).rows[0];if(row&&(row.operation!==operation||row.payload_hash!==payload))throw new ApiError(409,'PROVISIONING_REQUEST_KEY_REUSED','Use a new request identifier for a different provisioning operation.');return row??null;}
+export async function saveProvisioningReceipt(c:PoolClient,key:string,operation:string,payload:string,row:InvitationRow):Promise<void>{await c.query('INSERT INTO organization_provisioning_receipts(request_key,operation,payload_hash,organization_id,administrator_user_id,invitation_id) VALUES($1,$2,$3,$4,$5,$6)',[key,operation,payload,row.organization_id,row.user_id,row.id]);}
+export async function createStaffInvitation(c:PoolClient,config:ServerConfig,input:{id:string;key:string;organizationId:string;userId:string;membershipId:string;hours:number}):Promise<InvitationRow>{const token=invitationToken(config,input.id,input.key);return(await c.query("WITH instant AS(SELECT clock_timestamp() AS at) INSERT INTO staff_admin_invitations(id,organization_id,user_id,membership_id,request_key,token_digest,created_at,expires_at) SELECT $1,$2,$3,$4,$5,$6,at,at+($7*interval '1 hour') FROM instant RETURNING *",[input.id,input.organizationId,input.userId,input.membershipId,input.key,invitationDigest(token),input.hours])).rows[0]!;}

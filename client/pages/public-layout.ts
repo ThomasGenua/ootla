@@ -2,7 +2,7 @@ import { icon, link, escapeHtml } from '../lib/ui';
 import { publicFloatingIcons } from './public-decoration';
 
 export function exploreSection(): string {
-  return '<section class="public-explore detail-cta" data-public-section="explore" aria-labelledby="explore-heading">' + publicFloatingIcons(['home', 'sparkles'], 'explore') + '<div class="detail-container"><span class="detail-kicker">EXPLORE OOTLAAI</span><h2 id="explore-heading">A clearer workspace.<br>A more connected journey.</h2><p>Explore the working demo, follow a workflow and see how OotlaAI can support your property team.</p><div class="detail-hero-links">' + link('/admin/login','Explore demo '+icon('arrow'),'button button-primary') + link('/contact','Contact Ootla','text-link text-link-light') + '</div></div></section>';
+  return '<section class="public-explore detail-cta" data-public-section="explore" aria-labelledby="explore-heading">' + publicFloatingIcons(['home', 'sparkles'], 'explore') + '<div class="detail-container"><span class="detail-kicker">EXPLORE OOTLAAI</span><h2 id="explore-heading">A clearer workspace.<br>A more connected journey.</h2><p>Explore OotlaAI and follow the work from a first inquiry to the next useful action.</p><div class="detail-hero-links">' + link('/try','Try Ootla '+icon('arrow'),'button button-primary') + link('/contact','Contact Ootla','text-link text-link-light') + '</div></div></section>';
 }
 const photos = {
   residentPhone: {file:'resident-phone.jpg',alt:'A woman seated on a sofa looking at her phone',credit:'Kaboompics.com',provider:'Pexels',url:'https://www.pexels.com/photo/woman-sitting-on-the-sofa-and-using-her-phone-5902273/'},

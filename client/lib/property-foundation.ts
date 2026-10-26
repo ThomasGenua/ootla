@@ -1,4 +1,5 @@
-import { api, errorMessage } from './api';
+import { api} from './api';
+import {productError} from './product-copy';
 import type { ContactDetail, ContactRecord, FoundationAccess, Paginated, PropertyDetail, PropertyGroup, PropertySummary } from '../../shared/property-contracts';
 
 export const foundationApi = '/api/property-foundation';
@@ -78,7 +79,7 @@ export function initializePropertyWorkspace(signal: AbortSignal, navigate: (path
       navigate(destination, true, '[data-property-results]');
     } catch (error) {
       if (signal.aborted) return;
-      if (errorNode) { errorNode.textContent = errorMessage(error); errorNode.tabIndex = -1; errorNode.focus(); }
+      if (errorNode) { errorNode.textContent = productError(error); errorNode.tabIndex = -1; errorNode.focus(); }
     } finally {
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     }

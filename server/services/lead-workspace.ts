@@ -1,3 +1,5 @@
+import {assertPrivateFileRetained} from './operational-retention.js';
+import {operationalAudit} from './operational-access.js';
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
@@ -148,6 +150,8 @@ export class LeadWorkspaces {
             const r = (await c.query(`SELECT ${documentSelect},d.content FROM lead_documents d JOIN users u ON u.id=d.uploaded_by_user_id WHERE d.organization_id=$1 AND d.lead_id=$2 AND d.id=$3`, [a.organization.id, id, documentId])).rows[0];
             if (!r)
                 throw new ApiError(404, 'DOCUMENT_NOT_FOUND', 'This document is unavailable in this lead workspace.');
+            await assertPrivateFileRetained(c,a.organization.id,'lead_documents',documentId);
+            await operationalAudit(c,a.organization.id,a.id,'lead.document_downloaded',{leadId:id,documentId});
             return { document: documentDto(r), content: r.content };
         });
     }
@@ -302,7 +306,7 @@ function completeJpeg(content: Buffer): boolean {
     return false;
 }
 const timelineSql = `
- SELECT 'workspace:'||e.id::text AS id,e.kind,CASE e.kind WHEN 'note' THEN 'Internal note added' WHEN 'call' THEN 'Call logged' WHEN 'task_created' THEN 'Follow-up task created' WHEN 'task_updated' THEN 'Follow-up task updated' WHEN 'document_uploaded' THEN 'Document uploaded' ELSE 'Staff review note' END AS title,e.summary,e.occurred_at,e.actor_user_id,u.display_name AS actor_name,false AS simulated,'staff'::text AS provenance,e.metadata FROM lead_workspace_events e JOIN users u ON u.id=e.actor_user_id WHERE e.organization_id=$1 AND e.lead_id=$2
+ SELECT 'workspace:'||e.id::text AS id,e.kind,CASE e.kind WHEN 'note' THEN 'Internal note added' WHEN 'call' THEN 'Call logged' WHEN 'task_created' THEN 'Follow-up task created' WHEN 'task_updated' THEN 'Follow-up task updated' WHEN 'document_uploaded' THEN 'Document uploaded' WHEN 'conversation' THEN 'Customer conversation update' ELSE 'Staff review note' END AS title,e.summary,e.occurred_at,e.actor_user_id,u.display_name AS actor_name,(e.kind='conversation' AND COALESCE(e.metadata->>'simulated','false')='true') AS simulated,CASE WHEN e.kind='conversation' AND e.metadata->>'simulated'='true' THEN 'demo_simulation' ELSE 'staff' END::text AS provenance,e.metadata FROM lead_workspace_events e JOIN users u ON u.id=e.actor_user_id WHERE e.organization_id=$1 AND e.lead_id=$2
  UNION ALL SELECT 'lead:'||e.id::text,CASE e.kind WHEN 'created' THEN 'lead_created' WHEN 'updated' THEN 'lead_updated' ELSE e.kind END,CASE e.kind WHEN 'created' THEN 'Lead created' WHEN 'updated' THEN 'Lead updated' WHEN 'stage_changed' THEN 'Lead stage changed' WHEN 'application_summary' THEN 'Application summary synchronized' ELSE 'Lease milestone verified' END,CASE e.kind WHEN 'stage_changed' THEN COALESCE(e.previous_stage,'')||' to '||e.stage WHEN 'application_summary' THEN 'Application record status: '||COALESCE(e.metadata->>'status','not linked') WHEN 'lease_verified' THEN CASE WHEN e.metadata->>'evidenceKind'='demo_event' THEN 'An isolated demonstration event recorded the matching local lease milestone. No live signature-provider verification is claimed.' ELSE 'Authorized staff attested the matching local lease milestone. No signing-provider verification is claimed.' END ELSE 'Saved lead record change.' END,e.occurred_at,e.actor_user_id,u.display_name,COALESCE(e.metadata->>'simulated','false')='true',CASE WHEN e.metadata->>'simulated'='true' THEN 'demo_simulation' ELSE 'staff' END,e.metadata FROM lead_events e JOIN users u ON u.id=e.actor_user_id WHERE e.organization_id=$1 AND e.lead_id=$2
  UNION ALL SELECT 'activity:'||a.id::text,'communication','Simulated communication example',a.summary,a.occurred_at,NULL::uuid,NULL::text,true,'demo_simulation',jsonb_build_object('legacyKind',a.kind,'outboundSent',false) FROM lead_activities a WHERE a.organization_id=$1 AND a.lead_id=$2
  UNION ALL SELECT 'viewing-event:'||ve.id::text,'tour','Viewing '||replace(ve.kind,'_',' '),CASE WHEN ve.origin='public' THEN 'Public booking action. ' ELSE 'Staff scheduling action. ' END||'Notification recorded in simulation; Google sync is tracked separately.',ve.occurred_at,ve.actor_user_id,vu.display_name,false,CASE WHEN ve.origin='staff' THEN 'staff' ELSE 'record' END,ve.metadata||jsonb_build_object('viewingId',ve.viewing_id,'origin',ve.origin,'notification','simulation') FROM viewing_events ve JOIN viewings vv ON vv.id=ve.viewing_id AND vv.organization_id=ve.organization_id LEFT JOIN users vu ON vu.id=ve.actor_user_id WHERE ve.organization_id=$1 AND vv.lead_id=$2

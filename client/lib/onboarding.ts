@@ -5,9 +5,9 @@ type OnboardingPath = 'yardi' | 'standalone';
 export function onboardingContent(path: OnboardingPath): string {
   const yardi = path === 'yardi';
   const steps = yardi
-    ? [['Confirm licensed interfaces', 'Confirm licensed interfaces and available fields. The client’s exact interfaces are not yet known.'], ['Agree access and ownership', 'Agree permissions. Yardi owns configured property, lease, resident and accounting records.'], ['Map, review, then activate', 'Keep properties and units separate. Test mappings; staff review before activation.']]
-    : [['Review existing history', 'Choose records you are authorized to import. No Yardi required.'], ['Map records and relationships', 'Separate properties and units. Map contacts and history; review duplicates.'], ['Confirm with staff', 'Review gaps, access and ownership before import. Nothing uploads here.']];
-  return `<div class="ig-onboarding-copy"><span class="ig-path-kicker">ILLUSTRATIVE ONBOARDING PATH</span><h3>${yardi ? 'Yardi-connected path' : 'Standalone path'}</h3><ol>${steps.map(([title,copy],i)=>`<li><span aria-hidden="true">0${i+1}</span><div><h4>${title}</h4><p>${copy}</p></div></li>`).join('')}</ol></div><aside class="ig-path-summary" aria-label="${yardi ? 'Yardi-connected' : 'Standalone'} example boundaries"><span>${icon(yardi ? 'building' : 'import')}</span><h4>${yardi ? 'Start with the source system.' : 'Start with your existing history.'}</h4><dl><div><dt>${yardi ? 'Source of configured records' : 'Data starting point'}</dt><dd>${yardi ? 'Yardi' : 'Existing customer records'}</dd></div><div><dt>Activation</dt><dd>${yardi ? 'Awaiting interfaces, permissions and configuration' : 'Awaiting mapping and staff import review'}</dd></div><div><dt>Real organization</dt><dd>Unchanged by this selector</dd></div></dl><p>No connection or import runs here.</p></aside>`;
+    ? [['Confirm licensed interfaces', 'Confirm licensed interfaces and available fields. Choose the property scope with your team.'], ['Agree access and ownership', 'Agree permissions. Yardi owns configured property, lease, resident and accounting records.'], ['Map, review, then activate', 'Keep properties and units separate. Test mappings; staff review before activation.']]
+    : [['Review existing history', 'Choose records you are authorized to import. No Yardi required.'], ['Map records and relationships', 'Separate properties and units. Map contacts and history; review duplicates.'], ['Confirm with staff', 'Review gaps, access and ownership before import. Review the information before saving.']];
+  return `<div class="ig-onboarding-copy"><span class="ig-path-kicker">ILLUSTRATIVE ONBOARDING PATH</span><h3>${yardi ? 'Yardi-connected path' : 'Standalone path'}</h3><ol>${steps.map(([title,copy],i)=>`<li><span aria-hidden="true">0${i+1}</span><div><h4>${title}</h4><p>${copy}</p></div></li>`).join('')}</ol></div><aside class="ig-path-summary" aria-label="${yardi ? 'Yardi-connected' : 'Standalone'} example boundaries"><span>${icon(yardi ? 'building' : 'import')}</span><h4>${yardi ? 'Start with the source system.' : 'Start with your existing history.'}</h4><dl><div><dt>${yardi ? 'Source of configured records' : 'Data starting point'}</dt><dd>${yardi ? 'Yardi' : 'Existing customer records'}</dd></div><div><dt>Activation</dt><dd>${yardi ? 'Agree licensed scope and access' : 'Awaiting mapping and staff import review'}</dd></div><div><dt>Review</dt><dd>Before activation</dd></div></dl><p>Compare the steps before choosing your path.</p></aside>`;
 }
 
 export function initializeOnboardingDemo(signal: AbortSignal): void {
@@ -20,7 +20,7 @@ export function initializeOnboardingDemo(signal: AbortSignal): void {
     if (signal.aborted) return;
     buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.onboardingPath === path)));
     panel!.innerHTML = onboardingContent(path);
-    if (status) status.textContent = `${path === 'yardi' ? 'Yardi-connected' : 'Standalone'} onboarding example selected. Your organization is unchanged.`;
+    if (status) status.textContent = `${path === 'yardi' ? 'Yardi-connected' : 'Standalone'} onboarding example selected. `;
   }
   buttons.forEach((button, index) => {
     button.addEventListener('click', () => select(button.dataset.onboardingPath as OnboardingPath), { signal });

@@ -1,3 +1,5 @@
+import {maintenanceTaskScope,maintenanceTaskActive} from './maintenance-task-scope.js';
+import {maintenanceAutomationJobScope} from './automation-maintenance-scope.js';
 import type { AuthUser, DashboardPeriod } from '../../shared/contracts.js';
 import type { AdminPageSummary, AdminSummaryMetric, AdminSummaryPage } from '../../shared/admin-summary-contracts.js';
 import type { Database } from '../db/pool.js';
@@ -11,13 +13,13 @@ const allLeadInterests = (alias: string, leadColumn = 'lead_id') => `($2='organi
     AND NOT EXISTS(SELECT 1 FROM property_access_assignments ia
       WHERE ia.organization_id=li.organization_id AND ia.property_id=li.property_id AND ia.membership_id=$3)))`;
 const leadScope = `${propertyScope('l')} AND ${allLeadInterests('l', 'id')}`;
-const linkedScope = (alias: string) => `${propertyScope(alias)} AND ${allLeadInterests(alias)}`;
+const linkedScope = (alias: string) => `${propertyScope(alias)} AND ${allLeadInterests(alias)}`+(alias==='j'?maintenanceAutomationJobScope(alias):alias==='t'?maintenanceTaskScope(alias):'');
 const openLead = "l.pipeline_stage NOT IN ('leased','won','lost_closed')";
 const taskJoins = 'LEFT JOIN leads l ON l.id=t.lead_id AND l.organization_id=t.organization_id LEFT JOIN viewings v ON v.id=t.tour_id AND v.organization_id=t.organization_id';
-const relevantTask = `t.status='open' AND (l.id IS NULL OR ${openLead}) AND
+const relevantTask = `t.status='open' AND (l.id IS NULL OR ${openLead} OR (l.pipeline_stage='leased' AND COALESCE(to_jsonb(t)->>'purpose','crm')='move_in')) AND
   (t.tour_id IS NULL OR (v.id IS NOT NULL AND v.status<>'cancelled' AND v.lead_id=t.lead_id AND v.property_id=t.property_id)) AND
   (t.application_id IS NULL OR EXISTS(SELECT 1 FROM applications ra WHERE ra.id=t.application_id AND ra.organization_id=t.organization_id
-    AND ra.property_id=t.property_id AND ra.lead_id IS NOT DISTINCT FROM t.lead_id AND ra.contact_id IS NOT DISTINCT FROM t.contact_id))`;
+    AND ra.property_id=t.property_id AND ra.lead_id IS NOT DISTINCT FROM t.lead_id AND ra.contact_id IS NOT DISTINCT FROM t.contact_id))`+maintenanceTaskActive('t');
 const metric = (key: string, label: string, value: number|string|null, icon: AdminSummaryMetric['icon'], note?: string): AdminSummaryMetric =>
   ({ key, label, value, icon, ...(note ? { note } : {}) });
 const values = (user: AuthUser): unknown[] => [user.organization.id, user.organization.role, user.membershipId];
@@ -40,6 +42,31 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   const result = (metrics: Four, scopeLabel = scope, selectedPeriod: DashboardPeriod|null = null): AdminPageSummary => ({ page, scopeLabel, period: selectedPeriod, metrics });
   const read = async (sql: string, parameters = args) => (await database.query(sql,parameters)).rows[0]!;
   const count = (row: Record<string,unknown>, key: string) => Number(row[key] ?? 0);
+
+  if(page==='organization')return result([metric('members','Staff members',null,'users'),metric('properties','Properties',null,'home'),metric('groups','Groups',null,'home'),metric('rules','Routing rules',null,'settings')],'Load organization administration for current authorized counts.');
+  if(page==='integration-health')return result([metric('services','Services',null,'link'),metric('simulated','Simulated',null,'sparkles'),metric('verified','Live verified',null,'check'),metric('issues','Needs attention',null,'clock')],'Load integration health for actual recorded evidence.');
+  if(page==='audit')return result([metric('events','Matching events',null,'document'),metric('roles','Role changes',null,'users'),metric('integrations','Integration writes',null,'link'),metric('failed','Failed or denied',null,'clock')],'Load the authorized audit history for current filtered counts.');
+  if(page==='voice')return result([metric('sessions','Sessions',null,'users'),metric('active','Active',null,'clock'),metric('booked','Viewings booked',null,'calendar'),metric('handoffs','Staff requests',null,'users')],'Load the voice workspace for actual authorized session counts.');
+
+  if(page==='maintenance')return result([metric('matching','Matching requests',null,'document'),metric('open','Open',null,'home'),metric('unassigned','Unassigned',null,'users'),metric('overdue','Overdue',null,'clock')],'Load the maintenance workspace for current authorized request counts.');
+
+  if(page==='automations'){
+    if(!leasing)return restricted(page,['Enabled rules','Awaiting approval','Queued work','Failed work'],'Requires current lead-management permission.');
+    const ready=(await database.query("SELECT to_regclass('public.automation_jobs') IS NOT NULL AS ready")).rows[0]?.ready;
+    if(!ready)return result([metric('enabled','Enabled rules',null,'settings'),metric('approval','Awaiting approval',null,'users'),metric('queued','Queued work',null,'clock'),metric('failed','Failed work',null,'document')],'Run the automation migration to prepare this workspace.');
+    const ruleScope="r.organization_id=$1 AND ($2='organization_admin' OR r.property_id IS NOT NULL AND EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=r.organization_id AND pa.property_id=r.property_id AND pa.membership_id=$3))";
+    const row=await read("SELECT (SELECT count(*)::int FROM automation_rules r WHERE "+ruleScope+" AND r.enabled) AS enabled,(SELECT count(*)::int FROM automation_jobs j WHERE "+linkedScope('j')+" AND j.status='awaiting_approval') AS approval,(SELECT count(*)::int FROM automation_jobs j WHERE "+linkedScope('j')+" AND j.status='queued') AS queued,(SELECT count(*)::int FROM automation_jobs j WHERE "+linkedScope('j')+" AND j.status='failed') AS failed");
+    return result([metric('enabled','Enabled rules',count(row,'enabled'),'settings'),metric('approval','Awaiting approval',count(row,'approval'),'users'),metric('queued','Queued work',count(row,'queued'),'clock'),metric('failed','Failed work',count(row,'failed'),'document')],'Actual authorized rule and job records; enabled does not mean externally connected.');
+  }
+
+  if (page === 'conversations') {
+    if(!leasing)return restricted(page,['AI active','Staff requested','Staff handling','Queued replies'],'Requires authorized customer-conversation access.');
+    const ready=(await database.query("SELECT to_regclass('public.customer_conversations') IS NOT NULL AS ready")).rows[0]?.ready;
+    if(!ready)return result([metric('ai','AI active',null,'sparkles'),metric('requested','Staff requested',null,'users'),metric('handling','Staff handling',null,'users'),metric('queued','Queued replies',null,'clock')], 'Run the conversation migration to prepare this workspace.');
+    const row=await read("SELECT count(*) FILTER(WHERE c.ownership='ai_active')::int AS ai,count(*) FILTER(WHERE c.ownership='staff_requested')::int AS requested,count(*) FILTER(WHERE c.ownership='staff_handling')::int AS handling FROM customer_conversations c WHERE "+linkedScope('c'));
+    const queued=await read("SELECT count(*)::int AS n FROM conversation_outbox o JOIN customer_conversations c ON c.id=o.conversation_id AND c.organization_id=o.organization_id WHERE o.state='queued' AND "+linkedScope('c'));
+    return result([metric('ai','AI active',count(row,'ai'),'sparkles'),metric('requested','Staff requested',count(row,'requested'),'users'),metric('handling','Staff handling',count(row,'handling'),'users'),metric('queued','Queued replies',count(queued,'n'),'clock','Local simulated outbox.')]);
+  }
 
   if (page === 'profile') {
     const row = await read(`SELECT u.staff_phone,u.staff_job_title,
@@ -82,8 +109,19 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
       (SELECT count(*)::int FROM connector_conflicts c WHERE c.organization_id=$1 AND c.status='open') AS conflicts`,[user.organization.id]);
     return result([metric('connections','Connections',count(row,'connections'),'link','Saved connector records; this count does not assert a live connection.'),metric('queued','Queued syncs',count(row,'queued'),'clock'),metric('failed','Failed syncs',count(row,'failed'),'document'),metric('conflicts','Open conflicts',count(row,'conflicts'),'users')], 'Current organization connector records');
   }
-  if (page === 'tasks' || page === 'ai') {
-    const ai = page === 'ai';
+  if(page==='ai'){
+    if(!propertyRead)return restricted(page,['Your requests','Completed requests','Saved tasks','Needs staff help'],'Requires property-record read permission.');
+    const ready=(await read("SELECT to_regclass('public.ai_requests') IS NOT NULL AS ready",[])).ready;
+    if(!ready)return result([metric('requests','Your requests',null,'sparkles'),metric('completed','Completed requests',null,'check'),metric('tasks','Saved tasks',null,'document'),metric('handoffs','Needs staff help',null,'users')],'AI operational records are not available yet.');
+    const aiScope=propertyScope('r')+' AND '+allLeadInterests('r')+' AND r.actor_user_id=$4';
+    const row=await read(`SELECT (SELECT count(*)::int FROM ai_requests r WHERE ${aiScope}) AS requests,
+      (SELECT count(*)::int FROM ai_requests r WHERE ${aiScope} AND r.status='completed') AS completed,
+      (SELECT count(*)::int FROM task_creation_receipts tc JOIN ai_requests r ON r.organization_id=tc.organization_id AND r.id::text=split_part(tc.request_key,':',1) WHERE tc.namespace='ai_follow_up' AND ${aiScope}) AS tasks,
+      (SELECT count(*)::int FROM ai_requests r WHERE ${aiScope} AND r.status='handoff') AS handoffs`,[...args,user.id]);
+    return result([metric('requests','Your requests',count(row,'requests'),'sparkles'),metric('completed','Completed requests',count(row,'completed'),'check'),metric('tasks','Saved tasks',count(row,'tasks'),'document','Tasks verified after successful domain-service execution.'),metric('handoffs','Needs staff help',count(row,'handoffs'),'users','Requests requiring authorized staff assistance.')],'Your actual scoped AI request records; mode is shown in the AI workspace.');
+  }
+  if (page === 'tasks') {
+    const ai = false;
     const labels: [string,string,string,string] = ai ? ['AI mode','Pending examples','Assigned to you','Completed examples'] : ['Open tasks','Overdue tasks','Unassigned','Completed tasks'];
     if (!leasing) return restricted(page,labels,'Requires authorized lead-management access.');
     const filter = ai ? " AND t.origin='ai_simulation'" : '';
@@ -111,14 +149,13 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
           CASE $4 WHEN 'month' THEN interval '1 month' ELSE interval '1 week' END))`,[...args,period]);
     return result([metric('scheduled','Scheduled viewings',count(row,'scheduled'),'calendar'),metric('completed','Completed',count(row,'completed'),'check'),metric('cancelled','Cancelled',count(row,'cancelled'),'document'),metric('no_show','No-shows',count(row,'no_show'),'users')], 'Viewing dates in their recorded timezone; legacy records use UTC',period);
   }
-  if (page === 'analytics') {
-    if (!user.permissions.includes('analytics.read')) return restricted(page,['Leads','Scheduled viewings','Submitted applications','Active leases'],'Requires analytics permission.');
-    const row = await read(`SELECT
-      (SELECT count(*)::int FROM leads l WHERE ${leadScope}) AS leads,
-      (SELECT count(*)::int FROM viewings v WHERE ${linkedScope('v')} AND v.status='scheduled') AS scheduled,
-      (SELECT count(*)::int FROM applications a WHERE ${linkedScope('a')} AND a.status='submitted') AS submitted,
-      (SELECT count(*)::int FROM leases e WHERE ${linkedScope('e')} AND e.status='active') AS leases`);
-    return result([metric('leads','Leads',count(row,'leads'),'users'),metric('viewings','Scheduled viewings',count(row,'scheduled'),'calendar'),metric('applications','Submitted applications',count(row,'submitted'),'document'),metric('leases','Active leases',count(row,'leases'),'key','Stored active lease records; this is not a verified-signing metric.')], scope+'; snapshot counts');
+  if(page==='reports'){
+    if(!user.permissions.includes('analytics.read'))return restricted(page,['Leads created','Viewings booked','Applications submitted','Leases verified'],'Requires current analytics permission.');
+    return result([metric('leads','Leads created',null,'users'),metric('viewings','Viewings booked',null,'calendar'),metric('applications','Applications submitted',null,'document'),metric('leases','Leases verified',null,'key')],'Select a portfolio report period and authorized filters below. Period counts are separate from cohort conversion rates.');
+  }
+  if(page==='analytics'){
+    if(!user.permissions.includes('analytics.read'))return restricted(page,['Active users','Sessions','Events','Key events'],'Requires analytics permission.');
+    return result([metric('users','Active users',null,'users'),metric('sessions','Sessions',null,'clock'),metric('events','Events',null,'document'),metric('key_events','Key events',null,'check')],'Website analytics; choose a configured or illustrative report and date range below.');
   }
   if (!propertyRead) return restricted(page,['Records','In progress','Assigned','Completed'],'Requires property-record read permission.');
   if (page === 'properties') {

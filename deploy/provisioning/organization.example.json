@@ -1,0 +1,14 @@
+{
+  "requestKey": "REPLACE_WITH_A_NEW_UUID",
+  "organization": {
+    "name": "REPLACE_WITH_CUSTOMER_NAME",
+    "slug": "replace-with-customer-slug",
+    "mode": "standalone",
+    "timeZone": "Africa/Lagos"
+  },
+  "administrator": {
+    "name": "REPLACE_WITH_ADMINISTRATOR_NAME",
+    "email": "REPLACE_WITH_ADMINISTRATOR_EMAIL"
+  },
+  "expiresInHours": 48
+}

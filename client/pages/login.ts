@@ -1,13 +1,14 @@
 import { api, errorMessage, type AuthUser, type PublicConfig } from '../lib/api';
 import { icon, link, wordmark } from '../lib/ui';
+import {customerError} from '../lib/customer-copy';
 import type { AccountSnapshot } from '../../shared/account-contracts';
 
 export function loginPage(): string {
-  return `<main id="main-content" class="login-layout"><section class="login-brand-panel">${link('/', wordmark(true), 'brand-link')}<div class="login-brand-copy"><span class="eyebrow">PEOPLE. PROPERTY. POSSIBILITY.</span><h2>A little less<br>scattered.<br><span>A lot more<br>connected.</span></h2><p>Your people, your properties and your next good step. All with a place to call home.</p></div><div class="login-brand-bottom"><span class="small-line"></span> Your next chapter starts here.</div><div class="login-decoration" aria-hidden="true"></div></section><section class="login-form-panel"><div class="login-top-link">${link('/', `${icon('arrow-left')} Back to Ootla`, 'text-link')}</div><div class="login-form-wrap"><span class="eyebrow">STAFF WORKSPACE</span><h1>Welcome to Ootla.</h1><p class="login-intro">Sign in to your organization’s workspace.<br>Pick up where possibility begins.</p><div id="login-setup" class="notice notice-neutral" role="status"><span class="spinner spinner-small" aria-hidden="true"></span><p>Checking workspace availability…</p></div>${new URLSearchParams(location.search).get('passwordChanged') === '1' ? '<p class="notice notice-neutral" role="status">Your password has changed. Sign in again with your new password.</p>' : ''}<form id="login-form"><div class="form-field"><label for="login-email">Email address</label><div class="input-wrap">${icon('mail')}<input id="login-email" name="email" type="email" autocomplete="username" placeholder="you@yourcompany.com" required maxlength="254" spellcheck="false" /></div></div><div class="form-field"><label for="login-password">Password</label><div class="input-wrap">${icon('lock')}<input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required maxlength="256" /><button type="button" class="password-toggle icon-button" data-action="toggle-password" aria-label="Show password" aria-pressed="false">${icon('eye')}</button></div></div><p id="login-error" class="form-error" role="alert" hidden></p><button id="login-submit" type="submit" class="button button-primary login-submit" disabled>Sign in to your workspace ${icon('arrow')}</button><div id="demo-credentials-slot"></div></form><div class="login-privacy">${icon('shield')}<p>Your session is managed securely by Ootla.<br>Your organization’s workspace stays your own.</p></div></div><div class="login-bottom"><span>Thoughtfully connected.</span><span>Ootla foundation</span></div></section></main>`;
+  return `<main id="main-content" class="login-layout"><section class="login-brand-panel">${link('/', wordmark(true), 'brand-link')}<div class="login-brand-copy"><span class="eyebrow">PEOPLE. PROPERTY. POSSIBILITY.</span><h2>A little less<br>scattered.<br><span>A lot more<br>connected.</span></h2><p>Your people, your properties and your next good step. All with a place to call home.</p></div><div class="login-brand-bottom"><span class="small-line"></span> Your next chapter starts here.</div><div class="login-decoration" aria-hidden="true"></div></section><section class="login-form-panel"><div class="login-top-link">${link('/', `${icon('arrow-left')} Back to Ootla`, 'text-link')}</div><div class="login-form-wrap"><span class="eyebrow">STAFF WORKSPACE</span><h1>Welcome to Ootla.</h1><p class="login-intro">Sign in to your organization’s workspace.<br>Pick up where possibility begins.</p><div id="login-setup" class="notice notice-neutral" role="status"><span class="spinner spinner-small" aria-hidden="true"></span><p>Checking workspace availability…</p></div>${new URLSearchParams(location.search).get('passwordChanged') === '1' ? '<p class="notice notice-neutral" role="status">Your password has changed. Sign in again with your new password.</p>' : ''}<form id="login-form"><div class="form-field"><label for="login-email">Email address</label><div class="input-wrap">${icon('mail')}<input id="login-email" name="email" type="email" autocomplete="username" placeholder="you@yourcompany.com" required maxlength="254" spellcheck="false" /></div></div><div class="form-field"><label for="login-password">Password</label><div class="input-wrap">${icon('lock')}<input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required maxlength="256" /><button type="button" class="password-toggle icon-button" data-action="toggle-password" aria-label="Show password" aria-pressed="false">${icon('eye')}</button></div></div><p id="login-error" class="form-error" role="alert" hidden></p><button id="login-submit" type="submit" class="button button-primary login-submit" disabled>Sign in to your workspace ${icon('arrow')}</button><div id="demo-credentials-slot"></div></form><div class="login-privacy">${icon('shield')}<p>Your session is managed securely by Ootla.<br>Your organization’s workspace stays your own.</p></div></div><div class="login-bottom"><span>Thoughtfully connected.</span><span>Ootla</span></div></section></main>`;
 }
 export function safeReturnTo(raw: string | null): string {
   if (!raw) return '/admin';
-  const paths = new Set(['/admin', '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations']);
+  const paths = new Set(['/admin', '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations', '/admin/conversations', '/admin/automations', '/admin/reports', '/admin/maintenance', '/admin/voice', '/admin/organization', '/admin/integration-health', '/admin/audit']);
   if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\') || raw.length > 2000) return '/admin';
   try {
     const target = new URL(raw, 'https://ootla.local');
@@ -40,7 +41,7 @@ export async function initializeLogin(signal: AbortSignal, navigate: (path: stri
       if(!signal.aborted)navigate(safeReturnTo(requested ?? account?.preferences.defaultPage ?? null),true);
     } catch (reason) {
       if (signal.aborted) return;
-      error.textContent = errorMessage(reason);
+      error.textContent = customerError(reason);
       error.hidden = false;
     } finally {
       if (!signal.aborted) {
@@ -62,9 +63,9 @@ export async function initializeLogin(signal: AbortSignal, navigate: (path: stri
     config = await api<PublicConfig>('/api/config', { signal });
     if (signal.aborted) return;
     // Use the running API's configured origin; never broaden the server's CSRF policy.
-    if(typeof config.appUrl!=='string')throw new Error('Restart the Ootla API to load its application address, then refresh this page.');
+    if(typeof config.appUrl!=='string')throw new Error('We could not open sign-in. Please refresh the page or contact your team.');
     const appOrigin=new URL(config.appUrl);
-    if(!['http:','https:'].includes(appOrigin.protocol)||appOrigin.origin!==config.appUrl)throw new Error('Restart the Ootla API to load its application address, then refresh this page.');
+    if(!['http:','https:'].includes(appOrigin.protocol)||appOrigin.origin!==config.appUrl)throw new Error('We could not open sign-in. Please refresh the page or contact your team.');
     if(location.origin!==appOrigin.origin){
       const target=new URL('/admin/login',appOrigin.origin);
       const returnTo=safeReturnTo(new URLSearchParams(location.search).get('returnTo'));
@@ -85,14 +86,14 @@ export async function initializeLogin(signal: AbortSignal, navigate: (path: stri
       submit.disabled = false;
     } else {
       setup.className = 'notice notice-warning';
-      setup.innerHTML = `${icon('info')}<div><strong>Your workspace is waiting for setup.</strong><p></p></div>`;
+      setup.innerHTML = `${icon('info')}<div><strong>We could not open sign-in.</strong><p></p></div>`;
     }
     const setupCopy = setup.querySelector('p');
-    if (!config.databaseReady && setupCopy) setupCopy.textContent = config.setupMessage || 'Ask your administrator to complete database setup, then refresh this page.';
+    if (!config.databaseReady && setupCopy) setupCopy.textContent = 'Please try again shortly or ask your team for help.';
     if (config.demoEnabled && config.demoCredentials) {
       const slot = document.querySelector<HTMLDivElement>('#demo-credentials-slot');
       if (slot) {
-        slot.innerHTML = `<div class="demo-fill"><span class="demo-divider">REVIEWING THE DEMO?</span><button type="button" id="fill-demo" class="button button-secondary">Fill demo credentials ${icon('arrow')}</button><p>Fills the email and masked password fields.<br>You choose when to sign in.</p></div>`;
+        slot.innerHTML = `<div class="demo-fill"><span class="demo-divider">TRY OOTLA</span><button type="button" id="fill-demo" class="button button-secondary">Fill preview credentials ${icon('arrow')}</button><p>Interactive preview with sample records.<br>Fill the fields, then choose Sign in.</p></div>`;
         document.querySelector<HTMLButtonElement>('#fill-demo')?.addEventListener('click', () => {
           if (!config?.demoEnabled || !config.demoCredentials) return;
           email.value = config.demoCredentials.email;
@@ -108,7 +109,7 @@ export async function initializeLogin(signal: AbortSignal, navigate: (path: stri
     }
     if (config.standaloneDemoCredentials) {
       const slot=document.querySelector<HTMLDivElement>('#demo-credentials-slot');
-      if(slot){const section=document.createElement('div');section.className='demo-fill';const button=document.createElement('button');button.type='button';button.className='button button-secondary';button.id='fill-standalone-demo';button.textContent='Fill standalone demo credentials';const copy=document.createElement('p');copy.textContent='Separate standalone organization for CSV onboarding. Fill the fields, then choose Sign in.';section.append(button,copy);slot.append(section);
+      if(slot){const section=document.createElement('div');section.className='demo-fill';const button=document.createElement('button');button.type='button';button.className='button button-secondary';button.id='fill-standalone-demo';button.textContent='Fill standalone preview credentials';const copy=document.createElement('p');copy.textContent='Explore a workspace for bringing your own records. Fill the fields, then choose Sign in.';section.append(button,copy);slot.append(section);
         button.addEventListener('click',()=>{if(!config?.standaloneDemoCredentials)return;email.value=config.standaloneDemoCredentials.email;password.value=config.standaloneDemoCredentials.password;password.type='password';const toggle=document.querySelector<HTMLButtonElement>('[data-action="toggle-password"]');toggle?.setAttribute('aria-pressed','false');toggle?.setAttribute('aria-label','Show password');error.hidden=true;submit.focus();},{signal});
       }
     }
@@ -118,7 +119,7 @@ export async function initializeLogin(signal: AbortSignal, navigate: (path: stri
     setup.className = 'notice notice-warning';
     setup.replaceChildren();
     const copy = document.createElement('p');
-    copy.textContent = errorMessage(reason);
+    copy.textContent = customerError(reason);
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'text-link';

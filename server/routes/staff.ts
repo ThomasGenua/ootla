@@ -1,3 +1,4 @@
+import {redactAuditMetadata} from '../services/operational-audit.js';
 ﻿import { Router, type Request, type RequestHandler, type Response } from 'express';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -6,6 +7,7 @@ import type { ServerConfig } from '../config/env.js';
 import type { Database } from '../db/pool.js';
 import { ApiError } from '../http/errors.js';
 import { protectOrigin } from '../middleware/security.js';
+import {readSessionDigest} from '../services/sessions.js';
 import { assertFieldOwnership, assertLocalCreateAllowed } from '../services/property-foundation.js';
 
 type PropertyRow = { id: string; organization_id: string; name: string; created_at: Date; updated_at: Date };
@@ -40,16 +42,17 @@ function pagination(request: Request) {
   if (!parsed.success) throw new ApiError(400, 'INVALID_INPUT', 'Use a limit from 1 to 200 and a valid offset.');
   return parsed.data;
 }
-async function authorize(client: PoolClient, user: AuthUser, permission: Permission): Promise<OrganizationRole> {
+async function authorize(client: PoolClient, user: AuthUser, permission: Permission, sessionDigest: string): Promise<OrganizationRole> {
   // Lock the live actor membership for each write so demotions/deactivation cannot
   // race the permission check. No authority is taken from a request body.
   const result = await client.query<{ role: OrganizationRole }>(`
     SELECT m.role FROM organization_memberships m
     JOIN users u ON u.id = m.user_id AND u.active = TRUE AND u.account_kind = 'staff'
+    JOIN sessions s ON s.user_id=m.user_id AND s.organization_id=m.organization_id AND s.token_digest=$5 AND s.expires_at>clock_timestamp()
     WHERE m.id = $1 AND m.organization_id = $2 AND m.user_id = $3 AND m.active = TRUE
       AND EXISTS (SELECT 1 FROM role_permissions rp WHERE rp.role_key = m.role AND rp.permission = $4)
-    FOR SHARE OF m, u
-  `, [user.membershipId, user.organization.id, user.id, permission]);
+    FOR SHARE OF m, u, s
+  `, [user.membershipId, user.organization.id, user.id, permission, sessionDigest]);
   if (!result.rows[0]) throw new ApiError(403, 'PERMISSION_DENIED', 'Your current staff role does not allow this action.');
   return result.rows[0].role;
 }
@@ -108,7 +111,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
       // last-admin changes, before locking the actor/target memberships. A non-key
       // row lock remains compatible with unrelated organization foreign-key checks.
       await client.query('SELECT id FROM organizations WHERE id = $1 FOR NO KEY UPDATE', [user.organization.id]);
-      await authorize(client, user, 'memberships.manage');
+      await authorize(client, user, 'memberships.manage', readSessionDigest(request,config)??'');
       const target = (await client.query<MembershipRow>(`
         SELECT ${membershipColumns} FROM organization_memberships m
         JOIN users u ON u.id = m.user_id AND u.account_kind = 'staff'
@@ -156,7 +159,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
   router.post('/properties', protectOrigin(config), requireUser, requirePermission('property_access.manage'), async (request, response) => {
     const user = actor(response); const input = body(request, propertyInputSchema);
     const property = await database.transaction(async (client) => {
-      await authorize(client, user, 'property_access.manage');
+      await authorize(client, user, 'property_access.manage', readSessionDigest(request,config)??'');
       await assertLocalCreateAllowed(client, user, 'property');
       const result = await client.query<PropertyRow>('INSERT INTO properties (organization_id, name) VALUES ($1, $2) RETURNING *', [user.organization.id, input.name]);
       const created = result.rows[0]!;
@@ -168,7 +171,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
   router.patch('/properties/:propertyId', protectOrigin(config), requireUser, requirePermission('properties.manage'), async (request, response) => {
     const user = actor(response); const propertyId = uuid(request.params.propertyId); const input = body(request, propertyInputSchema);
     const property = await database.transaction(async (client) => {
-      const role = await authorize(client, user, 'properties.manage');
+      const role = await authorize(client, user, 'properties.manage', readSessionDigest(request,config)??'');
       const previous = await lockedProperty(client, user, propertyId, role);
       await assertFieldOwnership(client, user, 'property', propertyId, ['name']);
       if (previous.name === input.name) return propertyRecord(previous);
@@ -182,7 +185,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
     const user = actor(response); const propertyId = uuid(request.params.propertyId); const userId = uuid(request.params.userId);
     if (request.body !== undefined && (!request.is('application/json') || !z.object({}).strict().safeParse(request.body).success)) throw new ApiError(400, 'INVALID_INPUT', 'Property access is defined by the URL; do not submit extra fields.');
     const assignment = await database.transaction(async (client) => {
-      const role = await authorize(client, user, 'property_access.manage');
+      const role = await authorize(client, user, 'property_access.manage', readSessionDigest(request,config)??'');
       await lockedProperty(client, user, propertyId, role);
       const target = await staffTarget(client, user, userId);
       const inserted = await client.query<{ created_at: Date }>(`
@@ -198,7 +201,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
   router.delete('/properties/:propertyId/access/:userId', protectOrigin(config), requireUser, requirePermission('property_access.manage'), async (request, response) => {
     const user = actor(response); const propertyId = uuid(request.params.propertyId); const userId = uuid(request.params.userId);
     await database.transaction(async (client) => {
-      const role = await authorize(client, user, 'property_access.manage');
+      const role = await authorize(client, user, 'property_access.manage', readSessionDigest(request,config)??'');
       await lockedProperty(client, user, propertyId, role);
       const target = await staffTarget(client, user, userId, false);
       const removed = await client.query('DELETE FROM property_access_assignments WHERE organization_id = $1 AND membership_id = $2 AND property_id = $3', [user.organization.id, target.id, propertyId]);
@@ -212,7 +215,7 @@ export function createStaffRouter(config: ServerConfig, database: Database, requ
       SELECT id::text, action, actor_user_id, metadata, created_at FROM audit_events WHERE organization_id = $1
       ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3
     `, [user.organization.id, limit, offset]);
-    response.json({ events: result.rows.map((row) => ({ id: row.id, action: row.action, actorUserId: row.actor_user_id, metadata: row.metadata, createdAt: row.created_at.toISOString() })) });
+    response.json({ events: result.rows.map((row) => ({ id: row.id, action: row.action, actorUserId: row.actor_user_id, metadata: redactAuditMetadata(row.metadata), createdAt: row.created_at.toISOString() })) });
   });
   return router;
 }

@@ -1,12 +1,13 @@
-import { api, ApiError, errorMessage } from './api';
+import { api, ApiError} from './api';
+import {productError} from './product-copy';
 import type { GoogleCalendarStatus,GoogleCalendarBusy,GoogleCalendarChoices,GoogleCalendarChoice } from '../../shared/google-calendar-contracts';
 import {escapeHtml as e} from './ui';
 export interface GoogleCalendarWorkspace {status:GoogleCalendarStatus|null;busy:GoogleCalendarBusy|null;error?:string}
 export async function loadGoogleCalendar(signal:AbortSignal):Promise<GoogleCalendarWorkspace>{
  let status:GoogleCalendarStatus;
- try{status=await api<GoogleCalendarStatus>('/api/google-calendar',{signal});}catch(issue){if(signal.aborted||issue instanceof ApiError&&issue.status===401)throw issue;return{status:null,busy:null,error:errorMessage(issue)};}
+ try{status=await api<GoogleCalendarStatus>('/api/google-calendar',{signal});}catch(issue){if(signal.aborted||issue instanceof ApiError&&issue.status===401)throw issue;return{status:null,busy:null,error:productError(issue)};}
  let busy:GoogleCalendarBusy|null=null;
- if(status.selectedCalendars.length){const from=new Date();from.setUTCHours(0,0,0,0);const until=new Date(from.getTime()+7*86400000);try{busy=await api<GoogleCalendarBusy>('/api/google-calendar/busy?'+new URLSearchParams({from:from.toISOString(),until:until.toISOString()}),{signal});}catch(issue){if(signal.aborted||issue instanceof ApiError&&issue.status===401)throw issue;return{status,busy:null,error:'Google Busy periods are temporarily unavailable. '+errorMessage(issue)};}}
+ if(status.selectedCalendars.length){const from=new Date();from.setUTCHours(0,0,0,0);const until=new Date(from.getTime()+7*86400000);try{busy=await api<GoogleCalendarBusy>('/api/google-calendar/busy?'+new URLSearchParams({from:from.toISOString(),until:until.toISOString()}),{signal});}catch(issue){if(signal.aborted||issue instanceof ApiError&&issue.status===401)throw issue;return{status,busy:null,error:'Google Busy periods are temporarily unavailable. '+productError(issue)};}}
 
  return{status,busy};
 }
@@ -26,7 +27,7 @@ export function initializeGoogleCalendar(signal:AbortSignal,navigate:(path:strin
    await api('/api/google-calendar/'+action,{method:'POST',body:'{}',signal});
    message.textContent=action==='disconnect'?'Google disconnected. Local bookings remain available.':'Google synchronization work queued. Local bookings remain saved. Refresh to see job results.';
    if(action==='disconnect')navigate('/admin/calendar?view=google',true);
-  }catch(issue){if(!signal.aborted)error.textContent=errorMessage(issue);}finally{if(!signal.aborted)target.disabled=false;}
+  }catch(issue){if(!signal.aborted)error.textContent=productError(issue);}finally{if(!signal.aborted)target.disabled=false;}
  },{signal});
- host.addEventListener('submit',async event=>{const form=event.target;if(!(form instanceof HTMLFormElement)||!form.hasAttribute('data-google-selection-form'))return;event.preventDefault();const data=new FormData(form),button=form.querySelector<HTMLButtonElement>('button[type=submit]')!;button.disabled=true;error.textContent='';try{await api('/api/google-calendar/selection',{method:'PUT',body:JSON.stringify({calendarIds:data.getAll('calendarIds'),writeCalendarId:data.get('writeCalendarId')}),signal});navigate('/admin/calendar?view=google',true);}catch(issue){if(!signal.aborted)error.textContent=errorMessage(issue);}finally{if(!signal.aborted)button.disabled=false;}},{signal});
+ host.addEventListener('submit',async event=>{const form=event.target;if(!(form instanceof HTMLFormElement)||!form.hasAttribute('data-google-selection-form'))return;event.preventDefault();const data=new FormData(form),button=form.querySelector<HTMLButtonElement>('button[type=submit]')!;button.disabled=true;error.textContent='';try{await api('/api/google-calendar/selection',{method:'PUT',body:JSON.stringify({calendarIds:data.getAll('calendarIds'),writeCalendarId:data.get('writeCalendarId')}),signal});navigate('/admin/calendar?view=google',true);}catch(issue){if(!signal.aborted)error.textContent=productError(issue);}finally{if(!signal.aborted)button.disabled=false;}},{signal});
 }

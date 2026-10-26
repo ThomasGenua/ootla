@@ -14,7 +14,7 @@ import {Tasks} from './tasks.js';
 import {addLocalDays,localDate,localMinute,localInstants} from './calendar-time.js';
 type Row=QueryResultRow;
 const iso=(v:unknown):string|null=>v?(v instanceof Date?v:new Date(String(v))).toISOString():null;
-const day=(v:unknown):string|null=>v instanceof Date?v.toISOString().slice(0,10):v?String(v).slice(0,10):null;
+const day=(v:unknown):string|null=>v instanceof Date?[v.getFullYear(),String(v.getMonth()+1).padStart(2,'0'),String(v.getDate()).padStart(2,'0')].join('-'):v?String(v).slice(0,10):null;
 const hash=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const defaultTemplates:MoveInTaskTemplate[]=[{key:'welcome',title:'Confirm move-in arrangements',dayOffset:-1,priority:'normal'},{key:'handover',title:'Complete move-in handover',dayOffset:0,priority:'high'}];
 export const leaseWorkflowGraph:Record<LeaseWorkflowStage,LeaseWorkflowStage[]>={lease_preparation:['signature_requested'],signature_requested:['partially_signed'],partially_signed:['fully_signed'],fully_signed:['move_in_scheduled'],move_in_scheduled:['completed'],completed:[]};
@@ -36,7 +36,7 @@ export class LeaseWorkflowService{
   if(prior){if(prior.actor_user_id!==u.id||prior.operation!==operation||prior.payload_hash!==payloadHash)throw new ApiError(409,'REQUEST_KEY_REUSED','Use a new request identifier for a different lease action.');return prior.result;}
   const result=await run();await c.query('INSERT INTO lease_action_receipts(organization_id,application_id,request_key,actor_user_id,operation,payload_hash,result) VALUES($1,$2,$3,$4,$5,$6,$7)',[a.organization_id,a.id,key,u.id,operation,payloadHash,JSON.stringify(result)]);return result;
  }
- private async workflow(c:PoolClient,a:ApplicationRow):Promise<Row|null>{return(await c.query('SELECT w.*,l.starts_on,l.ends_on,l.status AS lease_status,l.source_system,l.source_owned_fields,l.contact_id,l.property_id,l.unit_id,l.lead_id,l.application_id AS lease_application_id FROM lease_workflows w JOIN leases l ON l.id=w.lease_id AND l.organization_id=w.organization_id WHERE w.organization_id=$1 AND w.application_id=$2 FOR UPDATE OF w',[a.organization_id,a.id])).rows[0]??null;}
+ private async workflow(c:PoolClient,a:ApplicationRow):Promise<Row|null>{return(await c.query('SELECT w.*,l.starts_on::text AS starts_on,l.ends_on::text AS ends_on,l.status AS lease_status,l.source_system,l.source_owned_fields,l.contact_id,l.property_id,l.unit_id,l.lead_id,l.application_id AS lease_application_id FROM lease_workflows w JOIN leases l ON l.id=w.lease_id AND l.organization_id=w.organization_id WHERE w.organization_id=$1 AND w.application_id=$2 FOR UPDATE OF w',[a.organization_id,a.id])).rows[0]??null;}
  private async zone(c:PoolClient,a:ApplicationRow):Promise<string>{return(await c.query('SELECT time_zone FROM property_viewing_settings WHERE organization_id=$1 AND property_id=$2',[a.organization_id,a.property_id])).rows[0]?.time_zone??'Africa/Lagos';}
  async settings(u:AuthUser,digest:string):Promise<LeaseWorkflowSettings>{return this.database.transaction(async c=>{const actor=await staffOrganizationAccess(c,this.config,u,digest);if(actor.organization.role!=='organization_admin')throw new ApiError(403,'LEASE_ADMIN_REQUIRED','An organization administrator must configure lease policy.');return this.settingsDto(await this.settingsRow(c,actor.organization.id),await isIsolatedDemo(this.config,c));});}
  async saveSettings(u:AuthUser,digest:string,input:z.infer<typeof leaseWorkflowSettingsSchema>):Promise<LeaseWorkflowSettings>{
@@ -82,7 +82,7 @@ export class LeaseWorkflowService{
     let settings=await this.settingsRow(c,a.organization_id);
     if(!settings){if(!await this.demoAvailable(c,a))throw new ApiError(503,'LEASE_SETTINGS_REQUIRED','An organization administrator must configure the valid lease milestone and move-in tasks.');await c.query("INSERT INTO organization_lease_settings(organization_id,leased_milestone,move_in_tasks,configured_by_user_id) VALUES($1,'fully_signed',$2,$3) ON CONFLICT(organization_id) DO NOTHING",[a.organization_id,JSON.stringify(defaultTemplates),actor.id]);settings=await this.settingsRow(c,a.organization_id);}
     await c.query("UPDATE applications SET status='staff_review',portal_version=portal_version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 AND status<>'staff_review'",[a.id,a.organization_id]);a.status='staff_review';await syncLeadApplicationSummary(c,actor,[a.lead_id]);await this.leadPending(c,actor,a);
-    const leases=(await c.query('SELECT * FROM leases WHERE organization_id=$1 AND application_id=$2 ORDER BY created_at,id FOR UPDATE',[a.organization_id,a.id])).rows;
+    const leases=(await c.query('SELECT *,starts_on::text AS starts_on,ends_on::text AS ends_on FROM leases WHERE organization_id=$1 AND application_id=$2 ORDER BY created_at,id FOR UPDATE',[a.organization_id,a.id])).rows;
     if(leases.length>1)throw new ApiError(409,'AMBIGUOUS_APPLICATION_LEASES','Multiple existing leases need authorized staff reconciliation before this workflow can start.');
     let lease=leases[0];
     if(lease){if(lease.status!=='draft'||lease.source_system!=='local'||lease.source_owned_fields.length||lease.contact_id!==a.contact_id||lease.property_id!==a.property_id||lease.unit_id!==a.unit_id||lease.lead_id!==a.lead_id)throw new ApiError(409,'EXISTING_LEASE_REQUIRES_REVIEW','The existing lease cannot be safely adopted by this local draft workflow.');await assertFieldOwnership(c,actor,'lease',lease.id,['status','startsOn','endsOn']);await c.query('UPDATE leases SET starts_on=$2,ends_on=$3,updated_at=now() WHERE id=$1',[lease.id,input.startsOn,input.endsOn]);}
@@ -95,7 +95,7 @@ export class LeaseWorkflowService{
   });return this.workspace(u,digest,id);
  }
  private async ensureLease(c:PoolClient,u:AuthUser,a:ApplicationRow,w:Row):Promise<Row>{
-  const l=(await c.query('SELECT * FROM leases WHERE id=$1 AND organization_id=$2 AND application_id=$3 AND property_id=$4 AND contact_id=$5 AND lead_id IS NOT DISTINCT FROM $6::uuid AND unit_id IS NOT DISTINCT FROM $7::uuid FOR UPDATE',[w.lease_id,a.organization_id,a.id,a.property_id,a.contact_id,a.lead_id,a.unit_id])).rows[0];
+  const l=(await c.query('SELECT *,starts_on::text AS starts_on,ends_on::text AS ends_on FROM leases WHERE id=$1 AND organization_id=$2 AND application_id=$3 AND property_id=$4 AND contact_id=$5 AND lead_id IS NOT DISTINCT FROM $6::uuid AND unit_id IS NOT DISTINCT FROM $7::uuid FOR UPDATE',[w.lease_id,a.organization_id,a.id,a.property_id,a.contact_id,a.lead_id,a.unit_id])).rows[0];
   if(!l||l.source_system!=='local'||l.source_owned_fields.length)throw new ApiError(409,'LEASE_CONTEXT_CHANGED','The local lease identity or source changed. Staff must reconcile it before advancing.');
   await assertFieldOwnership(c,u,'lease',l.id,['status','startsOn','endsOn','applicationId','contactId','propertyId','unitId','leadId']);return l;
  }
@@ -142,6 +142,10 @@ export class LeaseWorkflowService{
     if(input.stage==='completed'&&(!moveInAt||input.evidence.kind==='manual_attestation'&&moveInAt.getTime()>Date.now()))throw new ApiError(409,'MOVE_IN_NOT_OCCURRED','Record completion only after the scheduled move-in. Isolated demonstration events must be labeled explicitly.');
     if(input.stage==='fully_signed'){
      if(!lease.starts_on)throw new ApiError(409,'LEASE_START_REQUIRED','Record the lease start date before signature completion.');
+     if(lease.unit_id){
+      if(!(await c.query('SELECT id FROM units WHERE organization_id=$1 AND property_id=$2 AND id=$3 FOR UPDATE',[a.organization_id,a.property_id,lease.unit_id])).rowCount)throw new ApiError(409,'LEASE_UNIT_UNAVAILABLE','The recorded unit is unavailable in this property context.');
+      if((await c.query("SELECT id FROM leases WHERE organization_id=$1 AND unit_id=$2 AND id<>$3 AND status='active' AND daterange(starts_on,ends_on,'[]') && daterange($4::date,$5::date,'[]') LIMIT 1",[a.organization_id,lease.unit_id,lease.id,day(lease.starts_on),day(lease.ends_on)])).rowCount)throw new ApiError(409,'LEASE_UNIT_CONFLICT','Another active lease overlaps these dates for this unit. Staff must reconcile the lease records.');
+     }
      await c.query("UPDATE leases SET status='active',updated_at=now() WHERE id=$1",[lease.id]);
      await c.query('UPDATE lease_workflows SET signature_evidence_kind=$2,signature_evidence_reference=$3,signature_verified_at=clock_timestamp() WHERE id=$1',[w.id,input.evidence.kind,input.evidence.reference]);
      w.signature_evidence_kind=input.evidence.kind;w.signature_evidence_reference=input.evidence.reference;

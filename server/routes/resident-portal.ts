@@ -1,0 +1,31 @@
+import {Router,raw,type Response,type RequestHandler} from 'express';
+import {z} from 'zod';
+import {residentLoginSchema,residentInvitationAcceptSchema,residentRequestSchema,residentPageSchema,maintenanceMessageSchema,maintenanceFileSchema} from '../../shared/resident-contracts.js';
+import type {Database} from '../db/pool.js';
+import type {ServerConfig} from '../config/env.js';
+import {ApiError} from '../http/errors.js';
+import {loginRateLimit} from '../middleware/security.js';
+import {ResidentPortal,type ResidentPrincipal} from '../services/resident-portal.js';
+import {MaintenanceService} from '../services/maintenance.js';
+import {residentParse as parse,residentBody as body,residentId as id,residentNoQuery as noQuery,residentRouteSecurity as security,sendMaintenanceFile} from './resident-http.js';
+export function createResidentPortalRouter(config:ServerConfig,db:Database):Router{
+ const r=Router(),portal=new ResidentPortal(db,config),service=new MaintenanceService(db,config),limited=loginRateLimit(),u=(s:Response)=>s.locals.resident as ResidentPrincipal;
+ const requireResident:RequestHandler=async(q,s,next)=>{try{const current=await portal.currentUser(q);if(!current)throw new ApiError(401,'RESIDENT_AUTH_REQUIRED','Sign in with your explicitly authorized resident account.');s.locals.resident=current;next();}catch(e){next(e);}};
+ r.use(security(config));
+ r.get('/config',async(q,s)=>{noQuery(q);s.json(await portal.configPublic());});
+ r.get('/auth/me',async(q,s)=>{noQuery(q);const current=await portal.currentUser(q);s.json({user:current?portal.publicUser(current):null});});
+ r.post('/auth/login',limited,async(q,s)=>s.json({user:await portal.login(q,s,body(q,residentLoginSchema))}));
+ r.post('/auth/logout',async(q,s)=>{body(q,z.object({}).strict());await portal.logout(q,s);s.json({ok:true});});
+ r.post('/invitations/accept',limited,async(q,s)=>s.json({user:await portal.accept(q,s,body(q,residentInvitationAcceptSchema))}));
+ r.use(requireResident);
+ r.get('/leases',async(q,s)=>s.json(await portal.leases(u(s),parse(residentPageSchema,q.query))));
+ r.get('/leases/:id',async(q,s)=>{noQuery(q);s.json(await portal.lease(u(s),id(q.params.id)));});
+ r.post('/leases/:id/payment-handoff',async(q,s)=>s.json(await portal.paymentHandoff(u(s),id(q.params.id),body(q,z.object({requestKey:z.uuid()}).strict()).requestKey)));
+ r.get('/requests',async(q,s)=>s.json(await service.residentList(u(s),parse(residentPageSchema,q.query))));
+ r.post('/requests',async(q,s)=>s.status(201).json(await service.create(u(s),body(q,residentRequestSchema))));
+ r.get('/requests/:id',async(q,s)=>s.json(await service.residentDetail(u(s),id(q.params.id),parse(residentPageSchema,q.query))));
+ r.post('/requests/:id/messages',async(q,s)=>s.json(await service.residentMessage(u(s),id(q.params.id),body(q,maintenanceMessageSchema))));
+ r.post('/requests/:id/files',raw({type:()=>true,limit:2097152}),async(q,s)=>s.status(201).json(await service.uploadResident(u(s),id(q.params.id),parse(maintenanceFileSchema,q.query),q.get('Content-Type')?.split(';')[0].trim().toLowerCase()??'',q.body as Buffer)));
+ r.get('/requests/:id/files/:fileId/download',async(q,s)=>{noQuery(q);sendMaintenanceFile(s,await service.downloadResident(u(s),id(q.params.id),id(q.params.fileId)));});
+ return r;
+}

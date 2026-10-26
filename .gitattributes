@@ -1,0 +1,2 @@
+# Applied migration checksums depend on exact bytes. Never convert their line endings.
+migrations/*.sql -text

@@ -281,7 +281,10 @@ export class Calendar{
    return paged(rows.map(invitationDto),total,i);
   });
  }
- async invite(user:Actor,digest:string,i:z.infer<typeof calendarInvitationSchema>):Promise<CalendarIssuedInvitation>{
+ async invite(user:Actor,digest:string,i:z.infer<typeof calendarInvitationSchema>):Promise<CalendarIssuedInvitation>{return this.issueInvitation(user,digest,i);}
+ /** Server-only published-channel delegation; issuing actor/property are revalidated by the normal calendar policy. */
+ async invitePublished(user:Actor,i:z.infer<typeof calendarInvitationSchema>):Promise<CalendarIssuedInvitation>{return this.issueInvitation(user,undefined,i);}
+ private async issueInvitation(user:Actor,digest:string|undefined,i:z.infer<typeof calendarInvitationSchema>):Promise<CalendarIssuedInvitation>{
   return this.database.transaction(async c=>{
    const raw=(await c.query('SELECT user_id FROM organization_memberships WHERE organization_id=$1 AND id=$2',[user.organization.id,i.ownerMembershipId])).rows[0];if(!raw)throw new ApiError(400,'INVALID_VIEWING_OWNER','Choose an eligible agent.');
    await resources(c,['property:'+i.propertyId,'lead:'+i.leadId,'staff:'+raw.user_id,'request:'+user.organization.id+':'+user.membershipId+':'+i.requestKey]);

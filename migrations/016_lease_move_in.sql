@@ -72,3 +72,17 @@ BEGIN
  RETURN NEW;
 END;
 $$;
+
+-- Serialize all future active-unit lease mutations without rewriting existing customer records.
+CREATE FUNCTION ootla_active_lease_unit_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.status='active' AND NEW.unit_id IS NOT NULL THEN
+  PERFORM id FROM units WHERE id=NEW.unit_id AND organization_id=NEW.organization_id AND property_id=NEW.property_id FOR UPDATE;
+  IF EXISTS(SELECT 1 FROM leases other WHERE other.organization_id=NEW.organization_id AND other.unit_id=NEW.unit_id AND other.id<>NEW.id AND other.status='active' AND daterange(other.starts_on,other.ends_on,'[]') && daterange(NEW.starts_on,NEW.ends_on,'[]')) THEN
+   RAISE EXCEPTION 'Active unit leases must not overlap' USING ERRCODE='23514';
+  END IF;
+ END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE TRIGGER active_lease_unit_guard BEFORE INSERT OR UPDATE OF status,unit_id,property_id,organization_id,starts_on,ends_on ON leases FOR EACH ROW EXECUTE FUNCTION ootla_active_lease_unit_guard();

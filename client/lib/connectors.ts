@@ -7,8 +7,8 @@ const views: ConnectorView[] = ['connection', 'jobs', 'mappings', 'events', 'con
 export async function loadConnectorWorkspace(query: URLSearchParams, signal: AbortSignal): Promise<ConnectorWorkspacePayload> {
  let overview: ConnectorOverview;
  try { overview = await api<ConnectorOverview>('/api/connectors', { signal }); }
- catch (error) { if (error instanceof ApiError && error.status === 403) return { kind: 'restricted', message: 'Connection settings and sync diagnostics are available to this organization’s administrators.' }; throw error; }
- if (!overview.access.canManage) return { kind: 'restricted', message: 'Ask an organization administrator to manage connections and review sync diagnostics.' };
+ catch (error) { if (error instanceof ApiError && error.status === 403) return { kind: 'restricted', message: 'Your organization owner manages integrations. Ask them if a property-system update needs attention.' }; throw error; }
+ if (!overview.access.canManage) return { kind: 'restricted', message: 'Your organization owner manages integrations. Ask them if a property-system update needs attention.' };
  const requested = query.get('view') as ConnectorView;
  const view = views.includes(requested) ? requested : 'connection';
  const result: Extract<ConnectorWorkspacePayload, { kind: 'workspace' }> = { kind: 'workspace', overview, view };

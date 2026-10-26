@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {loadConfig} from '../server/config/env.js';
+import {validateRuntimePair} from '../server/config/runtime-pair.js';
+const shared={SERVE_COMPILED_CLIENT:'true',COOKIE_SECURE:'true',TRUST_PROXY_LOOPBACK:'true',OOTLA_BIND_HOST:'127.0.0.1'};
+const c=loadConfig({...shared,NODE_ENV:'production',APP_URL:'https://customer.example.test',PREVIEW_APP_URL:'https://preview.example.test',DATABASE_URL:'postgresql://customer:synthetic@127.0.0.1/ootla_customer',SESSION_SECRET:'customer-synthetic-only-secret-with-at-least-32-characters',SESSION_COOKIE_PREFIX:'__Host-ootla_customer',AI_PROVIDER:'disabled'});
+const p=loadConfig({...shared,PORT:'3101',NODE_ENV:'development',APP_URL:'https://preview.example.test',DATABASE_URL:'postgresql://preview:synthetic@127.0.0.1/ootla_demo_preview',SESSION_SECRET:'preview-synthetic-only-secret-with-at-least-32-characters',SESSION_COOKIE_PREFIX:'__Host-ootla_preview',DEMO_MODE:'true'});
+validateRuntimePair(c,p);
+for(const patch of [{port:c.port},{appUrl:'https://customer.example.test:8443'}, {sessionSecret:c.sessionSecret},{sessionCookiePrefix:c.sessionCookiePrefix},{databaseName:c.databaseName},{databaseUrl:'postgresql://customer:synthetic@127.0.0.1/ootla_demo_preview'},{appUrl:c.appUrl},{googleCalendar:{...p.googleCalendar,enabled:true}},{ai:{...p.ai,provider:'openai' as const}},{trustProxyLoopback:false}])assert.throws(()=>validateRuntimePair(c,{...p,...patch}));
+assert.throws(()=>loadConfig({APP_URL:'http://127.0.0.1:7673',SESSION_SECRET:c.sessionSecret,SESSION_COOKIE_PREFIX:'__Host-insecure'}));
+assert.throws(()=>loadConfig({APP_URL:'https://customer.example.test',SESSION_SECRET:c.sessionSecret,PREVIEW_APP_URL:'https://customer.example.test'}));
+assert.throws(()=>loadConfig({APP_URL:'https://customer.example.test',SESSION_SECRET:c.sessionSecret,PREVIEW_APP_URL:'https://preview.example.test/path'}));
+console.log('PASS hosted runtime pair and 13 unsafe configuration cases; synthetic values only, no network.');

@@ -1,3 +1,4 @@
+import {assertPrivateFileRetained} from './operational-retention.js';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { PoolClient, QueryResultRow } from 'pg';
 import type { z } from 'zod';
@@ -175,6 +176,7 @@ export class ScreeningService{
   await this.database.transaction(async c=>{
    const {actor,application:a}=await staffApplicationAccess(c,this.config,u,digest,id,{lock:true,review:true});this.submitted(a);
    await this.receipt(c,a,actor,input.requestKey,'decision',{decision:input.decision,reason:input.reason},async()=>{
+    if((await c.query("SELECT to_regclass('public.lease_workflows') IS NOT NULL AS ready")).rows[0]?.ready&&(await c.query('SELECT id FROM lease_workflows WHERE organization_id=$1 AND application_id=$2',[a.organization_id,a.id])).rowCount)throw new ApiError(409,'LEASE_WORKFLOW_ACTIVE','A lease workflow already exists. Staff must reconcile its legal and operational state before replacing the application decision.');
     if(['approved','declined'].includes(input.decision)&&(await c.query("SELECT id FROM screening_requests WHERE organization_id=$1 AND application_id=$2 AND (status<>'staff_review_pending' OR reviewed_at IS NULL) LIMIT 1",[a.organization_id,a.id])).rowCount)throw new ApiError(409,'SCREENING_REVIEW_REQUIRED','Review every requested screening report before recording this application decision.');
     const record=(await c.query('INSERT INTO application_decisions(organization_id,application_id,decision,reason,actor_user_id,actor_membership_id,request_key) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[a.organization_id,a.id,input.decision,input.reason,actor.id,actor.membershipId,input.requestKey])).rows[0]!;
     await this.event(c,a,actor.id,'staff_application_decision','Authorized staff recorded an application decision. Screening and payment status remain separate.',{decisionId:record.id,decision:input.decision,source:'authorized_staff'});
@@ -185,8 +187,9 @@ export class ScreeningService{
  async report(u:AuthUser,digest:string,id:string,screeningId:string):Promise<{content:Buffer;name:string;mediaType:'text/plain'}>{
   return this.database.transaction(async c=>{
    const {actor,application:a}=await staffApplicationAccess(c,this.config,u,digest,id,{review:true});
-   const r=(await c.query('SELECT r.content FROM screening_reports r JOIN screening_requests sr ON sr.id=r.screening_id AND sr.organization_id=r.organization_id WHERE r.organization_id=$1 AND sr.application_id=$2 AND sr.id=$3',[a.organization_id,a.id,screeningId])).rows[0];
+   const r=(await c.query('SELECT r.id,r.content FROM screening_reports r JOIN screening_requests sr ON sr.id=r.screening_id AND sr.organization_id=r.organization_id WHERE r.organization_id=$1 AND sr.application_id=$2 AND sr.id=$3',[a.organization_id,a.id,screeningId])).rows[0];
    if(!r)throw new ApiError(404,'SCREENING_REPORT_NOT_FOUND','This report is unavailable in the authorized application.');
+   await assertPrivateFileRetained(c,a.organization_id,'screening_reports',r.id);
    await c.query("INSERT INTO audit_events(organization_id,actor_user_id,action,metadata) VALUES($1,$2,'screening.report_downloaded',$3)",[a.organization_id,actor.id,JSON.stringify({applicationId:a.id,screeningId})]);
    return{content:r.content,name:'ootla-synthetic-screening-'+screeningId+'.txt',mediaType:'text/plain'};
   });

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../server/config/environment.js';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';

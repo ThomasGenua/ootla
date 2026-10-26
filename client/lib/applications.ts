@@ -1,4 +1,5 @@
-import { api, ApiError, errorMessage, type AuthUser } from './api';
+import { api, ApiError, type AuthUser } from './api';
+import {productError} from './product-copy';
 import type { PortalApplication, StaffApplicationWorkspace, StaffApplications, IssuedApplicationInvitation } from '../../shared/applicant-contracts';
 import type { LeadDirectory } from '../../shared/lead-contracts';
 import type { ContactRecord, Paginated } from '../../shared/property-contracts';
@@ -29,10 +30,10 @@ export async function loadApplicationsWorkspace(query:URLSearchParams,signal:Abo
   if(query.get('view')==='new')return{kind:'create',leads:await api<LeadDirectory>('/api/leads?'+new URLSearchParams({intent:'leasing',q:query.get('leadSearch')??'',page:query.get('leadPage')??'1',pageSize:'20'}),{signal})};
   const params=new URLSearchParams();for(const key of ['q','status','page','pageSize'])if(query.has(key))params.set(key,query.get(key)!);
   return{kind:'directory',directory:await api<StaffApplications>('/api/applications/list?'+params,{signal})};
- }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:errorMessage(issue)};throw issue;}
+ }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:productError(issue)};throw issue;}
 }
 const value=(data:FormData,key:string):string=>String(data.get(key)??'').trim();
-function displayError(form:HTMLElement,issue:unknown):void{const error=form.querySelector<HTMLElement>('[data-application-error]')??document.querySelector<HTMLElement>('[data-application-global-error]');if(error){error.textContent=errorMessage(issue);error.tabIndex=-1;error.focus();}}
+function displayError(form:HTMLElement,issue:unknown):void{const error=form.querySelector<HTMLElement>('[data-application-error]')??document.querySelector<HTMLElement>('[data-application-global-error]');if(error){error.textContent=productError(issue);error.tabIndex=-1;error.focus();}}
 export function initializeApplicationsWorkspace(signal:AbortSignal,navigate:(path:string,replace?:boolean,focusSelector?:string)=>void,user:AuthUser):void{
  const workspace=document.querySelector<HTMLElement>('[data-applications-workspace]');if(!workspace)return;
  initializeScreeningWorkspace(signal,navigate);

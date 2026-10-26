@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../server/config/environment.js';
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';

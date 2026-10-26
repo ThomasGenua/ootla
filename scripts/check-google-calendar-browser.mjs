@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../server/config/environment.js';
 import assert from 'node:assert/strict';
 import {mkdir}from 'node:fs/promises';
 import {chromium,expect}from '@playwright/test';

@@ -1,4 +1,5 @@
-import { api, ApiError, errorMessage } from './api';
+import { api, ApiError} from './api';
+import {productError} from './product-copy';
 import type { LeadWorkspace, PropertySuggestions } from '../../shared/lead-workspace-contracts';
 import { allowedDocumentTypes, maximumDocumentBytes } from '../../shared/lead-workspace-contracts';
 
@@ -76,7 +77,7 @@ export function initializeLeadWorkspace08(signal: AbortSignal, navigate: (path: 
       navigate('/admin/leads?' + next + '#' + section, true, '#' + section);
     } catch (issue) {
       if (signal.aborted) return;
-      if (error) { error.textContent = errorMessage(issue); error.tabIndex = -1; error.focus(); }
+      if (error) { error.textContent = productError(issue); error.tabIndex = -1; error.focus(); }
     } finally {
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     }

@@ -1,8 +1,9 @@
+import {customerError} from './customer-copy';
 import { api, errorMessage } from './api';
 import type { PaymentHandoff, DemoPaymentHandoff } from '../../shared/payment-contracts';
 type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 function errorIn(scope:HTMLElement,issue:unknown):void {
- const output=scope.querySelector<HTMLElement>('[data-payment-error]');if(output){output.textContent=errorMessage(issue);output.tabIndex=-1;output.focus();}
+ const output=scope.querySelector<HTMLElement>('[data-payment-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}
 }
 export function takePaymentDemoToken():string|null {
  const fragment=location.hash;history.replaceState(history.state,'',location.pathname);
@@ -35,7 +36,7 @@ export function initializePaymentWorkspace(signal:AbortSignal,navigate:Navigate)
    }catch(issue){if(!signal.aborted)errorIn(form,issue);}
    finally{if(!signal.aborted){if(button)button.disabled=false;form.removeAttribute('aria-busy');}}
   },{signal});
-  if(new URLSearchParams(location.search).has('paymentSaved')){const status=workspace.querySelector<HTMLElement>('[data-payment-success]');if(status){status.hidden=false;status.tabIndex=-1;status.textContent='The request completed. The status above reflects the latest server response and its source.';}}
+  if(new URLSearchParams(location.search).has('paymentSaved')){const status=workspace.querySelector<HTMLElement>('[data-payment-success]');if(status){status.hidden=false;status.tabIndex=-1;status.textContent='The update was saved. Your current payment status is shown above.';}}
  });
 }
 /** Fragment secrets remain only in this page closure and protected POST bodies. */
@@ -45,8 +46,8 @@ export async function initializePaymentDemo(signal:AbortSignal,token:string|null
  let secret=token,requestKey=crypto.randomUUID();signal.addEventListener('abort',()=>{secret=null;},{once:true});
  function show(data:DemoPaymentHandoff):void {
   if(!/^\/applicant\?application=[a-f0-9-]{36}$/.test(data.returnUrl))throw new Error('The application return destination could not be validated.');
-  back.href=data.returnUrl;status.textContent=(data.status==='confirmed'?'Simulated provider confirmation recorded. ':'Simulated provider status: pending. ')+data.notice+' Expires '+new Date(data.expiresAt).toLocaleString()+'.';
-  button.disabled=data.status==='confirmed';if(data.status==='confirmed')button.textContent='Simulated confirmation recorded';
+  back.href=data.returnUrl;status.textContent=(data.status==='confirmed'?'Example confirmation saved. ':'Awaiting example confirmation. ')+'No payment was taken.'+' Expires '+new Date(data.expiresAt).toLocaleString()+'.';
+  button.disabled=data.status==='confirmed';if(data.status==='confirmed')button.textContent='Example confirmation saved';
  }
  button.addEventListener('click',async()=>{
   if(!secret||button.disabled)return;button.disabled=true;workspace.setAttribute('aria-busy','true');const error=workspace.querySelector<HTMLElement>('[data-payment-error]');if(error)error.textContent='';
@@ -55,7 +56,7 @@ export async function initializePaymentDemo(signal:AbortSignal,token:string|null
   finally{if(!signal.aborted)workspace.removeAttribute('aria-busy');}
  },{signal});
  try{
-  if(!secret)throw new Error('This secure handoff is missing. Return to your application and open a new simulated provider handoff.');
+  if(!secret)throw new Error('This secure handoff is missing. Return to your application and open a new payment example.');
   const data=await api<DemoPaymentHandoff>('/api/payment-demo/open',{method:'POST',body:JSON.stringify({token:secret}),signal});if(!signal.aborted)show(data);
  }catch(issue){if(!signal.aborted){status.hidden=true;errorIn(workspace,issue);button.disabled=true;}}
 }

@@ -1,6 +1,6 @@
 # Ootla
 
-Ootla is a sales, leads and leasing CRM with embedded AI. Stage 10 adds standalone organization onboarding with reviewed CSV imports into the existing property, unit, contact and lead records. It includes durable background processing, source-row reconciliation, explicit contact duplicate decisions and conservative undo. The same vanilla Vite/TypeScript, Express and PostgreSQL application serves the public site and protected admin. Stage 10 implementation and final focused checks are complete with no outstanding failures; earlier completed stages remain preservation requirements. The current authorized work is Stage 12: client-evidenced Yardi readiness, fail-closed adapter/configuration/mapping scaffolding and pilot preparation. The functional Stage 11 simulator and all earlier working modules are preserved. No later stage or live activation is authorized.
+OotlaAI is the application under the Ootla brand: a sales, leads and leasing CRM in the existing Vite/vanilla TypeScript + Express + PostgreSQL project. The authorized final Stages26-28 batch is COMPLETE: operational administration, connected acceptance/fixes and local deployment/recovery preparation are verified. Read the [final handover](docs/ootla-final-handover.md), [demo walkthrough](docs/ootla-demo-walkthrough.md) and [live activation register](docs/ootla-live-activation-checklist.md) for current scope, accounts, exact routes and limits. The [Apache deployment/recovery guide](docs/ootla-apache-demo.md) prepares the isolated Ubuntu/Debian demo. No remote deployment, DNS change or live service activation occurred. Earlier stage reports below remain historical; their old stop instructions and setup-only page descriptions are superseded by this authorized final batch. STOP after Stage28.
 
 The resolved Windows Documents directory is `C:/Users/user/Documents`. The project is `C:/Users/user/Documents/software/Ootla` (the requested `Documents/software/ootla` on this case-insensitive Windows filesystem). Ootla is independent of LoomAgency and every other application.
 
@@ -460,7 +460,7 @@ Current development URLs (the retained APP_URL is 7673; historical stage URLs be
 - Demo login: <http://127.0.0.1:7673/admin/login>
 - Admin overview after sign-in: <http://127.0.0.1:7673/admin>
 
-Use `127.0.0.1` consistently: `APP_URL` is the allowed browser origin. The development frontend now reads it through `scripts/dev-client.mjs`, accepts only loopback HTTP and uses a strict configured port. `.env.example` still defaults to 5173; this retained `.env` already selected 7673 and was preserved. The frontend proxies `/api` to the backend. `npm.cmd run dev` starts both processes and stops its companion if either exits. Stop development with Ctrl+C. PostgreSQL is separate; stop only Ootla's local cluster with:
+Use `127.0.0.1` consistently: `APP_URL` is the allowed browser origin. The development frontend now reads it through `scripts/dev-client.mjs`, accepts only loopback HTTP and uses a strict configured port. `.env.example` and fresh env:setup now default to 7673; the retained `.env` already selected 7673 and was preserved. The frontend proxies `/api` to the backend. `npm.cmd run dev` starts both processes and stops its companion if either exits. Stop development with Ctrl+C. PostgreSQL is separate; stop only Ootla's local cluster with:
 
 ~~~powershell
 npm.cmd run db:local:stop
@@ -499,13 +499,15 @@ The fill button appears only when the backend confirms isolated demo mode, a pre
 | `/admin/leads` | Stage 07 list/board/create/edit; Stage 08 `?lead=<saved UUID>` adds private notes/calls/tasks/documents/timeline, canonical contact/household context, transparent suggestions and simulated assistance. |
 | `/admin/properties` | Stage 06 persistent scoped property directory/detail, separate units, server filters/pagination and permitted local create/edit forms. |
 | `/admin/contacts` | Stage 06 unified identities, explicit property links, households and scoped paged relationship history; permitted local forms. |
-| /admin/calendar | Read-only saved demo view; no provider invitation. |
+| /admin/calendar | Native day/week/agenda booking, conflicts, timezone, changes and separate Google sync status; demo sends no real invitations. |
 | /admin/tasks | Stage 09 My/Team/Unassigned task queues, creation/detail/edit/completion/history, reminders and organization-admin property/team routing. |
-| `/admin/applications` | Protected setup page; no applicant or screening workflow. |
-| `/admin/integrations` | Demo connection-status information explicitly labeled simulation/not configured. |
-| `/admin/analytics`, `/admin/ai` | Protected setup pages; no analytics collection or model execution. |
+| `/admin/applications` | Real applications, invitations, checklist/consent/submission, private files, synthetic screening, staff review, payment-status boundaries and lease continuity. Use the separate application-workflow staff organization. |
+| `/admin/integrations` | Actual durable Yardi simulator and guarded client-readiness configuration; live Yardi transport awaits documented interfaces. |
+| `/admin/analytics`, `/admin/ai` | Distinct website Analytics setup/illustrative reports and governed Ootla assistant; live transports await configuration/verification. |
+| `/admin/organization`, `/admin/integration-health`, `/admin/audit` | Real scoped operational administration, nine-service health and redacted read-only audit. |
+| `/applicant/login`, `/resident/login` | Separate private applicant/resident identities and authorized native application/lease/maintenance records. |
 
-The Stage 04 approved dashboard image is available in the conversation and is authoritative. Its raster binary is not stored locally; the original logo source also remains absent, so the existing editable roof/O vector remains provisional. Captured comparison and focused QA are complete; user visual review remains pending; do not treat the earlier missing-image state as current. See [design references](design-reference/README.md).
+The approved dashboard composition and supplied Ootla branding remain authoritative. Shared typography, restrained roof/letter animation with reduced-motion support, compact four metrics, header collapse and profile-last placement are preserved. Stage27 actual desktop/mobile screenshots verify the current HTML/CSS interface, rather than a screenshot background. See [design references](design-reference/README.md).
 
 ## Environment configuration
 
@@ -515,7 +517,7 @@ All settings below are server-side. Do not use `VITE_*` for secrets.
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection URL for the dedicated Ootla database. Never commit it. |
 | `PORT` | Backend port; the provided local setup uses `3100`. |
-| `APP_URL` | Exact frontend origin; safe example default is `http://127.0.0.1:5173`, retained local value is `http://127.0.0.1:7673`. Development reads the configured loopback HTTP origin; no path/query. |
+| `APP_URL` | Exact frontend origin; safe example and fresh-setup default, plus retained local value, are `http://127.0.0.1:7673`. Development reads the configured loopback HTTP origin; no path/query. |
 | `SESSION_SECRET` | Random server secret of at least 32 characters. Generate a fresh secret for each environment. |
 | `DEMO_MODE` | `true` only for a verified isolated nonproduction demo database without live organizations. Demo identity login/cookies are denied outside it. |
 | `DEMO_ADMIN_EMAIL` | Email used by explicit demo seeding and the demo fill control. |
@@ -524,7 +526,7 @@ All settings below are server-side. Do not use `VITE_*` for secrets.
 | `OUTBOUND_MODE` | Only `simulation` is accepted; defaults to simulation. |
 | `NODE_ENV` | `development`, `test` or `production`. Production requires HTTPS. |
 
-The root `.env.example` contains safe placeholders. Startup validates configuration without printing values. A blank `DATABASE_URL` supports public-page/setup review; authentication/database operations report unavailable setup with HTTP 503 rather than simulating success. If a configured database cannot be reached or needs migrations, the login page explains the issue. All authentication requires real PostgreSQL records.
+The root `.env.example` contains safe placeholders. Startup validates configuration without printing values. A blank `DATABASE_URL` supports uncompiled public development/setup review; compiled/production startup requires a configured available database and the complete exact migration manifest before listening. Authentication/database operations never simulate success. If a configured database cannot be reached or needs migrations, the login page explains the issue. All authentication requires real PostgreSQL records.
 
 ## Build, checks and production startup
 

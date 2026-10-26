@@ -1,4 +1,5 @@
-import { api, errorMessage } from './api';
+import { api} from './api';
+import {productError} from './product-copy';
 import { escapeHtml as e } from './ui';
 import type { Paginated, PropertySummary, ContactRecord } from '../../shared/property-contracts';
 import type { LeadDirectory, LeadDetail } from '../../shared/lead-contracts';
@@ -118,7 +119,7 @@ export function initializeTasksWorkspace(signal: AbortSignal, navigate: (path: s
       if (!signal.aborted && request === ownerRequest) {
         owner.innerHTML = '<option value="">Unassigned</option>';
         if (status) status.textContent = 'Owner choices could not be checked. Work is Unassigned until an eligible owner is chosen.';
-        if (error) error.textContent = errorMessage(issue);
+        if (error) error.textContent = productError(issue);
       }
     } finally {
       if (!signal.aborted && request === ownerRequest) { updateAssignment(); if (submit) submit.disabled = form.dataset.taskPending === 'true'; }
@@ -190,7 +191,7 @@ export function initializeTasksWorkspace(signal: AbortSignal, navigate: (path: s
       }
       navigate(destination, true, '[data-task-results]');
     } catch (error) {
-      if (!signal.aborted && errorNode) { errorNode.textContent = errorMessage(error); errorNode.tabIndex = -1; errorNode.focus(); }
+      if (!signal.aborted && errorNode) { errorNode.textContent = productError(error); errorNode.tabIndex = -1; errorNode.focus(); }
     } finally {
       if (!signal.aborted) form.dataset.taskPending = 'false';
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }

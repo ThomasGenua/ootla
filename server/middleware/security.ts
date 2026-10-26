@@ -6,7 +6,7 @@ export function protectOrigin(config: ServerConfig) {
   return (request: Request, _response: Response, next: NextFunction): void => {
     const origin = request.headers.origin;
     if (origin !== config.appUrl || request.headers['sec-fetch-site'] === 'cross-site') {
-      throw new ApiError(403, 'ORIGIN_DENIED', 'This request must come from the configured Ootla application.');
+      throw new ApiError(403, 'ORIGIN_DENIED', 'Open Ootla using its usual web address and try again.');
     }
     next();
   };

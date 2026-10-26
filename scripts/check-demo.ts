@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+﻿import '../server/config/environment.js';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHmac, randomUUID } from 'node:crypto';

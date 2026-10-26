@@ -1,0 +1,22 @@
+import type {Express,Request,Response} from 'express';
+import type {ServerConfig} from '../config/env.js';
+import type {Database} from '../db/pool.js';
+import type {PreviewEntry} from '../../shared/preview-entry-contracts.js';
+import {isIsolatedDemo} from '../services/demo-environment.js';
+
+const unavailable:PreviewEntry={kind:'unavailable',destination:null,notice:'The interactive preview cannot be opened right now. Contact Ootla and we can help you explore the workspace.'};
+export async function previewEntry(config:ServerConfig,database:Database):Promise<PreviewEntry>{
+ if(config.demoMode&&!config.production){try{if(await database.state()==='ready'&&await isIsolatedDemo(config,database))return{kind:'isolated_preview',destination:new URL('/admin/login',config.appUrl).href,notice:'Continue to the interactive preview with sample records.'};}catch{/* A failed isolation/readiness check never enables self-entry. */}}
+ if(config.previewAppUrl){
+  // Defense in depth: configuration, never request input, selects the separate runtime.
+  try{const target=new URL(config.previewAppUrl);if(['http:','https:'].includes(target.protocol)&&!target.username&&!target.password&&target.pathname==='/'&&!target.search&&!target.hash&&target.origin!==config.appUrl&&(!config.production||target.protocol==='https:'))return{kind:'separate_preview',destination:new URL('/admin/login',target.origin).href,notice:'Continue to the separate interactive preview.'};}catch{/* Fail closed for an invalid release/configuration object. */}
+ }
+ return{...unavailable};
+}
+const headers=(response:Response)=>{response.setHeader('Cache-Control','no-store, private, max-age=0');response.setHeader('Pragma','no-cache');response.setHeader('Expires','0');response.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');response.setHeader('Referrer-Policy','no-referrer');};
+function fallback(invalid=false):string{return'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Try Ootla</title><style>@font-face{font-family:Inter;src:url(/fonts/InterVariable.woff2) format("woff2");font-weight:100 900;font-display:swap}*{box-sizing:border-box}body{margin:0;background:#f5f7f5;color:#13211a;font-family:Inter,Arial,sans-serif}header{padding:28px 7%;background:#101b1b;color:white}header a{color:inherit;text-decoration:none;font-size:27px;font-weight:500}main{max-width:720px;margin:10vh auto;padding:28px}h1{font-size:clamp(32px,6vw,48px);font-weight:500;letter-spacing:-1px;line-height:1.15}p{line-height:1.8;color:#52655a}nav{display:flex;gap:18px;flex-wrap:wrap;margin-top:28px}nav a{padding:13px 18px;border:1px solid #bacbbe;border-radius:10px;color:#215f3b;text-decoration:none}nav a:first-child{background:#21643f;color:white;border-color:#21643f}a:focus-visible{outline:3px solid #2e8a56;outline-offset:4px}</style></head><body><header><a href="/" aria-label="Ootla home">Ootla</a></header><main><h1>'+(invalid?'Let’s open the right preview.':'A closer look at Ootla.')+'</h1><p>'+(invalid?'This preview link could not be opened. Choose Try Ootla from the website or contact us for help.':unavailable.notice)+'</p><nav aria-label="Next steps"><a href="/contact">Contact Ootla</a><a href="/">Back to Ootla</a><a href="/admin/login">Staff sign in</a></nav></main></body></html>';}
+export function installPreviewEntry(app:Express,config:ServerConfig,database:Database):void{
+ const clean=(request:Request)=>Object.keys(request.query).length===0;
+ app.get('/api/preview-entry',async(request,response)=>{headers(response);if(!clean(request)){response.status(400).json({error:'Open Try Ootla from the website to continue.',code:'INVALID_PREVIEW_ENTRY'});return;}const entry=await previewEntry(config,database);if(entry.kind==='unavailable')response.setHeader('Retry-After','60');response.status(entry.kind==='unavailable'?503:200).json(entry);});
+ app.get('/try',async(request,response)=>{headers(response);if(!clean(request)){response.status(400).type('html').send(fallback(true));return;}const entry=await previewEntry(config,database);if(entry.destination){response.redirect(302,entry.destination);return;}response.setHeader('Retry-After','60');response.status(503).type('html').send(fallback());});
+}

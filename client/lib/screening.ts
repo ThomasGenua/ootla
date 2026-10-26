@@ -1,8 +1,9 @@
+import {customerError} from './customer-copy';
 import { api, errorMessage } from './api';
 export type ScreeningNavigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 function errorIn(form:HTMLElement,issue:unknown):void {
  const output=form.querySelector<HTMLElement>('[data-screening-error]')??document.querySelector<HTMLElement>('[data-screening-global-error]');
- if(output){output.textContent=errorMessage(issue);output.tabIndex=-1;output.focus();}
+ if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}
 }
 /** Stable per-attempt keys survive network errors; navigation reloads the committed state. */
 export function initializeScreeningWorkspace(signal:AbortSignal,navigate:ScreeningNavigate):void {
@@ -28,7 +29,7 @@ export function initializeScreeningWorkspace(signal:AbortSignal,navigate:Screeni
   finally{if(!signal.aborted){if(button)button.disabled=false;form.removeAttribute('aria-busy');}}
  },{signal});
  const saved=new URLSearchParams(location.search).get('screeningSaved');
- if(workspace&&saved){const success=workspace.querySelector<HTMLElement>('[data-screening-success]');if(success){success.hidden=false;success.tabIndex=-1;success.textContent=saved==='decision'?'The staff decision was saved with its audit history.':'Screening action saved. The status below is loaded from the application records.';}}
+ if(workspace&&saved){const success=workspace.querySelector<HTMLElement>('[data-screening-success]');if(success){success.hidden=false;success.tabIndex=-1;success.textContent=saved==='decision'?'The staff decision was saved.':'Screening action saved. The status below is loaded from the application records.';}}
 }
 export function initializeScreeningConsent(signal:AbortSignal,navigate:ScreeningNavigate):void {
  const workspace=document.querySelector<HTMLElement>('[data-screening-consent-workspace]'),form=workspace?.querySelector<HTMLFormElement>('[data-screening-consent]');

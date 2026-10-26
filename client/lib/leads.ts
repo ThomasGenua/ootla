@@ -1,4 +1,5 @@
-import { api, errorMessage } from './api';
+import { api} from './api';
+import {productError} from './product-copy';
 import { loadLeadWorkspace08 } from './lead-workspace';
 import type { LeadWorkspace } from '../../shared/lead-workspace-contracts';
 import { escapeHtml as e } from './ui';
@@ -108,7 +109,7 @@ export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: st
       navigate(destination, true, '[data-lead-results]');
     } catch (error) {
       if (signal.aborted) return;
-      if (errorNode) { errorNode.textContent = errorMessage(error); errorNode.tabIndex = -1; errorNode.focus(); }
+      if (errorNode) { errorNode.textContent = productError(error); errorNode.tabIndex = -1; errorNode.focus(); }
     } finally {
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     }
@@ -135,7 +136,7 @@ export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: st
         if (signal.aborted) return;
         if (status) status.textContent = 'Contact relationships saved for ' + saved + ' selected properties. Save the lead separately to update its interests.';
       } catch (error) {
-        if (!signal.aborted && status) { status.textContent = (saved ? saved + ' relationships saved. ' : '') + errorMessage(error); status.tabIndex = -1; status.focus(); }
+        if (!signal.aborted && status) { status.textContent = (saved ? saved + ' relationships saved. ' : '') + productError(error); status.tabIndex = -1; status.focus(); }
       } finally { if (!signal.aborted) button.disabled = false; }
       return;
     }
@@ -168,7 +169,7 @@ export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: st
       if (signal.aborted || currentRequest !== duplicateRequest) return;
       suggestions.innerHTML = '<p class="lw-hint" role="status">' + result.items.length + ' possible matches. Suggestions never merge identities. Review each person before explicitly using an existing contact.</p>' + result.items.map(item => '<article class="lw-suggestion"><h4>' + e(item.name) + '</h4><p>' + e([item.email, item.phone].filter(Boolean).join(' / ') || 'No email or phone supplied') + '</p><p>Match reasons: ' + e(item.reasons.join(', ')) + '. Existing leads: ' + Number(item.leadCount) + '.</p><button type="button" class="lw-button" data-use-contact="' + e(item.contactId) + '" data-contact-name="' + e(item.name) + '">Use this existing contact</button></article>').join('');
     } catch (error) {
-      if (!signal.aborted && currentRequest === duplicateRequest) suggestions.innerHTML = '<p class="lw-error" role="alert">' + e(errorMessage(error)) + '</p>';
+      if (!signal.aborted && currentRequest === duplicateRequest) suggestions.innerHTML = '<p class="lw-error" role="alert">' + e(productError(error)) + '</p>';
     } finally { if (!signal.aborted) button.disabled = false; }
   }, { signal });
 }

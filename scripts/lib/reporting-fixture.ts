@@ -1,0 +1,51 @@
+import {randomUUID} from 'node:crypto';
+import type {ConversationFixture} from './conversation-fixture.js';
+/** Controlled native CRM facts; all evidence is explicitly synthetic demo evidence. */
+export async function seedReportingFixture(f:ConversationFixture){
+ const groupId=randomUUID(),otherGroupId=randomUUID(),propertyId=randomUUID(),otherPropertyId=randomUUID(),teamId=randomUUID();
+ await f.database.query("INSERT INTO property_groups(id,organization_id,name) VALUES($1,$2,'Controlled reporting group'),($3,$2,'Separate reporting group')",[groupId,f.organizationId,otherGroupId]);
+ await f.database.query("INSERT INTO properties(id,organization_id,name,address,city,group_id,source_system) VALUES($1,$2,'=SUM(1,2)','Synthetic reporting address','Synthetic city',$3,'demo'),($4,$2,'Separate report property','Synthetic reporting address','Synthetic city',$5,'demo')",[propertyId,f.organizationId,groupId,otherPropertyId,otherGroupId]);
+ await f.database.query("INSERT INTO task_teams(id,organization_id,name) VALUES($1,$2,'Controlled report team')",[teamId,f.organizationId]);
+ await f.database.query('INSERT INTO task_team_members(organization_id,team_id,membership_id) VALUES($1,$2,$3)',[f.organizationId,teamId,f.staffMembershipId]);
+ for(const member of f.staff)await f.database.query('INSERT INTO property_access_assignments(organization_id,membership_id,property_id) VALUES($1,$2,$3)',[f.organizationId,member.membershipId,propertyId]);
+ const lead=async(name:string,date:string,source:string,intent='leasing',property=propertyId,stage='new_inquiry')=>(await f.database.query("INSERT INTO leads(organization_id,property_id,display_name,email,status,intent,pipeline_stage,source,owner_membership_id,created_at,updated_at,notes) VALUES($1,$2,$3,'','new',$4,$5,$6,$7,$8,$8,'PRIVATE_REPORTING_NOTE_NEVER_EXPORTED') RETURNING id,contact_id",[f.organizationId,property,name,intent,stage,source,f.staffMembershipId,date])).rows[0] as{id:string;contact_id:string};
+ const a=await lead('Controlled lead one','2026-10-02T09:00:00Z','website','leasing',propertyId,'leased');
+ const b=await lead('Controlled lead two','2026-10-03T09:00:00Z','referral');
+ const c=await lead('Controlled lead three','2026-10-04T09:00:00Z','website');
+ const d=await lead('Controlled lead four','2026-10-10T09:00:00Z','phone');
+ const old=await lead('Prior-period lead','2026-09-28T09:00:00Z','referral');
+ const sales=await lead('Controlled sales opportunity','2026-10-09T09:00:00Z','website','sales');
+ const separate=await lead('Separate property lead','2026-10-06T09:00:00Z','email','leasing',otherPropertyId);
+ const viewing=async(l:{id:string},starts:string,created:string,status:string,property=propertyId)=>(await f.database.query("INSERT INTO viewings(organization_id,property_id,lead_id,starts_at,ends_at,status,created_at,updated_at,owner_membership_id) VALUES($1,$2,$3,$4,$4::timestamptz+interval '30 minutes',$5,$6,$6,$7) RETURNING id",[f.organizationId,property,l.id,starts,status,created,f.staffMembershipId])).rows[0].id as string;
+ const tourA=await viewing(a,'2026-10-03T12:00:00Z','2026-10-02T13:00:00Z','completed');
+ await viewing(b,'2026-10-05T12:00:00Z','2026-10-04T13:00:00Z','cancelled');
+ const tourC=await viewing(c,'2026-10-06T12:00:00Z','2026-10-05T13:00:00Z','completed');
+ await viewing(d,'2026-10-20T12:00:00Z','2026-10-16T13:00:00Z','scheduled');
+ const tourOld=await viewing(old,'2026-10-05T12:00:00Z','2026-10-04T14:00:00Z','completed');
+ await viewing(separate,'2026-10-08T12:00:00Z','2026-10-07T13:00:00Z','no_show',otherPropertyId);
+ const application=async(l:{id:string;contact_id:string},created:string,submitted:string|null,status='submitted')=>(await f.database.query("INSERT INTO applications(organization_id,contact_id,property_id,lead_id,status,portal_enabled,portal_submitted_at,created_at,updated_at,source_system) VALUES($1,$2,$3,$4,$5,true,$6,$7,$7,'demo') RETURNING id",[f.organizationId,l.contact_id,propertyId,l.id,status,submitted,created])).rows[0].id as string;
+ const applicationA=await application(a,'2026-10-04T09:00:00Z','2026-10-04T12:00:00Z');
+ const applicationC=await application(c,'2026-10-05T09:00:00Z','2026-10-08T12:00:00Z','staff_review');
+ const applicationOld=await application(old,'2026-10-07T09:00:00Z','2026-10-07T12:00:00Z');
+ const applicationFuture=await application(d,'2026-10-20T09:00:00Z','2026-10-21T12:00:00Z');
+ await application(b,'2026-10-08T09:00:00Z',null,'draft');
+ const lease=async(l:{id:string;contact_id:string},applicationId:string,updated:string,verified:string|null)=>(await f.database.transaction(async client=>{
+  const id=(await client.query("INSERT INTO leases(organization_id,contact_id,property_id,application_id,lead_id,status,starts_on,ends_on,source_system,created_at,updated_at) VALUES($1,$2,$3,$4,$5,'active','2026-11-01','2027-10-31','demo',$6,$6) RETURNING id",[f.organizationId,l.contact_id,propertyId,applicationId,l.id,updated])).rows[0].id as string;
+  if(verified)await client.query("INSERT INTO lease_verified_milestones(organization_id,lead_id,lease_id,property_id,contact_id,lease_updated_at,evidence_reference,verified_by_user_id,verified_by_membership_id,verified_at,evidence_kind) VALUES($1,$2,$3,$4,$5,$6,'Controlled synthetic demo evidence',$7,$8,$9,'demo_event')",[f.organizationId,l.id,id,propertyId,l.contact_id,updated,f.staffUserId,f.staffMembershipId,verified]);
+  return id;
+ }));
+ const leaseA=await lease(a,applicationA,'2026-10-10T12:00:00Z','2026-10-10T13:00:00Z');
+ const leaseC=await lease(c,applicationC,'2026-10-09T12:00:00Z',null);
+ const leaseOld=await lease(old,applicationOld,'2026-10-16T12:00:00Z','2026-10-16T13:00:00Z');
+ await f.database.query("INSERT INTO application_participants(organization_id,application_id,contact_id,property_id,role,invited_email,active) VALUES($1,$2,$3,$4,'primary','reporting@example.test',true)",[f.organizationId,applicationC,c.contact_id,propertyId]);
+ await f.database.query("INSERT INTO application_checklist_items(organization_id,application_id,label,required,active,position) VALUES($1,$2,'Controlled identity document',true,true,0),($1,$2,'Controlled supporting document',true,true,1)",[f.organizationId,applicationC]);
+ const task=async(l:{id:string;contact_id:string},title:string,owner:string|null,due:string,status='open')=>(await f.database.query("INSERT INTO tasks(organization_id,property_id,lead_id,contact_id,title,due_at,status,owner_membership_id,team_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'2026-10-04T08:00:00Z') RETURNING id",[f.organizationId,propertyId,l.id,l.contact_id,title,due,status,owner,teamId])).rows[0].id as string;
+ const taskAssigned=await task(b,'Controlled overdue staff follow-up',f.staffMembershipId,'2026-10-05T10:00:00Z');
+ const taskUnassigned=await task(d,'Controlled unassigned follow-up',null,'2026-10-06T10:00:00Z');
+ await task(c,'Controlled resolved follow-up',f.staffMembershipId,'2026-10-06T10:00:00Z','completed');
+ await f.database.query("UPDATE leads SET next_action='Follow up on the saved request',next_action_at='2026-10-05T10:00:00Z' WHERE id=$1",[b.id]);
+ await f.database.query("UPDATE leads SET next_action='Agree the next step',next_action_at='2026-10-06T10:00:00Z' WHERE id=$1",[d.id]);
+ await f.database.query("INSERT INTO lead_workspace_events(organization_id,lead_id,property_id,contact_id,kind,summary,actor_user_id,actor_membership_id,occurred_at) VALUES($1,$2,$3,$4,'call','Controlled staff call',$5,$6,'2026-10-03T11:00:00Z')",[f.organizationId,b.id,propertyId,b.contact_id,f.staffUserId,f.staffMembershipId]);
+ return{propertyId,propertyName:'=SUM(1,2)',otherPropertyId,groupId,otherGroupId,teamId,leads:{a,b,c,d,old,sales,separate},tours:{tourA,tourC,tourOld},applications:{applicationA,applicationC,applicationOld,applicationFuture},leases:{leaseA,leaseC,leaseOld},tasks:{taskAssigned,taskUnassigned},range:{from:'2026-10-01',to:'2026-10-14'}};
+}
+export type ReportingFixture=Awaited<ReturnType<typeof seedReportingFixture>>;
