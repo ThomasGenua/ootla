@@ -1,2 +1,5 @@
 # Applied migration checksums depend on exact bytes. Never convert their line endings.
 migrations/*.sql -text
+
+# Showcase files must match their prepared content hash on every operating system.
+demo-data/imports/*.csv -text

@@ -387,6 +387,8 @@ async function processRow(c: PoolClient, b: Row, r: Row): Promise<void> {
 }
 export async function processImportBatches(database: Database, options: {
     batchSize?: number;
+    /** Optional command-scoped drain; ordinary workers still select the next eligible batch. */
+    batchId?: string;
 } = {}): Promise<number> {
     if (!database.pool)
         return 0;
@@ -396,7 +398,7 @@ export async function processImportBatches(database: Database, options: {
         return await database.transaction(async (c) => {
             if (!(await c.query("SELECT to_regclass('public.import_batches') AS present")).rows[0]?.present)
                 return 0;
-            const b = (await c.query(`SELECT * FROM import_batches WHERE status IN ('queued','running') AND next_attempt_at<=now() ORDER BY created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`)).rows[0];
+            const b = (await c.query(`SELECT * FROM import_batches WHERE status IN ('queued','running') AND next_attempt_at<=now() AND ($1::uuid IS NULL OR id=$1) ORDER BY created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`, [options.batchId ?? null])).rows[0];
             if (!b)
                 return 0;
             selected = b.id;

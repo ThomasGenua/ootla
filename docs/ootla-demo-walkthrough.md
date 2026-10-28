@@ -1,8 +1,10 @@
 # OotlaAI demo walkthrough
 
+Current preloaded review setup: see the [prepared demo guide](ootla-demo-showcase.md) for main-workspace applications, the additional showcase applicant/resident identities, reconciled imports and enabled local practice. The examples below also retain the original separate applicant/resident workflows.
+
 Use the existing local application at **http://127.0.0.1:7673**. All examples are isolated synthetic records. AI inference, website delivery, screening/signing/payment demonstrations and voice are labelled simulations; they do not contact customers or move money.
 
-Start retained data from `C:/Users/user/Documents/software/Ootla` with `npm.cmd run db:local`, `npm.cmd run db:migrate`, then `npm.cmd run dev`. Do not reset or reseed to start. See the [handover](ootla-final-handover.md) and [Apache guide](ootla-apache-demo.md) for installation/compiled hosting.
+Start the project-owned cluster from `C:/Users/user/Documents/software/Ootla` with `npm.cmd run db:local`, then run `npm.cmd run dev` in the demo checkout `C:/Users/user/Documents/software/Ootla-demo`. The retained demo is already prepared; do not reset or reseed to start. For a new isolated demo, use the explicit preparation commands in the guide above. See the [handover](ootla-final-handover.md) and [Apache guide](ootla-apache-demo.md) for installation/compiled hosting.
 
 ## Sign in to the correct organization
 
@@ -35,7 +37,7 @@ At mobile width, check readable copy, no page-level horizontal overflow and usab
 Account: original staff administrator.
 
 1. Open [/admin](http://127.0.0.1:7673/admin). The three cards come from actual actionable tasks; longer queues belong in [/admin/tasks](http://127.0.0.1:7673/admin/tasks).
-2. Open **Ask Ootla** in the header. Ask for today's priorities. The panel identifies current page/property/record context; source links open permitted native records. Demo answers say Simulated AI.
+2. Open **Ask Ootla** in the header. Ask for today's priorities. The panel identifies current page/property/record context; source links open permitted native records. Demo inference is scripted; priority answers use authorized saved records.
 3. Open a lead from a card, reopen Ask and request a follow-up task for that lead. Inspect the proposed title, due date and priority.
 4. Choose **Confirm task creation** deliberately. **Open saved task** appears only after persistence succeeds. Refresh the task/lead; verify the saved record and history. Reading a question or preview does not create work.
 5. Complete the task or snooze its reminder within the displayed policy. Completing/no-longer-relevant work cancels pending reminders; dashboard refresh does not create more tasks.
@@ -96,11 +98,11 @@ If no approved terms exist, the honest result is that no terms are available. As
 
 ## Standalone, conversations and administration
 
-- **Standalone import:** sign in to Ootla Standalone Demo and open [/admin/imports](http://127.0.0.1:7673/admin/imports). Import Properties, then Units, Contacts and Leads using one stable source name/IDs. Complete **Upload -> Map fields -> Validate -> Review duplicates -> Confirm import -> Reconcile results**. Review invalid rows/exported errors, choose identities explicitly and open saved CRM records. Matching names never silently merge. A saved-batch retry must not duplicate records. No Yardi connection is needed.
+- **Standalone import:** sign in to Ootla Standalone Demo and open [/admin/imports](http://127.0.0.1:7673/admin/imports). Inspect the four prepared ootla-showcase-v1 batches and the deliberate invalid contact at source row 4. For another test, import Properties, then Units, Contacts and Leads using one stable source name/IDs. Complete **Upload -> Map fields -> Validate -> Review duplicates -> Confirm import -> Reconcile results**. Review invalid rows/exported errors, choose identities explicitly and open saved CRM records. Matching names never silently merge. A saved-batch retry must not duplicate records. No Yardi connection is needed.
 - **Website conversation:** original staff opens [/admin/conversations](http://127.0.0.1:7673/admin/conversations). Use the explicitly published demo property and approved public knowledge. In a visitor session, open the homepage chat, ask about that property, state preferences and request a viewing. The confirmed message follows a successful native booking. Staff takeover pauses automated replies and queued follow-ups; staff notes remain private.
 - **Organization controls:** [/admin/organization](http://127.0.0.1:7673/admin/organization) separates organizational policy/access from personal [/admin/settings](http://127.0.0.1:7673/admin/settings). Private property sources require explicit reviewed-text approval; PDF/OCR parsing is not automatic. Retention is opt-in, previewed and explicitly confirmed, never an automatic demo reset.
 - **Health/audit:** [/admin/integration-health](http://127.0.0.1:7673/admin/integration-health) distinguishes simulation/configuration/live evidence; [/admin/audit](http://127.0.0.1:7673/admin/audit) is protected/read-only.
-- **Reports/Analytics:** [/admin/reports](http://127.0.0.1:7673/admin/reports) uses real CRM records. [/admin/analytics](http://127.0.0.1:7673/admin/analytics) starts unavailable until a deliberate illustrative selection; synthetic website counts never become leases/applications.
-- **Voice:** [/admin/voice](http://127.0.0.1:7673/admin/voice) starts disabled. An authorized admin can explicitly enable local transcript playback. Simulate failure/unavailable slots; no call/audio/recording occurs. Private applicant guidance needs the actual organization-matched applicant cookie, not a caller name or staff checkbox.
+- **Reports/Analytics:** [/admin/reports](http://127.0.0.1:7673/admin/reports) uses real CRM records. [/admin/analytics](http://127.0.0.1:7673/admin/analytics) has a prepared illustrative selection in the main demo; other organizations require a deliberate selection. Synthetic website counts never become leases/applications.
+- **Voice:** [/admin/voice](http://127.0.0.1:7673/admin/voice) has local transcript playback enabled in the prepared main demo. Other organizations retain their existing settings; an authorized admin may deliberately enable local practice. Simulate failure/unavailable slots; no call/audio/recording occurs. Private applicant guidance needs the actual organization-matched applicant cookie, not a caller name or staff checkbox.
 
 Stages 26-28 local preparation is complete: the final 17-group consolidated acceptance, four actual compiled-serving/authentication groups, six retained normal demo identities, compiled restart and three disposable native recovery groups pass. No actual VPS deployment, live provider or production-concurrency verification is implied. The final consolidated acceptance uses disposable records and does not populate/reset the retained demo. Your new deliberate manual actions will persist. See [verification and limitations](ootla-final-handover.md) before interpreting any simulated outcome as live.

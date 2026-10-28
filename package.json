@@ -103,7 +103,13 @@
     "check:env-setup": "node scripts/check-env-setup.mjs",
     "check:backup-restore": "tsx scripts/check-backup-restore.ts",
     "check:final-compiled": "node scripts/check-final-compiled-smoke.mjs",
-    "check:compiled-restart": "tsx scripts/check-final-restart.ts --compiled"
+    "check:compiled-restart": "tsx scripts/check-final-restart.ts --compiled",
+    "demo:prepare": "tsx scripts/prepare-demo.ts",
+    "check:demo-showcase": "tsx scripts/check-demo-showcase.ts",
+    "check:demo-showcase:journey": "tsx scripts/check-demo-showcase-remaining.ts",
+    "check:demo-showcase:applicant": "tsx scripts/check-demo-showcase-applicant.ts",
+    "check:demo-showcase:browser": "node scripts/check-demo-showcase-browser.mjs",
+    "check:demo-showcase:milestones": "tsx scripts/check-demo-dashboard-milestones.ts"
   },
   "dependencies": {
     "argon2": "0.45.1",

@@ -1,0 +1,4 @@
+"sourceId","displayName","email","phone","propertySourceId"
+"ST-C-01","Morgan Reed — standalone example","morgan.standalone@example.test","+1 202 555 0181","ST-P-01"
+"ST-C-02","Casey Jordan — standalone example","casey.standalone@example.test","+1 202 555 0182","ST-P-02"
+"ST-C-INVALID","Invalid email example","invalid-address","","ST-P-01"

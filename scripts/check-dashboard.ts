@@ -147,7 +147,7 @@ try {
     const overview = await response.json() as AdminOverview;
     assert.deepEqual(overview.dashboard, {
       period, timeZone: 'Africa/Lagos',
-      metrics: { newLeads: expected(leadFixtures, period), toursBooked: expected(viewingFixtures, period), applications: null, leasesSigned: null },
+      metrics: { newLeads: expected(leadFixtures, period), toursBooked: expected(viewingFixtures, period), applications: 0, leasesSigned: 0 },
     }, `Incorrect administrator metrics for ${period}.`);
     assert.deepEqual(overview.counts, { leads: 12, properties: 2, tasks: 0, applications: 0 }, 'Legacy count contracts must remain unchanged.');
     const scopedResponse = await api.request(`/api/organizations/${organizationIds[0]}/overview?period=${period}`, admin);
@@ -161,7 +161,7 @@ try {
     assert.equal(response.status, 200);
     const overview = await response.json() as AdminOverview;
     assert.deepEqual(overview.dashboard.metrics, {
-      newLeads: expected(leadFixtures, period, true), toursBooked: expected(viewingFixtures, period, true), applications: null, leasesSigned: null,
+      newLeads: expected(leadFixtures, period, true), toursBooked: expected(viewingFixtures, period, true), applications: 0, leasesSigned: 0,
     });
     assert.equal(overview.counts.leads, 6);
   }
