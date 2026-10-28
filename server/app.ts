@@ -169,7 +169,7 @@ export function createApp(config: ServerConfig, database: Database) {
     const demoOrganization = scope && (await database.query("SELECT id FROM organizations WHERE id=$1 AND environment='demo' AND slug='ootla-demo'",[user.organization.id])).rowCount;
     return {
       organization:user.organization,
-      dashboard:await loadDashboard(database,user,period),
+      dashboard:await loadDashboard(database,user,period,config),
       counts:{properties:result.rows[0]?.properties??0,leads:result.rows[0]?.leads??0,tasks:result.rows[0]?.tasks??0,applications:result.rows[0]?.applications??0},
       modulesReady:false,
       demoEnabled:Boolean(demoOrganization && await preparedDemoAccount(config,database)),

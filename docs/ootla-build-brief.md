@@ -493,3 +493,8 @@ User authorizes two aligned instances: ootla-v1-branch is the customer/live app 
 ### Explicit live-organization communication hold - 2026-10-28
 
 Do not send any email to Oodler or its live users until the user explicitly approves. Private local administrator invitation creation is authorized; automatic or test email delivery is not. Keep outbound simulation and live delivery disabled. This constraint persists across subsequent prompts.
+
+
+## Demo showcase and remote branch publication - 2026-10-28
+
+The user authorizes preloading the isolated demo with representative linked data, making native features and explicit local provider simulations usable, then pushing ootla-v1-branch and ootla-v1-demo to their matching configured remote branches. SQLite is a possibility, not a required rewrite: preserve the working PostgreSQL implementation for actual authentication, tenant isolation, native services and durable-job concurrency. Demo preparation must be deliberate, repeatable and additive; no automatic startup seed, reset, password rotation or overwrite of staff edits. Keep live and demo feature code aligned but private data/configurations separate. No real external email/SMS/call/calendar invitation/payment/provider action is authorized. Oodler/live email hold persists until explicit approval. Do not push private env files, backups, database files or invitation capabilities. No production deployment follows automatically from pushing source.

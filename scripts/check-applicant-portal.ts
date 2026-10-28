@@ -130,7 +130,7 @@ async function main(){
  const detachedId=randomUUID();
  await database.query("INSERT INTO applications(id,organization_id,contact_id,property_id,status) VALUES($1,$2,$3,$4,'draft')",[detachedId,orgs[0],contacts[1],properties[1]]);
  const overviewFor=(cookie:string,period='month')=>json<AdminOverview>(api,'/api/admin/overview?period='+period,cookie);
- const ownAll=await overviewFor(admin,'all');assert.equal(ownAll.counts.applications,3);assert.equal(ownAll.dashboard.metrics.applications,3);assert.equal(ownAll.dashboard.metrics.leasesSigned,null);assert.equal(ownAll.modulesReady,false);
+ const ownAll=await overviewFor(admin,'all');assert.equal(ownAll.counts.applications,3);assert.equal(ownAll.dashboard.metrics.applications,3);assert.equal(ownAll.dashboard.metrics.leasesSigned,0);assert.equal(ownAll.modulesReady,false);
  assert.deepEqual(Object.keys(ownAll.dashboard.metrics).sort(),['applications','leasesSigned','newLeads','toursBooked'],'Overview must retain exactly four established metrics.');
  const assignedAll=await overviewFor(agent,'all');assert.equal(assignedAll.dashboard.metrics.applications,1);assert.equal(assignedAll.counts.applications,1,'An assigned agent must not count applications with hidden additional lead interests or an unassigned property.');
  const foreignAll=await overviewFor(foreignAdmin,'all');assert.equal(foreignAll.dashboard.metrics.applications,1);assert.equal(foreignAll.counts.applications,1);
@@ -314,7 +314,7 @@ async function main(){
  assert.equal((await database.query('SELECT 1 FROM organization_memberships WHERE user_id=$1',[seeded.applicantUserId])).rowCount,0);
 
  const demoStaffLogin=await demoApi.request('/api/auth/login','','POST',{email:applicantDemoStaffEmail,password:demoConfig.demoAdminPassword});assert.equal(demoStaffLogin.status,200);const demoStaffCookie=cookieOf(demoStaffLogin,'ootla.sid');
- for(const period of ['month','all']){const demoOverview=await json<AdminOverview>(demoApi,'/api/admin/overview?period='+period,demoStaffCookie);assert.equal(demoOverview.dashboard.metrics.applications,1);assert.equal(demoOverview.counts.applications,1);assert.equal(demoOverview.dashboard.metrics.leasesSigned,null);assert.equal(demoOverview.modulesReady,false);}
+ for(const period of ['month','all']){const demoOverview=await json<AdminOverview>(demoApi,'/api/admin/overview?period='+period,demoStaffCookie);assert.equal(demoOverview.dashboard.metrics.applications,1);assert.equal(demoOverview.counts.applications,1);assert.equal(demoOverview.dashboard.metrics.leasesSigned,0);assert.equal(demoOverview.modulesReady,false);}
  const disabledAgain=await start(config);await deny(disabledAgain,portal+'/auth/login','','POST',{email:applicantDemoEmail,password:applicantDemoPassword},401);assert.equal((await json<ApplicantConfig>(disabledAgain,portal+'/config')).demoEnabled,false);
  const production=await start({...config,nodeEnv:'production',production:true,appUrl:'https://ootla.test'});await deny(production,portal+'/auth/login','','POST',{email:applicantDemoEmail,password:applicantDemoPassword},401);
  pass('the deliberate applicant seed creates a separate synthetic organization and hashed applicant, retries without changing any record, and cannot run or authenticate against disabled, mixed or production configurations');

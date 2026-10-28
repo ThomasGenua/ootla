@@ -1,6 +1,6 @@
 # Current live/demo review setup
 
-See [the two-instance guide](docs/ootla-instances.md) for the current ootla-v1-branch and ootla-v1-demo checkouts, startup commands, separate databases and access URLs. The live branch selects .env.live; the demo branch retains masked demo credential filling. Older stage commands below are historical and must not override the selected instance configuration.
+See [the two-instance guide](docs/ootla-instances.md) for the current ootla-v1-branch and ootla-v1-demo checkouts, startup commands, separate databases and access URLs. The live branch selects .env.live; the demo branch retains masked demo credential filling. Older stage commands below are historical and must not override the selected instance configuration. The populated review portfolio, accounts and module walkthrough are in the [demo showcase guide](docs/ootla-demo-showcase.md). Run `npm run demo:prepare` deliberately from the isolated demo checkout after normal installation/migrations; it is additive and repeatable, never a startup reset. Source publication does not transfer the private database.
 
 # Ootla
 

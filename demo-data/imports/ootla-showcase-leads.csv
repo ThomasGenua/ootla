@@ -1,0 +1,3 @@
+"sourceId","propertySourceId","contactSourceId","unitSourceId","intent","stage","nextAction"
+"ST-L-01","ST-P-01","ST-C-01","ST-U-01","leasing","new_inquiry","Review the imported inquiry and arrange a viewing."
+"ST-L-02","ST-P-02","ST-C-02","ST-U-02","leasing","new_inquiry","Discuss the customer’s stated move-in preferences."
