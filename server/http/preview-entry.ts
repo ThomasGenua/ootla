@@ -6,11 +6,8 @@ import {isIsolatedDemo} from '../services/demo-environment.js';
 
 const unavailable:PreviewEntry={kind:'unavailable',destination:null,notice:'The interactive preview cannot be opened right now. Contact Ootla and we can help you explore the workspace.'};
 export async function previewEntry(config:ServerConfig,database:Database):Promise<PreviewEntry>{
+ if(!config.demoMode)return{kind:'staff_sign_in',destination:new URL('/admin/login',config.appUrl).href,notice:'Sign in to your organization’s workspace.'};
  if(config.demoMode&&!config.production){try{if(await database.state()==='ready'&&await isIsolatedDemo(config,database))return{kind:'isolated_preview',destination:new URL('/admin/login',config.appUrl).href,notice:'Continue to the interactive preview with sample records.'};}catch{/* A failed isolation/readiness check never enables self-entry. */}}
- if(config.previewAppUrl){
-  // Defense in depth: configuration, never request input, selects the separate runtime.
-  try{const target=new URL(config.previewAppUrl);if(['http:','https:'].includes(target.protocol)&&!target.username&&!target.password&&target.pathname==='/'&&!target.search&&!target.hash&&target.origin!==config.appUrl&&(!config.production||target.protocol==='https:'))return{kind:'separate_preview',destination:new URL('/admin/login',target.origin).href,notice:'Continue to the separate interactive preview.'};}catch{/* Fail closed for an invalid release/configuration object. */}
- }
  return{...unavailable};
 }
 const headers=(response:Response)=>{response.setHeader('Cache-Control','no-store, private, max-age=0');response.setHeader('Pragma','no-cache');response.setHeader('Expires','0');response.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');response.setHeader('Referrer-Policy','no-referrer');};

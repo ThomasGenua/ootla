@@ -11,7 +11,10 @@ export const payloadDigest=(value:unknown)=>createHash('sha256').update(JSON.str
 export const invitationDigest=(value:string)=>createHash('sha256').update(value).digest('hex');
 export function invitationToken(config:ServerConfig,id:string,key:string):string{return createHmac('sha256',config.sessionSecret).update('ootla:first-organization-admin:v1:'+id.toLowerCase()+':'+key.toLowerCase()).digest('hex');}
 export async function provisioningRuntime(database:Database,config:ServerConfig):Promise<void>{
- if(!config.production||config.demoMode||!config.databaseName||/^ootla_demo(?:_|$)/.test(config.databaseName))throw new ApiError(403,'CUSTOMER_PROVISIONING_REQUIRED','First-administrator invitations require the separate customer runtime. No organization or account was changed.');
+ const loopback=(hostname:string)=>['127.0.0.1','localhost','[::1]','::1'].includes(hostname);
+ let localCustomer=false;
+ try{const app=new URL(config.appUrl),databaseUrl=new URL(config.databaseUrl);localCustomer=!config.production&&config.nodeEnv==='development'&&app.protocol==='http:'&&loopback(app.hostname)&&loopback(config.bindHost)&&loopback(databaseUrl.hostname);}catch{/* Invalid or absent connection settings never authorize onboarding. */}
+ if((!config.production&&!localCustomer)||config.demoMode||!config.databaseName||/^ootla_demo(?:_|$)/.test(config.databaseName))throw new ApiError(403,'CUSTOMER_PROVISIONING_REQUIRED','First-administrator invitations require the separate customer runtime. No organization or account was changed.');
  assertOotlaDatabase(config);await database.requireReady();await assertRuntimeDatabaseIsolation(database,config);
 }
 export function invitationState(row:InvitationRow):StaffInvitationState{return row.accepted_at?'accepted':row.revoked_at?'revoked':row.expired===true||new Date(row.expires_at).getTime()<=Date.now()?'expired':'pending';}

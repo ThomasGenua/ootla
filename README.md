@@ -1,3 +1,7 @@
+# Current live/demo review setup
+
+See [the two-instance guide](docs/ootla-instances.md) for the current ootla-v1-branch and ootla-v1-demo checkouts, startup commands, separate databases and access URLs. The live branch selects .env.live; the demo branch retains masked demo credential filling. Older stage commands below are historical and must not override the selected instance configuration.
+
 # Ootla
 
 OotlaAI is the application under the Ootla brand: a sales, leads and leasing CRM in the existing Vite/vanilla TypeScript + Express + PostgreSQL project. The authorized final Stages26-28 batch is COMPLETE: operational administration, connected acceptance/fixes and local deployment/recovery preparation are verified. Read the [final handover](docs/ootla-final-handover.md), [demo walkthrough](docs/ootla-demo-walkthrough.md) and [live activation register](docs/ootla-live-activation-checklist.md) for current scope, accounts, exact routes and limits. The [Apache deployment/recovery guide](docs/ootla-apache-demo.md) prepares the isolated Ubuntu/Debian demo. No remote deployment, DNS change or live service activation occurred. Earlier stage reports below remain historical; their old stop instructions and setup-only page descriptions are superseded by this authorized final batch. STOP after Stage28.

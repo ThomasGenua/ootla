@@ -1,3 +1,4 @@
+import { publicAccessCta } from '../../shared/public-access';
 import { icon, link, type IconName } from '../lib/ui';
 import { exploreSection, publicPhoto } from './public-layout';
 
@@ -21,7 +22,7 @@ export function leasingPage(): string {
         <div><span class="detail-kicker">OOTLAAI / LEASING</span><h1 id="leasing-heading">Keep interest moving.<br>Keep the details together.</h1>
           <p>OotlaAI connects inquiries, viewings and applications. Your team owns the relationship and decisions.</p>
           <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Prospect inquiries</span><span>Staff handoffs</span><span>AI assistance</span></div>
-          <div class="detail-hero-links">${link('/try','Try Ootla ' + icon('arrow'), 'button button-primary')}<a class="text-link" href="#leasing-inquiry">Follow the journey ${icon('arrow')}</a></div>
+          <div class="detail-hero-links">${publicAccessCta('button button-primary', ' '+icon('arrow'))}<a class="text-link" href="#leasing-inquiry">Follow the journey ${icon('arrow')}</a></div>
           <span class="detail-preview-note">Explore the journey through example records.</span>
         </div>
         ${journey([{ icon:'message', title:'Understand the inquiry', copy:'OotlaAI gathers the prospect\'s stated needs.' }, { icon:'calendar', title:'Arrange a viewing', copy:'Staff confirm availability.' }, { icon:'file', title:'Complete the application', copy:'Track missing documents.' }, { icon:'person', title:'Put people in charge', copy:'Staff decide and record outcomes.' }])}

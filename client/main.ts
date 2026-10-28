@@ -1,3 +1,4 @@
+import type {PublicAccessPresentation} from '../shared/public-access';
 import {staffInvitationPage} from './pages/staff-invitation';
 import {takeStaffInvitation,initializeStaffInvitation} from './lib/staff-invitation';
 import {previewEntryPage} from './pages/preview-entry';
@@ -155,7 +156,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       const entry=await response.json() as PreviewEntry;if(signal.aborted||generation!==routeGeneration)return;
       if(entry.kind==='unavailable'||!entry.destination){app.innerHTML=previewEntryPage();return;}
       const target=new URL(entry.destination);
-      if(!['isolated_preview','separate_preview'].includes(entry.kind)||!['http:','https:'].includes(target.protocol)||target.username||target.password||target.pathname!=='/admin/login'||target.search||target.hash||entry.kind==='isolated_preview'&&target.origin!==location.origin||entry.kind==='separate_preview'&&target.origin===location.origin)throw new Error('Preview entry unavailable.');
+      if(!['staff_sign_in','isolated_preview','separate_preview'].includes(entry.kind)||!['http:','https:'].includes(target.protocol)||target.username||target.password||target.pathname!=='/admin/login'||target.search||target.hash||['staff_sign_in','isolated_preview'].includes(entry.kind)&&target.origin!==location.origin||entry.kind==='separate_preview'&&target.origin===location.origin)throw new Error('Preview entry unavailable.');
       location.replace(target.href);return;
     }catch{if(signal.aborted||generation!==routeGeneration)return;app.innerHTML=previewEntryPage();}
   } else if(residentRoutes.has(path)){
@@ -190,7 +191,13 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
     app.innerHTML=bookingPage();
     initializeBooking(signal);
   } else if (publicRoutes.has(path)) {
-    app.innerHTML = publicPage(path);
+    let demoAccess = false;
+    try {
+      const response = await api<PublicAccessPresentation>('/api/public-access', { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(2500)]) });
+      demoAccess = response.demoAccess === true;
+    } catch { /* Access controls remain hidden if runtime verification is unavailable. */ }
+    if (signal.aborted || generation !== routeGeneration) return;
+    app.innerHTML = publicPage(path, demoAccess);
     initializePublicConversation(signal);
     initializePhotoCredits(signal);
     if (path === '/') initializePublicWorkflow(signal);

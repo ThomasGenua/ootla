@@ -484,3 +484,12 @@ The latest attached request explicitly authorizes26→27→28 sequentially, supe
 The attached f752da15 request explicitly authorizes sequential steps1-7 after the historical Stage28 stop: polished ordinary interface; preserved isolated preview; complete typed environment inventory and append-only missing private entries; documented live integration audit/completion where interfaces are known; operator-controlled real organization/first-admin invitation; configured accessible Ootla deployment or exact local preparation if target inputs are absent; focused verification and final handover, then STOP. Preserve the independent Ootla repository, approved design, existing values/accounts/data/migrations and organization/property scope. Deployment permission applies only to an actually configured accessible Ootla target, not unrelated infrastructure. No real customer/paid-provider test actions. Technical details belong in protected organization-owner administration or operator records. Organization admin remains scoped, not a platform operator. Never mix preview users/jobs/database with customer production or silently substitute scripted AI there.
 
 Confirmed deployment domain (2026-10-26): the user supplied `ootla.ai`. This identifies the intended public customer domain; SSH host/access and a separate preview hostname have not yet been supplied. Do not infer a remote target or claim publication from the domain alone.
+
+
+## Live/demo branch correction - 2026-10-28
+
+User authorizes two aligned instances: ootla-v1-branch is the customer/live app with Sign in replacing Explore demo and no demo access controls. ootla-v1-demo retains Explore demo and normal masked credential filling. Keep all application features aligned; separate private environments, database roles/records, session secrets/cookies, origins and API ports. Preserve all existing demo records/accounts without reset or reseed. This supersedes the earlier customer-site /try cross-preview CTA requirement: live /try leads to its own staff sign-in. Work only on this split while the user reviews; previous deployment preparation/final production-readiness steps remain pending. See [instance guide](ootla-instances.md).
+
+### Explicit live-organization communication hold - 2026-10-28
+
+Do not send any email to Oodler or its live users until the user explicitly approves. Private local administrator invitation creation is authorized; automatic or test email delivery is not. Keep outbound simulation and live delivery disabled. This constraint persists across subsequent prompts.

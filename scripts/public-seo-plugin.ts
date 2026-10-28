@@ -6,16 +6,32 @@ import {isPublicPage,privatePagePaths,publicPagePaths,publicPath,publicHtmlAlias
 export function publicSeoPlugin(environment:Record<string,string|undefined>,projectRoot:string):Plugin {
  const buildSettings=readPublicSiteSettings(environment),clientRoot=path.join(projectRoot,'client');
  let devServer:ViteDevServer|undefined,rendererServer:ViteDevServer|undefined,command:'build'|'serve'='serve';
+ let accessOrigin:string|null=null;
  const known=new Set<string>([...publicPagePaths,...privatePagePaths]);
  const settings=():PublicSiteSettings=>command==='serve'?{...buildSettings,indexing:false}:buildSettings;
  async function render(pathname:string):Promise<string>{
-  const server=devServer??(rendererServer??=await createServer({configFile:false,root:clientRoot,publicDir:false,appType:'custom',logLevel:'error',server:{middlewareMode:true,hmr:false}}));
-  const pages=await server.ssrLoadModule('/pages/public.ts') as {publicPage:(path:string)=>string};
-  return pages.publicPage(pathname);
+  const server=devServer??(rendererServer??=await createServer({configFile:false,root:clientRoot,publicDir:false,appType:'custom',logLevel:'error',server:{middlewareMode:true,hmr:false,ws:false}}));
+  const pages=await server.ssrLoadModule('/pages/public.ts') as {publicPage:(path:string,demoAccess?:boolean)=>string};
+  let demoAccess=false;
+  if(command==='serve'&&accessOrigin){
+   try{
+    const response=await fetch(accessOrigin+'/api/public-access',{redirect:'error',signal:AbortSignal.timeout(1500)});
+    if(response.ok&&response.headers.get('content-type')?.includes('application/json'))demoAccess=(await response.json() as {demoAccess?:unknown}).demoAccess===true;
+   }catch{/* Public access defaults to ordinary sign-in when isolation cannot be checked. */}
+  }
+  return pages.publicPage(pathname,demoAccess);
  }
  return {
   name:'ootla-public-seo',enforce:'post',
-  configResolved(config){command=config.command;},
+  configResolved(config){
+   command=config.command;
+   const proxy=config.server.proxy?.['/api'];
+   const target=typeof proxy==='string'?proxy:proxy?.target;
+   try{
+    const url=new URL(typeof target==='string'?target:'');
+    if(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)&&!url.username&&!url.password&&url.pathname==='/'&&!url.search&&!url.hash)accessOrigin=url.origin;
+   }catch{/* Never fetch an arbitrary host to resolve development presentation. */}
+  },
   configureServer(server){
    devServer=server;
    server.middlewares.use((request,response,next)=>{

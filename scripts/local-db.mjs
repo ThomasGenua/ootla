@@ -1,11 +1,19 @@
-import '../server/config/environment.js';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import {parse} from 'dotenv';
 
 // A project-owned opt-in development cluster, never a system service or shared database.
-const root = resolve(import.meta.dirname, '..');
+function mainCheckoutRoot(){
+  const located=spawnSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:resolve(import.meta.dirname,'..'),encoding:'utf8',windowsHide:true});
+  if(located.error||located.status!==0)throw new Error('Cannot locate the shared Ootla checkout. No PostgreSQL cluster was operated.');
+  const common=resolve(located.stdout.trim()),main=resolve(common,'..');
+  if(!common.endsWith('.git'))throw new Error('The shared Ootla Git directory must be recognized before operating PostgreSQL.');
+  try{if(JSON.parse(readFileSync(resolve(main,'package.json'),'utf8')).name!=='ootla')throw new Error('package');}catch{throw new Error('The shared checkout is not the Ootla application.');}
+  return main;
+}
+const root = mainCheckoutRoot();
 const local = resolve(root, '.local', 'postgres');
 const data = resolve(local, 'data');
 const command = process.argv[2] ?? 'start';
@@ -29,8 +37,10 @@ try {
     else { required('pg_ctl', ['-D', data, 'stop', '-m', 'fast', '-w']); console.log('Stopped only the project-owned Ootla PostgreSQL cluster.'); }
     process.exit(0);
   }
-  if (!process.env.DATABASE_URL) throw new Error('Run npm run env:setup first, or configure DATABASE_URL in .env.');
-  const url = new URL(process.env.DATABASE_URL);
+  const retained=parse(readFileSync(resolve(root,'.env'),'utf8'));
+  if(retained.NODE_ENV==='production')throw new Error('Local demo cluster tools are disabled in production.');
+  if (!retained.DATABASE_URL) throw new Error('The original Ootla checkout requires its retained demo .env before local cluster startup.');
+  const url = new URL(retained.DATABASE_URL);
   if (!['postgres:', 'postgresql:'].includes(url.protocol) || url.search || url.hash || url.hostname !== '127.0.0.1' || url.port !== '55439' || url.pathname !== '/ootla_demo' || url.username !== 'ootla') {
     throw new Error('Local cluster setup requires postgresql://ootla:<password>@127.0.0.1:55439/ootla_demo. Use db:migrate for other dedicated database configurations.');
   }

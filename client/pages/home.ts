@@ -1,3 +1,4 @@
+import { publicAccessCta, publicAccessHeroNote } from '../../shared/public-access';
 import { icon, link, wordmark } from '../lib/ui';
 import { homeDashboardPreview } from './home-preview';
 import { publicWorkflow } from './public-workflow';
@@ -100,8 +101,8 @@ export function homePage(): string {
         <span class="hero-kicker"><span></span> REAL ESTATE AI ASSISTANT</span>
         <h1 id="home-heading">Keep leads moving. <span>Keep people informed.</span></h1>
         <p>OotlaAI brings real estate leads, leasing and resident support into one clear workspace.</p>
-        <div class="hero-actions">${link('/try',`Try Ootla ${icon('arrow')}`,'button button-primary')}<a href="#ootlaai-processes" class="text-link">See OotlaAI at work ${icon('arrow')}</a></div>
-        <div class="hero-footnote"><span class="hero-note-mark">${icon('shield')}</span><p>Try Ootla.<br><span>Interactive preview with sample records.</span></p></div>
+        <div class="hero-actions">${publicAccessCta('button button-primary', ' '+icon('arrow'))}<a href="#ootlaai-processes" class="text-link">See OotlaAI at work ${icon('arrow')}</a></div>
+        <div class="hero-footnote"><span class="hero-note-mark">${icon('shield')}</span>${publicAccessHeroNote()}</div>
       </div></div>
       <div class="hero-preview-area"><div class="hero-preview-glow" aria-hidden="true"></div>${homeDashboardPreview()}</div>
       <span class="floating-icon floating-calendar" aria-hidden="true">${icon('calendar')}</span><span class="floating-icon floating-home" aria-hidden="true">${icon('home')}</span><span class="floating-icon floating-ai" aria-hidden="true">${icon('sparkles')}</span>

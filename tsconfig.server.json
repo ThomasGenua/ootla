@@ -23,6 +23,7 @@
     "server/**/*.ts",
     "shared/**/*.ts",
     "scripts/**/*.ts",
-    "server/config/environment.js"
+    "server/config/environment.js",
+    "server/config/instance-files.js"
   ]
 }

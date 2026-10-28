@@ -1,3 +1,4 @@
+import { publicAccessCta } from '../../shared/public-access';
 import { icon, link } from '../lib/ui';
 import { exploreSection, publicPhoto } from './public-layout';
 
@@ -8,7 +9,7 @@ function caption(copy: string): string {
 export function platformPage(): string {
   return `<main id="main-content" class="public-detail-page platform-page public-refresh">
     <section class="detail-hero" data-public-section="intro" aria-labelledby="platform-heading"><div class="detail-container detail-hero-grid">
-      <div><span class="detail-kicker">THE OOTLA PLATFORM</span><h1 id="platform-heading">One relationship.<br>A clearer way forward.</h1><p>OotlaAI connects leads, viewings, applications and property work. AI supports the conversation; your team owns the next action and decision.</p><div class="detail-hero-links">${link('/try',`Try Ootla ${icon("arrow")}`, "button button-primary")}<a class="text-link" href="#platform-applications">Explore the platform ${icon("arrow")}</a></div><span class="detail-preview-note">Explore the platform through example workflows.</span></div>
+      <div><span class="detail-kicker">THE OOTLA PLATFORM</span><h1 id="platform-heading">One relationship.<br>A clearer way forward.</h1><p>OotlaAI connects leads, viewings, applications and property work. AI supports the conversation; your team owns the next action and decision.</p><div class="detail-hero-links">${publicAccessCta("button button-primary", ' '+icon('arrow'))}<a class="text-link" href="#platform-applications">Explore the platform ${icon("arrow")}</a></div><span class="detail-preview-note">Explore the platform through example workflows.</span></div>
       ${publicPhoto("interior")}
     </div></section>
     <section id="platform-applications" class="public-primary public-section public-section-dark" data-public-section="main" aria-labelledby="platform-applications-heading"><div class="detail-container">

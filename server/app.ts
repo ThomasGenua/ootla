@@ -1,3 +1,5 @@
+import {publicDemoAccess,installPublicAccess} from './http/public-access.js';
+import {rewritePublicAccess} from '../shared/public-access.js';
 import {createStaffOnboardingRouter} from './routes/staff-onboarding.js';
 import {installPreviewEntry} from './http/preview-entry.js';
 import {createOperationsRouter} from './routes/operations.js';
@@ -6,7 +8,7 @@ import {createVoiceRouter} from './routes/voice.js';
 ﻿import {createResidentPortalRouter} from './routes/resident-portal.js';
 import {createMaintenanceRouter} from './routes/maintenance.js';
 import {residentOperationsAskCapability} from './services/ask-resident.js';
-import { existsSync } from 'node:fs';
+import { existsSync,readFileSync } from 'node:fs';
 import { createAiRouter } from './routes/ai.js';
 import {createPortfolioReportingRouter} from './routes/portfolio-reporting.js';
 import {portfolioAskCapability} from './services/ask-reporting.js';
@@ -78,6 +80,7 @@ export function createApp(config: ServerConfig, database: Database) {
   const clientDirectory = path.resolve(process.cwd(), 'dist/client');
   installPublicSiteHttp(app, config, clientDirectory);
   installPreviewEntry(app,config,database);
+  installPublicAccess(app,config,database);
   app.use('/staff/invite',(_request,response,next)=>{response.setHeader('Cache-Control','no-store, private');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');next();});
   app.use('/api', (_request, response, next) => {
     response.setHeader('Cache-Control', 'no-store');
@@ -261,13 +264,14 @@ export function createApp(config: ServerConfig, database: Database) {
       next();
     });
     app.use(express.static(clientDirectory, { index: false, dotfiles: 'deny', fallthrough: true, redirect: false }));
-    app.use((request, response, next) => {
+    app.use(async (request, response, next) => {
       const route = request.path.replace(/\/$/, '') || '/';
       if ((request.method === 'GET' || request.method === 'HEAD') && frontendRoutes.has(route) && existsSync(indexFile)) {
         response.setHeader('Cache-Control', route==='/staff/invite'?'no-store, private':route.startsWith('/applicant') || route === '/payment-demo' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
         const publicFile = route === '/' ? indexFile : path.join(clientDirectory, route.slice(1), 'index.html');
         const documentFile = isPublicPage(route) && existsSync(publicFile) ? publicFile : path.join(clientDirectory, 'app-shell.html');
-        response.sendFile(documentFile);
+        if(isPublicPage(route)){response.setHeader('Cache-Control','no-store');response.type('html').send(rewritePublicAccess(readFileSync(documentFile,'utf8'),await publicDemoAccess(config,database)));}
+        else response.sendFile(documentFile);
         return;
       }
       next();

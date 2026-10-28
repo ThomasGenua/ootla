@@ -4,7 +4,7 @@ export function validateRuntimePair(customer:ServerConfig,preview:ServerConfig):
  const reject=(condition:boolean,message:string)=>{if(condition)throw new ConfigurationError(message);};
  reject(!customer.production||customer.demoMode,'Customer runtime requires NODE_ENV=production and DEMO_MODE=false.');
  reject(preview.production||!preview.demoMode||!preview.serveCompiledClient,'Preview runtime requires a separate compiled non-production DEMO_MODE runtime.');
- reject(customer.appUrl===preview.appUrl||customer.previewAppUrl!==preview.appUrl,'APP_URL origins must differ and customer PREVIEW_APP_URL must match the preview origin.');
+ reject(customer.appUrl===preview.appUrl||Boolean(customer.previewAppUrl&&customer.previewAppUrl!==preview.appUrl),'APP_URL origins must differ; a legacy PREVIEW_APP_URL, if present, must match the preview origin.');
  reject(!customer.secureCookies||!preview.secureCookies||new URL(preview.appUrl).protocol!=='https:','Both hosted runtimes require HTTPS and secure cookies.');
  reject(new URL(customer.appUrl).hostname===new URL(preview.appUrl).hostname,'Use separate customer and preview hostnames; cookies do not separate ports.');
  reject(customer.bindHost===preview.bindHost&&customer.port===preview.port,'Customer and preview services require separate loopback ports.');

@@ -2,7 +2,11 @@
 
 Project rules: [build brief](ootla-build-brief.md). Implementation boundaries: [architecture](ootla-architecture.md). Commands and URLs: [README](../README.md).
 
-## Current batch authorization
+## Current authorized review scope - 2026-10-28
+
+Set up and keep feature parity between ootla-v1-branch (live, Sign in only) and ootla-v1-demo (isolated demo, Explore demo and masked credential fill). Preserve existing demo data; keep all email to Oodler/live users disabled until explicit user approval. The live organization is Oodler; administrator thomasgenua@oodler.ca chooses a password through a private local invitation. Complete this split, report URLs and checks, then STOP for review. Previous production-readiness deployment steps remain pending.
+
+## Earlier batch authorization
 
 The 2026-10-26 attached production-readiness request authorizes sequential steps 1-7 and deployment ONLY to a configured, accessible Ootla target. It supersedes the prior Stage28 no-cutover restriction for Ootla, while preserving all approved architecture, data, authentication and organization/property boundaries. The intended customer domain is https://ootla.ai; no SSH target/access or separate preview hostname is configured. Finish independent preparation, report exact blockers without claiming publication, then STOP.
 
@@ -10,7 +14,7 @@ The 2026-10-26 attached production-readiness request authorizes sequential steps
 
 - Last completed numbered stage: Stage28. New 2026-10-26 authorization: sequential production-readiness steps1-7, Steps1-5 complete; deployment preparation and final production-readiness verification remain pending. Preserve the completed baseline and stop after the new final handover.
 
-- Last updated: 2026-10-26 (Africa/Lagos).
+- Last updated: 2026-10-28 (Africa/Lagos).
 - Resolved Documents directory: `C:/Users/user/Documents`.
 - Project root: `C:/Users/user/Documents/software/Ootla` (independent new application; case-insensitive match for requested `Documents/software/ootla`).
 - Historical completed scope: initial documentation and project-folder correction.
@@ -2490,3 +2494,18 @@ Verification passed nine isolated service/HTTP/actual-CLI groups, one uppercase-
 The user requested committing current Ootla work to both the current branch and main. This checkpoint includes accumulated source, migrations, safe environment examples and documentation through the completed Step5 gate. Existing private .env values, local databases, generated builds and local evidence remain ignored. Migration Git attributes preserve the exact working-file bytes already verified against applied checksums; no SQL file was rewritten for the checkpoint. Deployment preparation, final production-readiness verification and publication are still pending; this checkpoint does not claim them complete. No push or deployment was requested by the Git instruction.
 
 Checkpoint verification: npm run build passed (client/server TypeScript, Vite production output and compiled server). The existing large-client-chunk advisory remains. The preservation check passed all299 original business rows/140tables/eight original environment values plus exact byte prefix/28 applied migration checksums/44 protected sources. Read-only candidate-file audit found no actual credentials, private invitation links or runtime artifacts among non-ignored project files.
+
+
+## Live/demo branch split - 2026-10-28
+
+The user explicitly requested ootla-v1-branch as the live customer application and a separate ootla-v1-demo branch/instance for existing demo access. This is the current scope; no production deployment or later feature work is inferred. Original demo .env bytes and database records are preserved. A new restricted ootla_live role/database and independent .env.live support the live local instance. Shared features remain aligned, with runtime-verified public access presentation and safe branch-specific environment defaults. See [instance guide](ootla-instances.md) for exact paths, URLs, commands and access boundaries. Both local checkouts and runtimes are prepared; final focused results are recorded below.
+
+User correction recorded: Oodler is the live organization, administrator name/email supplied as Thomasgenua@oodler.ca. No email may be sent to Oodler/live users until explicit user approval. Invitation output stays private and local; no email or other outbound transport is activated.
+
+Source/build/data verification passed: seven isolated instance-selection groups, two environment-setup groups, six public renderer/SSR groups, six isolated local-customer onboarding groups and16 compiled live/demo public responses using the same build. Public text/bundle scanning found no private runtime keys/passwords. The required230-module production build and client/server typechecks passed; only the existing large-client-chunk advisory remains. Restricted role checks deny demo-to-customer database connection and customer-to-demo record reads. Original demo preservation passed299rows/140tables/eight original settings+exact file bytes/all28 applied migrations/44 protected sources. Oodler and its inactive first administrator were created only in the new customer database using the authorized private invitation; no email or password was sent. Final actual browser/auth and branch checks follow.
+
+### Two-instance review handover - complete
+
+All seven actual two-instance browser/API groups passed: eight public pages on each runtime have correct initial HTML and browser CTAs, mobile layouts and keyboard links; staff/applicant/resident demo credentials are absent from live; filling demo credentials does not authenticate; normal demo login, Overview, refresh and logout work; copied demo cookies and demo passwords are denied by live. No outside browser requests, JavaScript exceptions, CRM edits or emails occurred. Eight desktop/mobile screenshots were reviewed. Two initial harness failures used an obsolete heading selector and a menu label that correctly changes when opened; only the checker was corrected. No product failure remains.
+
+The original demo .env is identical in both checkout copies. db:local from the demo worktree successfully reuses the original owned cluster. Shared feature source is saved to ootla-v1-branch and ootla-v1-demo, with only tracked instance defaults and .env.example differing. No push or server deployment is part of this split. Local review URLs are http://localhost:7674/ (live-style Oodler app) and http://127.0.0.1:7673/ (retained demo). The private local Oodler password-creation invitation was opened in Codex; the administrator must choose a password and sign in normally. Its private result remains outside both checkouts. Do not email Oodler/live users until explicit approval. STOP here for review/corrections; no new stage or automatic deployment work.

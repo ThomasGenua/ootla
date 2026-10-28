@@ -1,3 +1,9 @@
+# Current branch-specific development selection - 2026-10-28
+
+The current live checkout selects its ignored .env.live through ootla.instance.json; the demo checkout selects its own .env. The original main-checkout .env stays unchanged for the retained demo/owned PostgreSQL cluster. Explicit OOTLA_ENV_FILE takes precedence, and production still reads only explicit/preloaded settings. The marker is a tracked, non-secret default, not an authorization mechanism. DEMO_MODE and actual database checks enforce access. No additional secret or public build variable was introduced.
+
+See [the instance guide](ootla-instances.md) for current branch names, URLs, database roles, private file paths and commands. The live website uses Sign in; the old PREVIEW_APP_URL cross-preview CTA is superseded by the 2026-10-28 user correction. Do not enable any email to Oodler/live users until explicit user approval.
+
 # Ootla environment guide
 
 Verified against the current configuration schema and consumers on 2026-10-26. Ootla has **40 server/bootstrap settings and two public website build settings**. This guide lists all 42; it does not introduce unused provider keys.

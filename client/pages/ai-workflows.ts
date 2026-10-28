@@ -1,3 +1,4 @@
+import { publicAccessCta } from '../../shared/public-access';
 import { icon, link } from '../lib/ui';
 import { aiDemonstrations } from './ai-demo';
 import { exploreSection } from './public-layout';
@@ -11,7 +12,7 @@ export function aiWorkflowsPage(): string {
           <h1 id="ai-workflows-heading">A helpful reply.<br>A useful next step.</h1>
           <p>OotlaAI brings property questions, connected records and staff next steps into one conversation.</p>
           <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Property questions</span><span>Staff handoffs</span><span>AI assistance</span></div>
-          <div class="detail-hero-links"><a href="#ai-demonstrations" class="button button-primary">Try the scenarios ${icon('arrow')}</a>${link('/try','Try Ootla', 'text-link')}</div>
+          <div class="detail-hero-links"><a href="#ai-demonstrations" class="button button-primary">Try the scenarios ${icon('arrow')}</a>${publicAccessCta('text-link')}</div>
           <span class="detail-preview-note">Explore three example conversations and the work that follows.</span>
         </div>
         <div class="ai-intro-visual" aria-label="Illustrated conversation, request and staff handoff">
