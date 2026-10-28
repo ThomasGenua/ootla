@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "kind": "live",
-  "environmentFile": ".env.live"
+  "kind": "demo",
+  "environmentFile": ".env"
 }
