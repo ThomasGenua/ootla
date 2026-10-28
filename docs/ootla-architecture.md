@@ -1,6 +1,6 @@
 # Ootla architecture
 
-Foundation authorized: 2026-10-21 (Africa/Lagos). Project: `C:/Users/user/Documents/software/Ootla`.
+Foundation authorized: 2026-10-21. The October 28 feature expansion preserves this single-application architecture. See [feature release](feature-release.md) for additive migration 017, assistant/team/analytics APIs, operator provisioning and release operations. Workspace paths in older sections are historical.
 
 The user has designated revised **Prompt 00** as the authoritative foundation. Preserve this architecture and its working features in subsequent stages. Inspect the implementation and progress notes first; verify completed work and change only what the current stage requires. Do not recreate the project, reset its database or replace working authentication. Older application conversion/reuse directions are superseded. See the [build brief](ootla-build-brief.md) for all continuation rules.
 

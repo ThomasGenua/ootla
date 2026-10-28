@@ -67,7 +67,12 @@
     "check:application-journey": "tsx scripts/check-application-journey.ts",
     "check:screening-browser": "tsx scripts/check-screening-browser-isolated.ts",
     "check:payment-browser": "tsx scripts/check-payment-browser-isolated.ts",
-    "check:lease-browser": "tsx scripts/check-lease-browser-isolated.ts"
+    "check:lease-browser": "tsx scripts/check-lease-browser-isolated.ts",
+    "check:pilot": "tsx scripts/check-pilot.ts",
+    "check:pilot-browser": "tsx scripts/check-pilot-browser-isolated.ts",
+    "check:backup": "tsx scripts/check-backup.ts",
+    "check:release": "tsx scripts/check-release.ts",
+    "setup:organization": "tsx scripts/setup-organization.ts"
   },
   "dependencies": {
     "argon2": "0.45.1",

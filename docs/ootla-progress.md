@@ -2,7 +2,11 @@
 
 Project rules: [build brief](ootla-build-brief.md). Implementation boundaries: [architecture](ootla-architecture.md). Commands and URLs: [README](../README.md).
 
-## Current batch authorization
+## October 28 feature release
+
+The user authorized the proposed feature build-out and clarified that product features take priority over pilot hosting. This supersedes the older stage-stop notes below. Saved assistant drafts, team invitations/recovery and property permissions, organization setup, onboarding progress, cohort analytics/CSV, release CI, operational readiness and backup restore checks are implemented. Stage 18 now has its missing isolated browser test. See [feature release](feature-release.md) for the current scope, validation commands and provider boundaries. Historical records remain below.
+
+## Previous batch authorization
 
 The user explicitly authorized Stages15–19 in one sequential execution on2026-10-23, superseding individual stage stops for this batch only. Stages15–17 are verified; Stage18 is in progress. Stop after19; do not begin20. Earlier completed follow-up and preservation notes remain authoritative.
 

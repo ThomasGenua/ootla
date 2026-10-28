@@ -1,5 +1,8 @@
 ﻿import { existsSync } from 'node:fs';
 import { createApplicantPortalRouter, createApplicationStaffRouter } from './routes/applicant-portal.js';
+import { createPilotRouter } from './routes/pilot.js';
+import { requestDiagnostics } from './middleware/observability.js';
+import { releaseReady } from './services/readiness.js';
 import { ApplicantPortal } from './services/applicant-portal.js';
 import { createLeaseWorkflowRouter } from './routes/lease-workflow.js';
 import { createStaffPaymentsRouter, createApplicantPaymentsRouter, createPaymentDemoRouter } from './routes/payments.js';
@@ -32,6 +35,7 @@ import { adminSummaryQuerySchema } from '../shared/admin-summary-contracts.js';
 import { loadAdminPageSummary } from './services/admin-summary.js';
 
 const frontendRoutes = new Set([
+  '/staff/access', '/admin/team', '/admin/onboarding',
   '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
   '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar',
   '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations',
@@ -43,6 +47,7 @@ export function createApp(config: ServerConfig, database: Database) {
   const applicantSessions = new ApplicantPortal(database, config);
   app.disable('x-powered-by');
   app.set('trust proxy', false);
+  app.use(requestDiagnostics);
   app.use((_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -71,6 +76,11 @@ export function createApp(config: ServerConfig, database: Database) {
   app.use('/api/screening', createScreeningDemoCallbackRouter(config, database));
   app.use(express.json({ limit: '16kb', strict: true }));
 
+  app.get('/api/live', (_request, response) => response.json({ status: 'ok' }));
+  app.get('/api/ready', async (_request, response) => {
+    const ready = await releaseReady(database);
+    response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready' });
+  });
   app.get('/api/health', async (_request, response) => {
     const state = await database.state();
     const result: HealthResponse = {
@@ -181,6 +191,8 @@ export function createApp(config: ServerConfig, database: Database) {
   app.use('/api/account', createAccountRouter(config, database, requireUser));
   app.use('/api/connectors', createConnectorRouter(config, database, requireUser));
   app.use('/api/imports', createImportRouter(config, database, requireUser));
+  app.use('/api/pilot', createPilotRouter(config, database, requireUser));
+  app.use('/staff/access', (_request,response,next)=>{response.setHeader('Cache-Control','no-store, private');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow');next();});
   app.use('/api/application-leases', createLeaseWorkflowRouter(config, database, requireUser));
   app.use('/api/application-payments', createStaffPaymentsRouter(config, database, requireUser));
   app.use('/api/applicant/application-payments', createApplicantPaymentsRouter(config, database));
@@ -228,7 +240,7 @@ export function createApp(config: ServerConfig, database: Database) {
     app.use((request, response, next) => {
       const route = request.path.replace(/\/$/, '') || '/';
       if ((request.method === 'GET' || request.method === 'HEAD') && frontendRoutes.has(route) && existsSync(indexFile)) {
-        response.setHeader('Cache-Control', route.startsWith('/applicant') || route === '/payment-demo' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
+        response.setHeader('Cache-Control', route.startsWith('/applicant') || route === '/payment-demo' || route === '/staff/access' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
         const publicFile = route === '/' ? indexFile : path.join(clientDirectory, route.slice(1), 'index.html');
         const documentFile = isPublicPage(route) && existsSync(publicFile) ? publicFile : path.join(clientDirectory, 'app-shell.html');
         response.sendFile(documentFile);
@@ -244,7 +256,7 @@ export function createApp(config: ServerConfig, database: Database) {
   const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
     if (response.headersSent) return;
     if (error instanceof ApiError) {
-      response.status(error.status).json({ error: error.message, code: error.code });
+      response.status(error.status).json({ error: error.message, code: error.code, requestId: response.locals.requestId });
       return;
     }
     const parserError = error as { type?: string; status?: number };
@@ -256,8 +268,7 @@ export function createApp(config: ServerConfig, database: Database) {
       response.status(413).json({ error: 'The request body is too large.', code: 'BODY_TOO_LARGE' });
       return;
     }
-    console.error('An Ootla request failed. Request details and credentials are intentionally omitted.');
-    response.status(500).json({ error: 'This request could not be completed. Please try again.', code: 'INTERNAL_ERROR' });
+    response.status(500).json({ error: 'This request could not be completed. Please try again.', code: 'INTERNAL_ERROR', requestId: response.locals.requestId });
   };
   app.use(errorHandler);
   return app;

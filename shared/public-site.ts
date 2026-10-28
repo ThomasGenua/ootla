@@ -66,7 +66,7 @@ export function renderPublicDocument(template:string,path:string,settings:Public
   .replace(/<body(?:\s[^>]*)?>/,isPublicPage(path)?'<body class="public-body">':'<body>');
 }
 export function robotsText(settings:PublicSiteSettings):string {
- return 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /applicant\nDisallow: /book\nDisallow: /api\n'+(settings.indexing&&settings.origin?'\nSitemap: '+settings.origin+'/sitemap.xml\n':'\n# Preview indexing is disabled through page metadata and HTTP headers.\n');
+ return 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /applicant\nDisallow: /staff\nDisallow: /book\nDisallow: /api\n'+(settings.indexing&&settings.origin?'\nSitemap: '+settings.origin+'/sitemap.xml\n':'\n# Preview indexing is disabled through page metadata and HTTP headers.\n');
 }
 export function sitemapXml(settings:PublicSiteSettings):string {
  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+(settings.indexing&&settings.origin?publicPagePaths.map(path=>'\n<url><loc>'+escape(settings.origin!+path)+'</loc></url>').join(''):'')+'\n</urlset>\n';

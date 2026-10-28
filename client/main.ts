@@ -1,6 +1,8 @@
 import { initializePhotoCredits } from './lib/photo-credits';
 import { applyRouteSeo } from './lib/seo';
 import './styles.css';
+import './pilot.css';
+import { loadPilotPage, initializePilot, staffAccessPage, initializeStaffAccess } from './lib/pilot';
 import './admin.css';
 import './calendar.css';
 import './home-preview.css';
@@ -62,8 +64,9 @@ import { notFoundPage, publicPage } from './pages/public';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const publicRoutes = new Set(['/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy']);
 const applicantRoutes = new Set(['/applicant', '/applicant/login', '/applicant/invite']);
-const adminRoutes = new Set(['/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations']);
+const adminRoutes = new Set(['/admin/team', '/admin/onboarding','/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations']);
 const titles: Record<string, string> = {
+  '/admin/team':'Team & access — Ootla', '/admin/onboarding':'Getting started — Ootla', '/staff/access':'Staff access — Ootla',
   '/': 'OotlaAI — Keep leads moving. Keep people informed.', '/platform': 'The platform — OotlaAI', '/ai-workflows': 'AI workflows — OotlaAI', '/integrations': 'Integrations — OotlaAI', '/workflows/leasing': 'Leasing workflow — OotlaAI', '/workflows/resident-support': 'Resident support workflow — OotlaAI', '/admin/login': 'Staff sign in — Ootla',
   '/contact': 'Contact — OotlaAI', '/privacy': 'Privacy — OotlaAI',
   '/admin/profile': 'My profile \u2014 Ootla',
@@ -90,6 +93,17 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
   const generation = ++routeGeneration;
   const path = location.pathname.replace(/\/$/, '') || '/';
   const query = new URLSearchParams(location.search);
+  if (path === '/staff/access') {
+    document.title = 'Staff access — Ootla';
+    const value = new URLSearchParams(location.hash.slice(1)).get('token');
+    history.replaceState({}, '', '/staff/access');
+    const token = value && /^[a-f0-9]{64}$/.test(value) ? value : null;
+    document.body.className = 'applicant-body';
+    applyRouteSeo(path);
+    app.innerHTML = staffAccessPage(token);
+    initializeStaffAccess(token, signal);
+    return;
+  }
   const applicantInvitation = path === '/applicant/invite' ? takeApplicantInvitation() : null;
   const paymentDemoToken = path === '/payment-demo' ? takePaymentDemoToken() : null;
   delete document.body.dataset.accountMotion;
@@ -149,6 +163,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
         path === '/admin' ? Promise.resolve(undefined) : api<AdminPageSummary>(`/api/admin/summary?${new URLSearchParams({ page: path.slice('/admin/'.length) as AdminSummaryPage, period: query.get('period') ?? 'month' })}`, { signal }),
       ]);
       const headerCollapsed = readHeaderCollapsed(user);
+      const pilot = await loadPilotPage(path, query, user, signal);
       const applications = path === '/admin/applications' ? await loadApplicationsWorkspace(query, signal) : undefined;
       const foundation = path === '/admin/properties' || path === '/admin/contacts'
         ? await loadPropertyWorkspace(path, query, signal) : undefined;
@@ -162,11 +177,12 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       const followupQuery = new URLSearchParams();
       for (const key of ['q', 'stages']) if (query.has(key)) followupQuery.set(key, query.get(key)!);
       const followups = path === '/admin' ? (canManageTasks ? await api<{ items: TaskRecord[] }>(`/api/tasks/follow-ups?${followupQuery}`, { signal }) : { items: [] }) : undefined;
-      const demo = !applications && !calendar && !accountPage && !connectors && path !== '/admin/imports' && path !== '/admin/tasks' && !foundation && !leads && !followups && overview.demoEnabled && user.organization.role === 'organization_admin'
+      const demo = !pilot && !applications && !calendar && !accountPage && !connectors && path !== '/admin/imports' && path !== '/admin/tasks' && !foundation && !leads && !followups && overview.demoEnabled && user.organization.role === 'organization_admin'
         ? await api<DemoData>('/api/demo/data', { signal })
         : undefined;
       if (signal.aborted || generation !== routeGeneration) return;
-      app.innerHTML = adminShell(path, user, overview, false, demo, query, applications ? applicationsWorkspacePage(applications, user, query) : calendar ? calendarWorkspacePage(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage(connectors, user, query) : imports ? importWorkspacePage(imports, user, query) : foundation ? propertyWorkspacePage(foundation, user, query) : leads ? leadWorkspacePage(leads, user, query) : tasks ? taskWorkspacePage(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined, reminders, pageSummary, headerCollapsed);
+      app.innerHTML = adminShell(path, user, overview, false, demo, query, pilot ?? (applications ? applicationsWorkspacePage(applications, user, query) : calendar ? calendarWorkspacePage(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage(connectors, user, query) : imports ? importWorkspacePage(imports, user, query) : foundation ? propertyWorkspacePage(foundation, user, query) : leads ? leadWorkspacePage(leads, user, query) : tasks ? taskWorkspacePage(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined), reminders, pageSummary, headerCollapsed);
+      if (pilot) initializePilot(signal, navigate, user);
       if (applications) initializeApplicationsWorkspace(signal,navigate,user);
       if (calendar) initializeCalendarWorkspace(signal,navigate);
       if (accountPage) initializeAccountWorkspace(signal, navigate);

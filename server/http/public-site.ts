@@ -16,7 +16,7 @@ export function installPublicSiteHttp(app:Express,config:ServerConfig,directory:
  const forRequest=(request:Request):PublicSiteSettings=>({...settings,indexing:settings.indexing&&request.get('host')?.toLowerCase()===new URL(settings.origin!).host.toLowerCase()});
  app.use((request,response,next)=>{
   const route=publicPath(request.path),alias=publicHtmlAlias(request.path);
-  const privateRoute=/^\/(?:admin|applicant|book|api)(?:\/|$)/.test(route);
+  const privateRoute=/^\/(?:admin|applicant|staff|book|api)(?:\/|$)/.test(route);
   if(privateRoute)response.setHeader('X-Robots-Tag','noindex, nofollow');
   else if(!forRequest(request).indexing)response.setHeader('X-Robots-Tag','noindex, follow');
   if((request.method==='GET'||request.method==='HEAD')&&alias){response.redirect(308,alias);return;}

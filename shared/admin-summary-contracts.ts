@@ -3,7 +3,7 @@ import { dashboardPeriodSchema, type DashboardPeriod } from './contracts.js';
 
 /** Page-wide snapshots: directory filters/pagination do not change these counts. */
 export const adminSummaryPageSchema = z.enum([
-  'leads', 'properties', 'contacts', 'applications', 'calendar', 'tasks',
+  'team', 'onboarding', 'leads', 'properties', 'contacts', 'applications', 'calendar', 'tasks',
   'imports', 'integrations', 'analytics', 'ai', 'profile', 'settings',
 ]);
 export type AdminSummaryPage = z.infer<typeof adminSummaryPageSchema>;

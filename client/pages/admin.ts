@@ -17,6 +17,8 @@ const workspaceNavigation: { path: string; name: string; icon: IconName }[] = [
   { path: '/admin/analytics', name: 'Analytics', icon: 'chart' },
   { path: '/admin/ai', name: 'AI assistant', icon: 'sparkles' },
   { path: '/admin/integrations', name: 'Integrations', icon: 'link' },
+  { path: '/admin/team', name: 'Team & access', icon: 'person' },
+  { path: '/admin/onboarding', name: 'Getting started', icon: 'check' },
 ];
 
 const moduleContent: Record<string, { title: string; icon: IconName; eyebrow: string; description: string; emptyTitle: string; empty: string; items: [string, string][]; note: string }> = {
@@ -143,8 +145,8 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
       </div>
     </header>
     <div class="admin-workspace"><aside class="admin-sidebar" aria-label="Workspace tools">${preview ? '' : `<button class="sidebar-toggle" type="button" data-action="admin-menu" aria-expanded="false" aria-controls="admin-sidebar-nav">${icon('menu')} Workspace menu ${icon('chevron-down')}</button>`}
-      <div class="sidebar-inner" id="${preview ? 'preview-sidebar-nav' : 'admin-sidebar-nav'}"><h2 class="sidebar-label">Workspace</h2><nav class="admin-nav" aria-label="Admin pages">${workspaceNavigation.map(workspaceLink).join('')}</nav>
-        ${path === '/admin/applications' || path === '/admin/calendar' || path === '/admin/leads' || path === '/admin/tasks' || path === '/admin/imports' || path === '/admin/profile' || path === '/admin/settings' || path === '/admin/integrations' ? '' : `<fieldset class="stage-filters"><legend>Filter by stage</legend>${leadStages.map(stage => `<label><input type="checkbox" name="stage" value="${stage.value}" ${selectedStages.has(stage.value) ? 'checked' : ''} ${preview ? 'disabled' : ''}/><span>${stage.label}</span></label>`).join('')}</fieldset>`}
+      <div class="sidebar-inner" id="${preview ? 'preview-sidebar-nav' : 'admin-sidebar-nav'}"><h2 class="sidebar-label">Workspace</h2><nav class="admin-nav" aria-label="Admin pages">${workspaceNavigation.filter(item => !['/admin/team','/admin/onboarding'].includes(item.path) || (!preview && user?.organization.role === 'organization_admin')).map(workspaceLink).join('')}</nav>
+        ${path === '/admin/team' || path === '/admin/onboarding' || path === '/admin/analytics' || path === '/admin/ai' || path === '/admin/applications' || path === '/admin/calendar' || path === '/admin/leads' || path === '/admin/tasks' || path === '/admin/imports' || path === '/admin/profile' || path === '/admin/settings' || path === '/admin/integrations' ? '' : `<fieldset class="stage-filters"><legend>Filter by stage</legend>${leadStages.map(stage => `<label><input type="checkbox" name="stage" value="${stage.value}" ${selectedStages.has(stage.value) ? 'checked' : ''} ${preview ? 'disabled' : ''}/><span>${stage.label}</span></label>`).join('')}</fieldset>`}
         <div class="sidebar-bottom"><span class="sidebar-workspace">${icon('building')}<span>${preview ? 'Design preview' : demo?.demo ? 'Demo workspace' : escapeHtml(org)}</span></span></div>
       </div>
     </aside><main ${preview ? '' : 'id="main-content" aria-labelledby="workspace-title"'} class="workspace-content">${content.replaceAll('<h1>','<h2>').replaceAll('</h1>','</h2>')}${path === '/admin/integrations' && !preview && !contentOverride ? `<section class="card module-detail"><h2>Bring your existing customer data</h2><p>Standalone organizations can review CSV properties, units, contacts and leads before importing them into this workspace.</p>${link('/admin/imports','Open customer-data import','button button-primary')}</section>` : ''}</main></div>
