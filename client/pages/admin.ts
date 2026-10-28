@@ -13,6 +13,13 @@ const primaryNavigation = [
 ];
 const workspaceNavigation: { path: string; name: string; icon: IconName }[] = [
   { path: '/admin/leads', name: 'My leads', icon: 'person' },
+  { path: '/admin/inbox', name: 'Shared inbox', icon: 'leads' },
+  { path: '/admin/residents', name: 'Resident requests', icon: 'building' },
+  { path: '/admin/workspace', name: 'Search & saved work', icon: 'grid' },
+  { path: '/admin/intake', name: 'Inquiry forms', icon: 'file' },
+  { path: '/admin/automations', name: 'Follow-up rules', icon: 'clock' },
+  { path: '/admin/knowledge', name: 'Property knowledge', icon: 'file' },
+  { path: '/admin/reports', name: 'Operations reports', icon: 'chart' },
   { path: '/admin/tasks', name: 'Tasks', icon: 'tasks' },
   { path: '/admin/analytics', name: 'Analytics', icon: 'chart' },
   { path: '/admin/ai', name: 'AI assistant', icon: 'sparkles' },

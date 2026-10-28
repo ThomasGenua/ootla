@@ -41,6 +41,15 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   const read = async (sql: string, parameters = args) => (await database.query(sql,parameters)).rows[0]!;
   const count = (row: Record<string,unknown>, key: string) => Number(row[key] ?? 0);
 
+  if (['intake','inbox','automations','residents','workspace','knowledge','reports'].includes(page)) {
+    if (!leasing && !(page==='reports'&&user.permissions.includes('analytics.read'))) return restricted(page,['Conversations','Drafts','Requests','Knowledge'],'Requires workspace access.');
+    const row=await read(`SELECT
+      (SELECT count(*) FROM conversations c WHERE ${linkedScope('c')} AND c.status='open')::int AS conversations,
+      (SELECT count(*) FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE ${linkedScope('c')} AND m.status='draft')::int AS drafts,
+      (SELECT count(*) FROM resident_requests r WHERE ${linkedScope('r')} AND r.status NOT IN ('resolved','closed'))::int AS requests,
+      (SELECT count(*) FROM property_knowledge k WHERE ${propertyScope('k')} AND k.published)::int AS knowledge`);
+    return result([metric('conversations','Open conversations',row.conversations,'users'),metric('drafts','Reply drafts',row.drafts,'document'),metric('requests','Open resident requests',row.requests,'home'),metric('knowledge','Published references',row.knowledge,'check')]);
+  }
   if (page === 'team' || page === 'onboarding') {
     if (!admin) return restricted(page,['Staff','Properties','Units','Lease workflows'],'Organization administrators only.');
     const row = await read(`SELECT
