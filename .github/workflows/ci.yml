@@ -1,0 +1,58 @@
+name: Ootla release checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ootla-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  features:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install and build
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Start an isolated local PostgreSQL cluster
+        run: |
+          $env:PGBIN | Out-File -FilePath $env:GITHUB_PATH -Append
+          $env:PATH = "$env:PGBIN;$env:PATH"
+          npm run env:setup
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run db:local
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Screening, payments, leases, assistant, team, analytics and restore
+        run: npm run check:release
+      - name: Lease browser journey
+        run: npm run check:lease-browser
+      - name: Assistant, team, onboarding and analytics browser journeys
+        run: npm run check:pilot-browser
+      - name: Stop the owned test cluster
+        if: always()
+        run: npm run db:local:stop
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Build production container
+        run: docker build --tag ootla:ci .

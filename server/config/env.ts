@@ -2,6 +2,9 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const envSchema = z.object({
+  AI_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
+  OPENAI_API_KEY: z.string().max(1000).default(''),
+  OPENAI_MODEL: z.string().trim().max(100).default(''),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().trim().default(''),
   PORT: z.coerce.number().int().min(1).max(65535).default(3100),
@@ -46,6 +49,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     throw new ConfigurationError(`Invalid server configuration: ${fields}. Check .env.example; SESSION_SECRET needs at least 32 characters. Values are intentionally omitted.`);
   }
   const values = parsed.data;
+  if (values.AI_ENABLED && (!values.OPENAI_API_KEY || !values.OPENAI_MODEL || values.DEMO_MODE)) throw new ConfigurationError('Live AI requires a server API key, explicit model and a non-demo environment.');
   const origin = new URL(values.APP_URL);
   if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
     throw new ConfigurationError('APP_URL must be an HTTP(S) origin without a path, credentials, query or fragment.');
@@ -72,6 +76,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     throw new ConfigurationError('SESSION_SECRET must be a newly generated secret, not an example placeholder.');
   }
   return Object.freeze({
+    ai: Object.freeze({ enabled: values.AI_ENABLED, apiKey: values.OPENAI_API_KEY, model: values.OPENAI_MODEL }),
     nodeEnv: values.NODE_ENV,
     databaseUrl: values.DATABASE_URL,
     databaseName,

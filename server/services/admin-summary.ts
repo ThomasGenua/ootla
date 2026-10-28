@@ -41,6 +41,20 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   const read = async (sql: string, parameters = args) => (await database.query(sql,parameters)).rows[0]!;
   const count = (row: Record<string,unknown>, key: string) => Number(row[key] ?? 0);
 
+  if (page === 'team' || page === 'onboarding') {
+    if (!admin) return restricted(page,['Staff','Properties','Units','Lease workflows'],'Organization administrators only.');
+    const row = await read(`SELECT
+      (SELECT count(*) FROM organization_memberships WHERE organization_id=$1 AND active)::int AS staff,
+      (SELECT count(*) FROM properties WHERE organization_id=$1)::int AS properties,
+      (SELECT count(*) FROM units WHERE organization_id=$1)::int AS units,
+      (SELECT count(*) FROM lease_workflows WHERE organization_id=$1)::int AS workflows`,[user.organization.id]);
+    return result([metric('staff','Active staff',count(row,'staff'),'users'),metric('properties','Properties',count(row,'properties'),'home'),metric('units','Units',count(row,'units'),'key'),metric('workflows','Lease workflows',count(row,'workflows'),'document')]);
+  }
+  if (page === 'ai') {
+    if (!leasing) return restricted(page,['Drafts','Reviewed','Pending','Failed'],'Requires lead-management access.');
+    const row = await read(`SELECT count(*) FILTER(WHERE r.status='completed')::int AS drafts,count(*) FILTER(WHERE r.reviewed_at IS NOT NULL)::int AS reviewed,count(*) FILTER(WHERE r.status='pending')::int AS pending,count(*) FILTER(WHERE r.status='failed')::int AS failed FROM assistant_requests r JOIN leads l ON l.id=r.lead_id AND l.organization_id=r.organization_id WHERE ${leadScope} AND r.actor_user_id=$4`,[...args,user.id]);
+    return result([metric('drafts','Your drafts',count(row,'drafts'),'document'),metric('reviewed','Reviewed',count(row,'reviewed'),'check'),metric('pending','Pending',count(row,'pending'),'clock'),metric('failed','Failed',count(row,'failed'),'sparkles')],'Your requests for currently accessible leads');
+  }
   if (page === 'profile') {
     const row = await read(`SELECT u.staff_phone,u.staff_job_title,
       (SELECT count(*)::int FROM property_access_assignments pa WHERE pa.organization_id=$1 AND pa.membership_id=$2) AS assigned
@@ -82,8 +96,8 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
       (SELECT count(*)::int FROM connector_conflicts c WHERE c.organization_id=$1 AND c.status='open') AS conflicts`,[user.organization.id]);
     return result([metric('connections','Connections',count(row,'connections'),'link','Saved connector records; this count does not assert a live connection.'),metric('queued','Queued syncs',count(row,'queued'),'clock'),metric('failed','Failed syncs',count(row,'failed'),'document'),metric('conflicts','Open conflicts',count(row,'conflicts'),'users')], 'Current organization connector records');
   }
-  if (page === 'tasks' || page === 'ai') {
-    const ai = page === 'ai';
+  if (page === 'tasks') {
+    const ai = false;
     const labels: [string,string,string,string] = ai ? ['AI mode','Pending examples','Assigned to you','Completed examples'] : ['Open tasks','Overdue tasks','Unassigned','Completed tasks'];
     if (!leasing) return restricted(page,labels,'Requires authorized lead-management access.');
     const filter = ai ? " AND t.origin='ai_simulation'" : '';

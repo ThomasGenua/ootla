@@ -117,10 +117,25 @@ async function main(){
  const accepted=await api.request(portal+'/invitations/accept','','POST',{token,password:applicantPassword});assert.equal(accepted.status,200);const applicant=cookieOf(accepted,'ootla.applicant.sid');
  const applicantId=(await accepted.json() as {user:ApplicantUser}).user.id;
  const context={api,admin,agent,analyst,foreignAdmin,manager:cookies[4]!,application,restricted,foreign,appId,appRoute,portalRoute,participant,applicant,applicantId};
+ if(process.env.OOTLA_JOURNEY_BROWSER==='lease'){
+  await submittedPortal(context);
+  const {checkLeaseBrowser}=await import('./lease-browser-check.js');
+  await checkLeaseBrowser({base:api.base,cookie:admin,applicationId:appId,config});return;
+ }
+ if(process.env.OOTLA_JOURNEY_BROWSER==='pilot'){
+  await submittedPortal(context);
+  const {checkPilotBrowser}=await import('./pilot-browser-check.js');
+  await checkPilotBrowser({base:api.base,cookie:admin,leadId:leadIds[0]!,password,config});return;
+ }
  if(stage===16||process.env.JOURNEY_ALL==='true')await checkScreening(context);else await submittedPortal(context);
  if(stage===17||stage>=17&&process.env.JOURNEY_ALL==='true')await checkPayments(context);
  if(stage===18||stage>=18&&process.env.JOURNEY_ALL==='true')await checkLeases(context);
  if(stage>=19)await checkAi(context);
+ if(process.env.OOTLA_CHECK_BACKUP==='true'){
+  phase='isolated backup and restore';
+  const {checkBackupRoundtrip}=await import('./backup-roundtrip.js');
+  await checkBackupRoundtrip(scratchUrl,owner,verifiedCluster);
+ }
  console.log('Application journey checks through Stage '+stage+': '+groups+' focused groups passed. All mutations were confined to the owned scratch database; no outbound provider calls were made.');
 }
 type Context={api:Api;admin:string;agent:string;analyst:string;foreignAdmin:string;manager:string;application:StaffApplicationWorkspace;restricted:StaffApplicationWorkspace;foreign:StaffApplicationWorkspace;appId:string;appRoute:string;portalRoute:string;participant:StaffApplicationWorkspace['participants'][number];applicant:string;applicantId:string};
@@ -458,7 +473,94 @@ async function checkLeases(c:Context){
 }
 
 
-async function checkAi(_c:Context){throw new Error('Stage19 verification awaiting the stable API contract.');}
+async function checkAi(c:Context){
+ const {api,admin,agent,analyst,foreignAdmin,applicant}=c;
+ phase='release readiness and request correlation';
+ assert.equal((await api.request('/api/live')).status,200);
+ const ready=await api.request('/api/ready');assert.equal(ready.status,200);assert.match(ready.headers.get('x-request-id')??'',/^[a-f0-9-]{36}$/);
+ await database.query("DELETE FROM schema_migrations WHERE name='017_pilot_features.sql'");
+ assert.equal((await api.request('/api/ready')).status,503);
+ const migration=await readFile(path.join(root,'migrations/017_pilot_features.sql'),'utf8');
+ await database.query('INSERT INTO schema_migrations(name,checksum) VALUES($1,$2)',['017_pilot_features.sql',createHash('sha256').update(migration).digest('hex')]);
+ assert.equal((await api.request('/api/ready')).status,200);
+ phase='assistant permissions, quota, replay and review';
+ const route='/api/pilot/assistant',body={leadId:leadIds[0],requestKey:randomUUID(),action:'follow_up'};
+ for(const cookie of ['',applicant,analyst])await deny(api,route,cookie,'POST',body,[401,403]);
+ await deny(api,route,foreignAdmin,'POST',body,[403,404]);
+ await deny(api,route,agent,'POST',{...body,leadId:leadIds[1]},[403,404]);
+ const before=await snapshot();
+ const result=await json<import('../shared/pilot-contracts.js').AssistantResult>(api,route,admin,'POST',body);
+ assert.equal(result.mode,'demo');assert.equal(result.status,'completed');assert(result.result!.body);assert(result.result!.cautions.some(v=>v.includes('no model')));
+ const replay=await json<typeof result>(api,route,admin,'POST',body);assert.equal(replay.id,result.id);
+ await deny(api,route,admin,'POST',{...body,action:'summary'},409);
+ await deny(api,route+'/'+result.id+'/review',agent,'POST',{confirmed:true},404);
+ await json(api,route+'/'+result.id+'/review',admin,'POST',{confirmed:true});
+ await json(api,route+'/'+result.id+'/review',admin,'POST',{confirmed:true});
+ assert.equal(Number((await database.query("SELECT count(*) AS n FROM audit_events WHERE action='assistant.reviewed' AND metadata->>'requestId'=$1",[result.id])).rows[0].n),1);
+ const history=await json<{items:typeof result[]}>(api,route+'/history/'+leadIds[0],admin);assert(history.items[0]!.reviewedAt);
+ const after=await snapshot(before);for(const table of ['leads','applications','leases','tasks','contacts','screening_reports'])if(before[table])assert.deepEqual(after[table],before[table],'Assistant must not modify '+table);
+ await deny(api,route+'/settings',agent,'POST',{enabled:true,confirmed:true},403);
+ await deny(api,route+'/settings',admin,'POST',{enabled:true,confirmed:true},409);
+ for(let i=1;i<20;i++)await json(api,route,admin,'POST',{...body,requestKey:randomUUID(),action:'summary'});
+ await deny(api,route,admin,'POST',{...body,requestKey:randomUUID()},429);
+ pass('assistant uses scoped records, persists reviewable demo drafts, deduplicates retries, enforces actor ownership and hourly quotas, and never mutates business records');
+ phase='model adapter validated contract and failure behavior';
+ const {generateAssistantOutput}=await import('../server/services/assistant.js');
+ const expected={title:'Review',body:'An unsent draft.',nextActions:['Review current records.'],cautions:['Check availability.']};
+ const fake=(async(url:unknown,options?:RequestInit)=>{assert.equal(url,'https://api.openai.com/v1/responses');const payload=JSON.parse(String(options!.body));assert.equal(payload.store,false);assert.equal(payload.text.format.strict,true);assert.equal(payload.tools,undefined);assert(!String(options!.body).includes(password));return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(expected)}]}]}),{status:200});}) as typeof fetch;
+ assert.deepEqual(await generateAssistantOutput(config,'summary',{stage:'contacted'},fake),expected);
+ await assert.rejects(()=>generateAssistantOutput(config,'summary',{},(async()=>new Response('{}',{status:429})) as typeof fetch));
+ await assert.rejects(()=>generateAssistantOutput(config,'summary',{},(async()=>new Response(JSON.stringify({status:'incomplete'}),{status:200})) as typeof fetch));
+ await assert.rejects(()=>generateAssistantOutput(config,'summary',{},(async()=>new Response('x'.repeat(65537),{status:200})) as typeof fetch));
+ pass('Responses adapter uses structured output, disabled response storage and bounded generation; provider and incomplete responses fail safely without external calls');
+ phase='team invitation, recovery and revocation';
+ const team='/api/pilot/team',email='invited-'+randomUUID()+'@example.test',newPassword='Personal-'+randomUUID()+'!';
+ const invite={email,name:'Invited Staff',role:'leasing_agent',propertyIds:[properties[0]],currentPassword:password};
+ for(const cookie of ['',agent,analyst,applicant])await deny(api,team+'/invitations',cookie,'POST',invite,[401,403]);
+ await deny(api,team+'/invitations',admin,'POST',{...invite,currentPassword:'Incorrect password'},403);
+ await deny(api,team+'/invitations',admin,'POST',{...invite,propertyIds:[properties[2]]},400);
+ const issued=await json<{id:string;url:string}>(api,team+'/invitations',admin,'POST',invite,201);
+ const token=new URL(issued.url).hash.slice(7);assert(/^[a-f0-9]{64}$/.test(token));assert(!new URL(issued.url).search);
+ const stored=(await database.query('SELECT * FROM staff_access_links WHERE id=$1',[issued.id])).rows[0];assert.notEqual(stored.token_digest,token);assert(!JSON.stringify(stored).includes(token));
+ const accepts=await Promise.all([api.request('/api/pilot/staff-access/accept','','POST',{token,password:newPassword}),api.request('/api/pilot/staff-access/accept','','POST',{token,password:newPassword})]);
+ assert.deepEqual(accepts.map(r=>r.status).sort(),[200,410],'Concurrent acceptance consumes a link once.');
+ const signed=await api.request('/api/auth/login','','POST',{email,password:newPassword});assert.equal(signed.status,200);const newCookie=cookieOf(signed,'ootla.sid');const newUser=(await signed.json() as {user:{id:string}}).user;
+ await json(api,'/api/lead-workspaces/'+leadIds[0],newCookie);await deny(api,'/api/lead-workspaces/'+leadIds[1],newCookie,'GET',undefined,[403,404]);await deny(api,'/api/leads/'+leadIds[2],newCookie,'GET',undefined,[403,404]);
+ const recovery=await json<{id:string;url:string}>(api,team+'/recovery',admin,'POST',{userId:newUser.id,currentPassword:password},201);
+ const recoveryToken=new URL(recovery.url).hash.slice(7),replacement='Recovered-'+randomUUID()+'!';
+ await json(api,'/api/pilot/staff-access/accept','','POST',{token:recoveryToken,password:replacement});
+ await deny(api,'/api/leads/'+leadIds[0],newCookie,'GET',undefined,401);
+ assert.equal((await api.request('/api/auth/login','','POST',{email,password:replacement})).status,200);
+ const revocable=await json<{id:string;url:string}>(api,team+'/invitations',admin,'POST',{...invite,email:'revoked-'+randomUUID()+'@example.test'},201);
+ await json(api,team+'/links/'+revocable.id+'/revoke',admin,'POST',{});
+ await deny(api,'/api/pilot/staff-access/accept','','POST',{token:new URL(revocable.url).hash.slice(7),password:newPassword},410);
+ const expired=await json<{id:string;url:string}>(api,team+'/invitations',admin,'POST',{...invite,email:'expired-'+randomUUID()+'@example.test'},201);
+ await database.query("UPDATE staff_access_links SET created_at=now()-interval '2 hours',expires_at=now()-interval '1 hour' WHERE id=$1",[expired.id]);
+ await deny(api,'/api/pilot/staff-access/accept','','POST',{token:new URL(expired.url).hash.slice(7),password:newPassword},410);
+ const workspace=await json<import('../shared/pilot-contracts.js').TeamWorkspace>(api,team,admin);assert(workspace.members.some(m=>m.userId===newUser.id));assert(!JSON.stringify(workspace).includes(token));
+ pass('admin-reauthenticated invitations grant only selected properties; single-use/expired/revoked tokens fail, recovery invalidates sessions, and secrets are absent from listings');
+ phase='analytics cohort and property isolation';
+ const analytics=await json<import('../shared/pilot-contracts.js').AnalyticsSnapshot>(api,'/api/pilot/analytics?days=90',admin);
+ assert.equal(analytics.cohortLeads,2);assert.equal(analytics.applicationsStarted,2);assert(analytics.applicationsSubmitted>=1);assert(!JSON.stringify(analytics).includes(email));
+ const restricted=await json<typeof analytics>(api,'/api/pilot/analytics?days=90',analyst);assert.equal(restricted.cohortLeads,1);
+ const other=await json<typeof analytics>(api,'/api/pilot/analytics?days=90',foreignAdmin);assert.equal(other.cohortLeads,1);
+ await deny(api,'/api/pilot/analytics?days=90',agent,'GET',undefined,403);await deny(api,'/api/pilot/analytics?days=9999',admin,'GET',undefined,400);
+ await json(api,'/api/pilot/onboarding',admin);await deny(api,'/api/pilot/onboarding',agent,'GET',undefined,403);
+ pass('analytics uses one bounded creation cohort, excludes hidden interests, respects organization/role scope and exposes aggregate counts; onboarding reads actual setup progress');
+ phase='operator organization provisioning';
+ const {provisionOrganization}=await import('../server/services/provision-organization.js');
+ const setup={name:'Isolated new organization',slug:'setup-'+randomUUID(),adminName:'Individual Admin',adminEmail:'setup-'+randomUUID()+'@example.test',password:'Setup-'+randomUUID()+'!'};
+ await assert.rejects(()=>provisionOrganization(database,config,setup));
+ const liveConfig={...config,demoMode:false};
+ const created=await provisionOrganization(database,liveConfig,setup);
+ await assert.rejects(()=>provisionOrganization(database,liveConfig,setup));
+ await assert.rejects(()=>provisionOrganization(database,liveConfig,{...setup,slug:'different-'+randomUUID()}));
+ const live=await start(liveConfig),signIn=await live.request('/api/auth/login','','POST',{email:setup.adminEmail,password:setup.password});assert.equal(signIn.status,200);
+ const principal=(await signIn.json() as {user:{id:string;organization:{id:string;role:string}}}).user;
+ assert.equal(principal.id,created.userId);assert.equal(principal.organization.id,created.organizationId);assert.equal(principal.organization.role,'organization_admin');
+ const onboarding=await json<{counts:{staff:number;properties:number}}>(live,'/api/pilot/onboarding',cookieOf(signIn,'ootla.sid'));assert.equal(onboarding.counts.staff,1);assert.equal(onboarding.counts.properties,0);
+ pass('operator provisioning creates an individual admin and empty standalone organization, supports normal sign-in, and refuses duplicate identity takeover or demo seeding');
+}
 try{await main();}
 catch(error){const detail=error instanceof assert.AssertionError?error.message.split(/\r?\n/,1)[0]:JSON.stringify({name:error instanceof Error?error.name:'unknown',code:(error as{code?:string})?.code});console.error('Journey checks failed during '+phase+': '+detail);console.error('Check location: '+(error instanceof Error?error.stack?.split(/\r?\n/).find(l=>l.includes('check-application-journey.ts'))?.trim():'unknown'));process.exitCode=1;}
 finally{
