@@ -1,0 +1,21 @@
+import { z } from 'zod';
+import { leadDirectorySchema } from './lead-contracts.js';
+const text = (max: number) => z.string().trim().min(1).max(max).refine(v => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v));
+const optionalText = (max: number) => z.string().trim().max(max);
+export const pageQuery = z.object({ q: optionalText(200).default(''), page: z.coerce.number().int().min(1).max(100000).default(1) }).strict();
+export const formSchema = z.object({ title: text(120), propertyId: z.uuid(), enabled: z.boolean(), ownerMembershipId: z.uuid().nullable(), embedOrigins: z.array(z.url().refine(v => { const u = new URL(v); return (u.protocol === 'https:' || u.protocol === 'http:' && ['localhost','127.0.0.1'].includes(u.hostname)) && u.origin === v && !u.username; })).max(10).default([]), version: z.number().int().positive().optional() }).strict();
+export const inquirySchema = z.object({ requestKey: z.uuid(), challenge: text(200), name: text(200), email: z.email().max(254), phone: z.string().regex(/^$|^\+[1-9]\d{7,14}$/).default(''), message: text(5000), campaign: optionalText(100).default(''), emailConsent: z.literal(true), smsConsent: z.boolean().default(false), website: optionalText(200).default('') }).strict().refine(v => !v.smsConsent || Boolean(v.phone));
+export const draftSchema = z.object({ requestKey: z.uuid(), channel: z.enum(['email','sms']), subject: optionalText(200).default(''), body: text(10000) }).strict().refine(v => v.channel !== 'sms' || v.body.length <= 1600);
+export const editDraftSchema = z.object({ channel:z.enum(['email','sms']),subject:optionalText(200).default(''),body:text(10000),version:z.number().int().positive() }).strict().refine(v=>v.channel!=='sms'||v.body.length<=1600);
+export const conversationSchema = z.object({ version: z.number().int().positive(), ownerMembershipId: z.uuid().nullable(), status: z.enum(['open','closed']) }).strict();
+export const templateSchema = z.object({ name: text(120), channel: z.enum(['email','sms']), subject: optionalText(200).default(''), body: text(1600), version: z.number().int().positive().optional() }).strict();
+export const consentSchema = z.object({ channel: z.enum(['email','sms']), allowed: z.boolean(), evidence: text(500) }).strict();
+export const ruleSchema = z.object({ name: text(120), propertyId: z.uuid(), trigger: z.enum(['unanswered_inquiry','upcoming_tour','incomplete_application']), delayMinutes: z.number().int().min(5).max(43200), enabled: z.boolean(), taskTitle: text(300), draftBody: optionalText(1600).default(''), channel: z.enum(['email','sms']).default('email'), version: z.number().int().positive().optional() }).strict();
+export const residentRequestSchema = z.object({ residentId: z.uuid(), requestKey: z.uuid(), title: text(200), category: z.enum(['plumbing','electrical','appliance','access','other']), description: text(5000), priority: z.enum(['normal','urgent']) }).strict();
+export const residentUpdateSchema = z.object({ version: z.number().int().positive(), body: text(3000), status: z.enum(['submitted','in_progress','waiting','resolved','closed']), ownerMembershipId: z.uuid().nullable() }).strict();
+export const savedViewSchema = z.object({ name: text(80), filters: leadDirectorySchema }).strict();
+export const bulkAssignmentSchema = z.object({ leads: z.array(z.object({ id: z.uuid(), version: z.number().int().positive() }).strict()).min(1).max(100).refine(v => new Set(v.map(l => l.id)).size === v.length), ownerMembershipId: z.uuid().nullable() }).strict();
+export const knowledgeSchema = z.object({ propertyId: z.uuid(), title: text(160), body: text(6000), sourceUrl: z.union([z.literal(''),z.url().refine(v => new URL(v).protocol === 'https:' && !new URL(v).username)]).default(''), published: z.boolean(), version: z.number().int().positive().optional() }).strict();
+export const assistantRevisionSchema = z.object({ version: z.number().int().positive(), body: text(4000), feedback: z.enum(['helpful','needs_work']).nullable().default(null) }).strict();
+export type Row = Record<string, any>;
+export interface OperationsPage { items: Row[]; page: number; total: number; pageSize: number }

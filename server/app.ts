@@ -1,4 +1,7 @@
-﻿import { existsSync } from 'node:fs';
+﻿import { createOperationsRouter, createIntakeRouter, createResidentRouter } from './routes/operations.js';
+import { createCommunicationWebhooks } from './routes/communication-webhooks.js';
+import { IntakeService } from './services/intake.js';
+import { existsSync } from 'node:fs';
 import { createApplicantPortalRouter, createApplicationStaffRouter } from './routes/applicant-portal.js';
 import { createPilotRouter } from './routes/pilot.js';
 import { requestDiagnostics } from './middleware/observability.js';
@@ -35,13 +38,14 @@ import { adminSummaryQuerySchema } from '../shared/admin-summary-contracts.js';
 import { loadAdminPageSummary } from './services/admin-summary.js';
 
 const frontendRoutes = new Set([
+  '/inquire', '/resident', '/admin/intake', '/admin/inbox', '/admin/automations', '/admin/residents', '/admin/workspace', '/admin/knowledge', '/admin/reports',
   '/staff/access', '/admin/team', '/admin/onboarding',
   '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
   '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar',
   '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations',
 ]);
 
-export function createApp(config: ServerConfig, database: Database) {
+export function createApp(config: ServerConfig, database: Database, options: { communicationFetch?: typeof fetch } = {}) {
   const app = express();
   const sessions = new SessionService(database, config);
   const applicantSessions = new ApplicantPortal(database, config);
@@ -59,6 +63,16 @@ export function createApp(config: ServerConfig, database: Database) {
     }
     next();
   });
+  app.use('/inquire', async(request,response,next)=>{
+    response.setHeader('Cache-Control','no-store');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow');
+    const id=request.query.form;
+    if(typeof id==='string'&&/^[a-f0-9-]{36}$/i.test(id)){
+      const form=await new IntakeService(database,config).form(id);
+      response.removeHeader('X-Frame-Options');
+      response.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self' "+form.embed_origins.join(' ')+"; base-uri 'self'; form-action 'self'");
+    }next();
+  });
+  app.use('/resident',(_request,response,next)=>{response.setHeader('Cache-Control','no-store, private');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow');next();});
   const clientDirectory = path.resolve(process.cwd(), 'dist/client');
   installPublicSiteHttp(app, config, clientDirectory);
   app.use('/api', (_request, response, next) => {
@@ -74,7 +88,8 @@ export function createApp(config: ServerConfig, database: Database) {
   }, express.json({limit:'12mb',strict:true}));
   // Demo callbacks verify their own exact raw bytes before the general JSON parser.
   app.use('/api/screening', createScreeningDemoCallbackRouter(config, database));
-  app.use(express.json({ limit: '16kb', strict: true }));
+  app.use('/api/communications',createCommunicationWebhooks(config,database,options.communicationFetch));
+  app.use(express.json({ limit: '64kb', strict: true }));
 
   app.get('/api/live', (_request, response) => response.json({ status: 'ok' }));
   app.get('/api/ready', async (_request, response) => {
@@ -191,6 +206,9 @@ export function createApp(config: ServerConfig, database: Database) {
   app.use('/api/account', createAccountRouter(config, database, requireUser));
   app.use('/api/connectors', createConnectorRouter(config, database, requireUser));
   app.use('/api/imports', createImportRouter(config, database, requireUser));
+  app.use('/api/public/intake',createIntakeRouter(config,database));
+  app.use('/api/operations',createOperationsRouter(config,database,requireUser,options.communicationFetch));
+  app.use('/api/resident',createResidentRouter(config,database));
   app.use('/api/pilot', createPilotRouter(config, database, requireUser));
   app.use('/staff/access', (_request,response,next)=>{response.setHeader('Cache-Control','no-store, private');response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Robots-Tag','noindex, nofollow');next();});
   app.use('/api/application-leases', createLeaseWorkflowRouter(config, database, requireUser));
@@ -226,10 +244,10 @@ export function createApp(config: ServerConfig, database: Database) {
         }
         response.setHeader('Cache-Control', 'no-store');
       }
-      if ((request.method === 'GET' || request.method === 'HEAD') && route.startsWith('/applicant') && frontendRoutes.has(route)) {
+      if ((request.method === 'GET' || request.method === 'HEAD') && (route.startsWith('/applicant') || route==='/resident') && frontendRoutes.has(route)) {
         response.setHeader('Cache-Control', 'no-store, private');
         response.setHeader('Referrer-Policy', 'no-referrer');
-        if (route === '/applicant' && !await applicantSessions.currentUser(request)) {
+        if ((route === '/applicant' || route === '/resident') && !await applicantSessions.currentUser(request)) {
           response.redirect(302, '/applicant/login');
           return;
         }
@@ -240,7 +258,7 @@ export function createApp(config: ServerConfig, database: Database) {
     app.use((request, response, next) => {
       const route = request.path.replace(/\/$/, '') || '/';
       if ((request.method === 'GET' || request.method === 'HEAD') && frontendRoutes.has(route) && existsSync(indexFile)) {
-        response.setHeader('Cache-Control', route.startsWith('/applicant') || route === '/payment-demo' || route === '/staff/access' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
+        response.setHeader('Cache-Control', route.startsWith('/applicant') || route === '/inquire' || route === '/resident' || route === '/payment-demo' || route === '/staff/access' || route === '/book' || (route.startsWith('/admin') && route !== '/admin/login') ? 'no-store' : 'no-cache');
         const publicFile = route === '/' ? indexFile : path.join(clientDirectory, route.slice(1), 'index.html');
         const documentFile = isPublicPage(route) && existsSync(publicFile) ? publicFile : path.join(clientDirectory, 'app-shell.html');
         response.sendFile(documentFile);
