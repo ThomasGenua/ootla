@@ -1,5 +1,7 @@
 # Leasing operations release
 
+The [connected leasing extension](connected-leasing.md) adds inbox invitations, prospect booking changes, Needs attention and team collaboration.
+
 This release extends Ootla's existing CRM with eight connected feature areas. All work is stored in PostgreSQL and respects organization, staff role and related-property access.
 
 | Workspace | Workflow |

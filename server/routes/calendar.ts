@@ -1,7 +1,7 @@
 import { Router,type Request,type Response,type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
-import { calendarAvailabilitySchema,calendarBookSchema,calendarInvitationQuerySchema,calendarInvitationSchema,calendarOptionsSchema,calendarQuerySchema,calendarRequestSchema,calendarRescheduleSchema,calendarSettingsSchema,calendarSlotsSchema,calendarStatusSchema,publicCalendarBookSchema,publicCalendarReadSchema } from '../../shared/calendar-contracts.js';
+import { calendarAvailabilitySchema,calendarBookSchema,calendarInvitationQuerySchema,calendarInvitationSchema,calendarOptionsSchema,calendarQuerySchema,calendarRequestSchema,calendarRescheduleSchema,calendarSettingsSchema,calendarSlotsSchema,calendarStatusSchema,publicCalendarBookSchema,publicCalendarReadSchema,publicCalendarManageSchema } from '../../shared/calendar-contracts.js';
 import type { ServerConfig } from '../config/env.js';
 import type { Database } from '../db/pool.js';
 import { ApiError } from '../http/errors.js';
@@ -33,6 +33,7 @@ export function createCalendarRouter(config:ServerConfig,database:Database,requi
 export function createPublicBookingRouter(config:ServerConfig,database:Database):Router{
  const router=Router(),calendar=new Calendar(database,config),buckets=new Map<string,{count:number;until:number}>();
  router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Robots-Tag','noindex, nofollow');const now=Date.now();for(const[key,value]of buckets)if(value.until<=now)buckets.delete(key);const key=req.ip??'unknown';let value=buckets.get(key);if(!value){if(buckets.size>=10000)throw new ApiError(429,'BOOKING_LIMITED','Try this booking link later.');value={count:0,until:now+600000};buckets.set(key,value);}if(++value.count>100){res.setHeader('Retry-After','600');throw new ApiError(429,'BOOKING_LIMITED','Too many booking requests. Try again later.');}return protectOrigin(config)(req,res,next);});
+ router.post('/manage',async(req,res)=>res.json(await calendar.publicManage(body(req,publicCalendarManageSchema))));
  router.post('/availability',async(req,res)=>res.json(await calendar.publicRead(body(req,publicCalendarReadSchema))));
  router.post('/book',async(req,res)=>res.status(201).json(await calendar.publicBook(body(req,publicCalendarBookSchema))));
  return router;

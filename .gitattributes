@@ -1,3 +1,4 @@
 # Preserve this new migration's exact checksum across platform checkouts.
 # Earlier migrations retain their established checkout behavior.
 /migrations/019_followup_batch_progress.sql -text
+/migrations/020_connected_leasing.sql -text

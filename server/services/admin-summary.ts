@@ -41,7 +41,7 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   const read = async (sql: string, parameters = args) => (await database.query(sql,parameters)).rows[0]!;
   const count = (row: Record<string,unknown>, key: string) => Number(row[key] ?? 0);
 
-  if (['intake','inbox','automations','residents','workspace','knowledge','reports'].includes(page)) {
+  if (['attention','intake','inbox','automations','residents','workspace','knowledge','reports'].includes(page)) {
     if (!leasing && !(page==='reports'&&user.permissions.includes('analytics.read'))) return restricted(page,['Conversations','Drafts','Requests','Knowledge'],'Requires workspace access.');
     const row=await read(`SELECT
       (SELECT count(*) FROM conversations c WHERE ${linkedScope('c')} AND c.status='open')::int AS conversations,

@@ -1,9 +1,10 @@
+import {tourReplyDraft} from './tour-reply-drafts.js';
 import { createHash,createHmac,randomBytes,timingSafeEqual } from 'node:crypto';
 import type { PoolClient,QueryResultRow } from 'pg';
 import type { z } from 'zod';
 import type { AuthUser,OrganizationRole,Permission } from '../../shared/contracts.js';
 import type { Paginated } from '../../shared/property-contracts.js';
-import type { CalendarAvailability,CalendarDirectory,CalendarEvent,CalendarInvitation,CalendarIssuedInvitation,CalendarOptions,CalendarPropertySettings,CalendarSlots,CalendarViewing,PublicCalendarConfirmation,PublicCalendarInvitation,ViewingStatus,calendarAvailabilitySchema,calendarBookSchema,calendarInvitationQuerySchema,calendarInvitationSchema,calendarOptionsSchema,calendarQuerySchema,calendarRescheduleSchema,calendarSettingsSchema,calendarSlotsSchema,calendarStatusSchema,publicCalendarBookSchema,publicCalendarReadSchema } from '../../shared/calendar-contracts.js';
+import type { CalendarAvailability,CalendarDirectory,CalendarEvent,CalendarInvitation,CalendarIssuedInvitation,CalendarOptions,CalendarPropertySettings,CalendarSlots,CalendarViewing,PublicCalendarConfirmation,PublicCalendarInvitation,ViewingStatus,calendarAvailabilitySchema,calendarBookSchema,calendarInvitationQuerySchema,calendarInvitationSchema,calendarOptionsSchema,calendarQuerySchema,calendarRescheduleSchema,calendarSettingsSchema,calendarSlotsSchema,calendarStatusSchema,publicCalendarBookSchema,publicCalendarReadSchema,publicCalendarManageSchema } from '../../shared/calendar-contracts.js';
 import type { ServerConfig } from '../config/env.js';
 import type { Database } from '../db/pool.js';
 import { enqueueGoogleViewingSync } from './google-calendar.js';
@@ -76,6 +77,7 @@ async function event(c:PoolClient,u:Actor,v:Row,kind:string,origin:'staff'|'publ
  const inserted=(await c.query('INSERT INTO viewing_events(organization_id,viewing_id,kind,origin,actor_user_id,actor_membership_id,invitation_id,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb) RETURNING id',[u.organization.id,v.id,kind,origin,origin==='staff'?u.id:null,origin==='staff'?u.membershipId:null,invitationId,JSON.stringify(metadata)])).rows[0];
  await c.query("INSERT INTO viewing_notification_receipts(event_id,organization_id,mode) VALUES($1,$2,'simulation') ON CONFLICT DO NOTHING",[inserted.id,u.organization.id]);
  await enqueueGoogleViewingSync(c,u.organization.id,v.id);
+ await tourReplyDraft(c,u.organization.id,v.id,inserted.id,kind);
  if(origin==='staff')await audit(c,u,'viewing.'+kind,{viewingId:v.id,eventId:inserted.id,notification:'simulation'});
 }
 async function leadStage(c:PoolClient,u:Actor,l:Row,v:Row,kind:string,origin:'staff'|'public'):Promise<Record<string,unknown>>{
@@ -335,8 +337,15 @@ export class Calendar{
   return this.database.transaction(async c=>{
    const invitation=await this.invitation(c,i.token),policy=await this.invitationPolicy(c,invitation),s=policy.settings;
    if(invitation.booked_viewing_id){
-    const v=(await c.query('SELECT starts_at,ends_at,status,time_zone,duration_minutes,location FROM viewings WHERE id=$1 AND organization_id=$2',[invitation.booked_viewing_id,invitation.organization_id])).rows[0];
-    return{state:'booked',propertyLabel:invitation.property_label,location:v?.location??s.location,timeZone:v?.time_zone??s.time_zone,durationMinutes:v?.duration_minutes??invitation.duration_minutes,slots:paged([],0,i),notice:v?.status==='scheduled'?'This link has already been used for one booking. The current confirmed time is shown.':'This link has already been used. The property team has updated the viewing status.',booking:v?{startsAt:iso(v.starts_at)!,endsAt:iso(v.ends_at)!,status:v.status}:null};
+    const v=(await c.query('SELECT * FROM viewings WHERE id=$1 AND organization_id=$2',[invitation.booked_viewing_id,invitation.organization_id])).rows[0];
+    const canManage=this.canManageBooking(invitation,v);let slots:PublicCalendarInvitation['slots']=paged([],0,i);
+    if(i.manage&&canManage){
+     const today=localDate(new Date(),s.time_zone),date=i.date??today;
+     if(date<today||date>addLocalDays(today,14))throw new ApiError(400,'PUBLIC_BOOKING_RANGE','Choose a date within the next fourteen days.');
+     const result=await slotRows(c,policy.actor,{propertyId:invitation.property_id,leadId:invitation.lead_id,ownerMembershipId:invitation.owner_membership_id,unitId:invitation.unit_id,date,days:Math.min(i.days,15-Math.round((Date.parse(date+'T00:00:00Z')-Date.parse(today+'T00:00:00Z'))/86400000)),durationMinutes:invitation.duration_minutes,page:i.page,pageSize:i.pageSize,excludeViewingId:v.id});
+     slots={...result,items:result.items.map(slot=>({...slot,slotKey:this.changeSlotKey(invitation,v,new Date(slot.startsAt))}))};
+    }
+    return{state:'booked',propertyLabel:invitation.property_label,location:v?.location??s.location,timeZone:v?.time_zone??s.time_zone,durationMinutes:v?.duration_minutes??invitation.duration_minutes,slots,notice:canManage?'You may change or cancel this viewing until five minutes before it starts, while this link remains valid.':'Contact the property team for further changes.',booking:v?{startsAt:iso(v.starts_at)!,endsAt:iso(v.ends_at)!,status:v.status,version:v.version,canManage}:null};
    }
    const date=i.date??localDate(new Date(),s.time_zone),today=localDate(new Date(),s.time_zone);
    if(date<today||date>addLocalDays(today,14))throw new ApiError(400,'PUBLIC_BOOKING_RANGE','Choose a date within the next fourteen days.');
@@ -344,6 +353,34 @@ export class Calendar{
    return{state:'available',propertyLabel:invitation.property_label,location:s.location,timeZone:s.time_zone,durationMinutes:invitation.duration_minutes,slots:{...result,items:result.items.map(slot=>({...slot,slotKey:this.slotKey(invitation,new Date(slot.startsAt))}))},notice:result.notice,booking:null};
   });
  }
+ private canManageBooking(invitation:Row,v:Row):boolean{return Boolean(v?.managed_by_ootla&&v.status==='scheduled'&&new Date(v.starts_at).getTime()>Date.now()+300000&&v.owner_membership_id===invitation.owner_membership_id&&v.unit_id===invitation.unit_id&&v.duration_minutes===invitation.duration_minutes);}
+ private changeSlotKey(invitation:Row,v:Row,start:Date):string{return this.slotKey({...invitation,settings_version:String(invitation.settings_version)+':viewing:'+v.version},start);}
+ async publicManage(i:z.infer<typeof publicCalendarManageSchema>){return this.database.transaction(async c=>{
+  const initial=await this.invitation(c,i.token),staff=(await c.query('SELECT user_id FROM organization_memberships WHERE id=$1 AND organization_id=$2',[initial.owner_membership_id,initial.organization_id])).rows[0];
+  if(!staff||!initial.booked_viewing_id)throw new ApiError(410,'INVITATION_UNAVAILABLE','This link has no available booking.');
+  await resources(c,['invitation:'+initial.id,'lead:'+initial.lead_id,'property:'+initial.property_id,'staff:'+staff.user_id,...(initial.unit_id?['unit:'+initial.unit_id]:[]),'request:'+initial.organization_id+':public:'+initial.id+':'+i.requestKey]);
+  const invitation=await this.invitation(c,i.token,true),policy=await this.invitationPolicy(c,invitation),u=policy.actor,s=policy.settings;
+  const lead=await context(c,u,invitation.lead_id,invitation.property_id,true);
+  await receipt(c,u,'public:'+invitation.id,i.requestKey,'public_manage',i,async()=>{
+   const v=(await c.query('SELECT * FROM viewings WHERE id=$1 AND organization_id=$2 FOR UPDATE',[invitation.booked_viewing_id,invitation.organization_id])).rows[0];
+   if(!v||!this.canManageBooking(invitation,v))conflict('This booking can no longer be changed through this link. Contact the property team.','BOOKING_CHANGED');
+   if(v.version!==i.version)conflict('The booking changed. Refresh its current details before continuing.','VERSION_CONFLICT');
+   if(i.action==='cancel'){
+    await c.query("UPDATE viewings SET status='cancelled',version=version+1,updated_at=now() WHERE id=$1",[v.id]);
+    const stage=await leadStage(c,u,lead,v,'cancelled','public');await event(c,u,v,'cancelled','public',invitation.id,{...stage,reason:'Cancelled by the booking-link holder.',notification:'simulation'});
+   }else{
+    const start=validatesOffsetDateTime(i.startsAt!,s.time_zone),end=new Date(start.getTime()+invitation.duration_minutes*60000);
+    const expected=this.changeSlotKey(invitation,v,start);if(!timingSafeEqual(Buffer.from(expected,'hex'),Buffer.from(i.slotKey!,'hex')))throw new ApiError(400,'INVALID_BOOKING_SLOT','Choose an offered replacement time.');
+    if(start.getTime()<Date.now()+300000||start.getTime()>Date.now()+14*86400000)throw new ApiError(400,'PUBLIC_BOOKING_RANGE','Choose a future offered time within fourteen days.');
+    const a=await availability(c,u.organization.id,v.property_id,v.owner_membership_id);
+    if(!withinAvailability(a,new Date(start.getTime()-s.buffer_before_minutes*60000),new Date(end.getTime()+s.buffer_after_minutes*60000),s.time_zone)||!await isFree(c,u.organization.id,v.property_id,v.lead_id,v.unit_id,staff.user_id,start,end,s.buffer_before_minutes,s.buffer_after_minutes,s.time_zone,v.id))conflict('This replacement time is no longer available. Choose another time.','SLOT_UNAVAILABLE');
+    await c.query('UPDATE viewings SET starts_at=$2,ends_at=$3,version=version+1,updated_at=now() WHERE id=$1',[v.id,start,end]);
+    await event(c,u,v,'rescheduled','public',invitation.id,{previousStartsAt:iso(v.starts_at),startsAt:iso(start),endsAt:iso(end),notification:'simulation'});
+   }
+   return{viewingId:v.id};
+  });
+  return{updated:true};
+ });}
  async publicBook(i:z.infer<typeof publicCalendarBookSchema>):Promise<PublicCalendarConfirmation>{
   return this.database.transaction(async c=>{
    const initial=await this.invitation(c,i.token),raw=(await c.query('SELECT user_id FROM organization_memberships WHERE id=$1 AND organization_id=$2',[initial.owner_membership_id,initial.organization_id])).rows[0];

@@ -21,8 +21,9 @@ export const calendarInvitationSchema=z.object({requestKey,leadId:uuid,propertyI
 export const calendarInvitationQuerySchema=z.object({...page,leadId:uuid.optional(),propertyId:uuid.optional()}).strict();
 export const calendarRequestSchema=z.object({requestKey}).strict();
 const token=z.string().regex(/^[a-f0-9]{64}$/);
-export const publicCalendarReadSchema=z.object({...page,token,date:date.optional(),days:z.number().int().min(1).max(7).default(7)}).strict();
+export const publicCalendarReadSchema=z.object({...page,token,date:date.optional(),days:z.number().int().min(1).max(7).default(7),manage:z.boolean().default(false)}).strict();
 export const publicCalendarBookSchema=z.object({token,requestKey,startsAt:start,slotKey:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
+export const publicCalendarManageSchema=z.object({token,requestKey,version:z.number().int().positive(),action:z.enum(['reschedule','cancel']),startsAt:start.optional(),slotKey:z.string().regex(/^[a-f0-9]{64}$/).optional()}).strict().refine(v=>v.action==='cancel'?!v.startsAt&&!v.slotKey:Boolean(v.startsAt&&v.slotKey));
 export interface CalendarPerson {membershipId:string;name:string;role:string}
 export interface CalendarWindow {weekday:number;start:string;end:string}
 export interface CalendarAvailability {enabled:boolean;windows:CalendarWindow[];version:number}
@@ -53,6 +54,6 @@ export interface PublicCalendarSlot extends CalendarSlot {slotKey:string}
 export interface PublicCalendarInvitation {
  state:'available'|'booked';propertyLabel:string;location:string;timeZone:string;durationMinutes:number;
  slots:Paginated<PublicCalendarSlot>;notice:string|null;
- booking:{startsAt:string;endsAt:string;status:ViewingStatus}|null;
+ booking:{startsAt:string;endsAt:string;status:ViewingStatus;version?:number;canManage?:boolean}|null;
 }
 export interface PublicCalendarConfirmation {status:'booked';propertyLabel:string;location:string;timeZone:string;startsAt:string;endsAt:string;durationMinutes:number;notification:'simulation'}

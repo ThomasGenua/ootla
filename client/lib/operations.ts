@@ -1,3 +1,4 @@
+import {attentionPage,inboxConnections,initializeConnected} from './connected';
 import { api,ApiError,errorMessage,type AuthUser } from './api';
 import { escapeHtml as e,link } from './ui';
 import type { Row,OperationsPage } from '../../shared/operations-contracts';
@@ -5,7 +6,7 @@ import type { LeadDirectory,LeadDetail } from '../../shared/lead-contracts';
 import type { TaskOptions } from '../../shared/task-contracts';
 type Navigate=(path:string,replace?:boolean)=>void;
 const base='/api/operations';
-export const operationsPaths=['/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports'];
+export const operationsPaths=['/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports'];
 const esc=(v:unknown)=>e(String(v??''));
 const human=(v:unknown)=>esc(String(v??'').replaceAll('_',' '));
 const date=(v:unknown)=>v?esc(new Date(String(v)).toLocaleString()):'—';
@@ -72,7 +73,7 @@ async function inboxPage(q:URLSearchParams,user:AuthUser,signal:AbortSignal){
   const delivery=data.delivery.mode==='simulation'?'Demonstration: sends are simulated.':data.delivery.mode==='unconfigured'?'Live delivery is not configured. Drafts can still be saved.':'Configured provider: accepted messages await delivery confirmation.';
   const messages=(data.messages as Row[]).map(m=>'<article class="card pilot-card" data-message="'+esc(m.id)+'"><div class="ops-row"><span class="badge badge-neutral">'+human(m.channel)+' · '+human(m.direction)+' · '+human(m.status)+'</span><small>'+date(m.created_at)+'</small></div>'+(m.subject?'<h3>'+esc(m.subject)+'</h3>':'')+'<p class="ops-text">'+esc(m.body)+'</p>'+(m.status==='uncertain'?'<p>Delivery could not be confirmed. Check the provider before creating another send.</p>':'')+(m.status==='draft'?'<details><summary>Edit draft</summary>'+form('edit-draft',select('channel','Channel',channels,m.channel)+field('subject','Subject',m.subject,'maxlength="200"')+area('body','Reply text',m.body,10000)+button('Save changes'),m.id,m.version)+'</details>'+form('send-draft',check('confirmed','I reviewed this exact draft and its recipient.',false,true)+button(data.delivery.mode==='simulation'?'Simulate send':'Send reviewed reply'),m.id,m.version):'')+'</article>').join('');
   const templates=(data.templates as Row[]);const templatePicker=templates.length?'<label class="pilot-field">Start with a template<select data-template-picker><option value="">Choose a template</option>'+templates.map(t=>'<option value="'+esc(t.id)+'" data-template="'+esc(JSON.stringify(t))+'">'+esc(t.name)+'</option>').join('')+'</select></label>':'';
-  return wrap('Conversation with '+esc(co.display_name),delivery,link('/admin/inbox','Back to inbox','ap-button')+' '+link('/admin/leads?lead='+co.lead_id,'Open lead record','ap-button')+'<div class="ops-columns"><div>'+card('Conversation details','<p>'+esc(co.email)+'<br/>'+esc(co.phone)+'</p>'+form('conversation',await owners(co.property_id,co.lead_id,signal,co.owner_membership_id)+select('status','Status',[['open','Open'],['closed','Closed']],co.status)+button('Save ownership & status'),co.id,co.version)+form('mark-read',button('Mark read'),co.id))+card('Contact preferences',(data.preferences as Row[]).map(p=>'<p>'+human(p.channel)+': '+(p.allowed?'Permitted':'Opted out')+'<br/><small>'+esc(p.evidence)+'</small></p>').join('')+'<details><summary>Record permission or an opt-out</summary>'+form('preference',select('channel','Channel',channels)+check('allowed','Contact permits replies on this channel')+area('evidence','How permission was obtained or revoked','',500)+button('Save preference'))+'</details>')+'</div><div>'+card('Write a reply',form('draft',templatePicker+select('channel','Channel',channels)+field('subject','Email subject','','maxlength="200"')+area('body','Reply text','',10000)+button('Save draft')))+(messages||empty('No messages yet. Save a draft to begin.'))+pages('/admin/inbox',q,data.page,data.total,50)+'</div></div>');
+  return wrap('Conversation with '+esc(co.display_name),delivery,link('/admin/inbox','Back to inbox','ap-button')+' '+link('/admin/leads?lead='+co.lead_id,'Open lead record','ap-button')+await inboxConnections(co,q,signal)+'<div class="ops-columns"><div>'+card('Conversation details','<p>'+esc(co.email)+'<br/>'+esc(co.phone)+'</p>'+form('conversation',await owners(co.property_id,co.lead_id,signal,co.owner_membership_id)+select('status','Status',[['open','Open'],['closed','Closed']],co.status)+button('Save ownership & status'),co.id,co.version)+form('mark-read',button('Mark read'),co.id))+card('Contact preferences',(data.preferences as Row[]).map(p=>'<p>'+human(p.channel)+': '+(p.allowed?'Permitted':'Opted out')+'<br/><small>'+esc(p.evidence)+'</small></p>').join('')+'<details><summary>Record permission or an opt-out</summary>'+form('preference',select('channel','Channel',channels)+check('allowed','Contact permits replies on this channel')+area('evidence','How permission was obtained or revoked','',500)+button('Save preference'))+'</details>')+'</div><div>'+card('Write a reply',form('draft',templatePicker+select('channel','Channel',channels)+field('subject','Email subject','','maxlength="200"')+area('body','Reply text','',10000)+button('Save draft')))+(messages||empty('No messages yet. Save a draft to begin.'))+pages('/admin/inbox',q,data.page,data.total,50)+'</div></div>');
  }
  const data=await api<OperationsPage>(base+'/inbox?'+new URLSearchParams({q:q.get('q')??'',page:q.get('page')??'1',status:q.get('status')??'open'}),{signal});
  const lead=q.get('lead')?await api<LeadDetail>('/api/leads/'+encodeURIComponent(q.get('lead')!),{signal}):null;
@@ -100,6 +101,7 @@ async function reportsPage(q:URLSearchParams,signal:AbortSignal){const data=awai
 export async function loadOperationsPage(path:string,q:URLSearchParams,user:AuthUser,signal:AbortSignal){
  if(!operationsPaths.includes(path))return undefined;
  if(!user.permissions.includes(path==='/admin/reports'?'analytics.read':'leasing.manage')||['/admin/intake','/admin/automations'].includes(path)&&user.organization.role!=='organization_admin')return wrap('Access restricted','Your current role does not grant access to this workspace.','');
+ if(path==='/admin/attention')return attentionPage(q,signal);
  if(path==='/admin/intake')return configuration(path,q,user,signal,'forms');if(path==='/admin/automations')return configuration(path,q,user,signal,'rules');if(path==='/admin/knowledge')return configuration(path,q,user,signal,'knowledge');
  if(path==='/admin/inbox')return inboxPage(q,user,signal);if(path==='/admin/residents')return residentsPage(q,signal);if(path==='/admin/workspace')return workspacePage(q,signal);return reportsPage(q,signal);
 }
@@ -115,6 +117,7 @@ export async function loadPublicOperations(path:string,q:URLSearchParams,signal:
 }
 export function operationsError(error:unknown){return wrap('Unable to open this workspace',errorMessage(error),error instanceof ApiError&&error.status===401?link('/applicant/login','Sign in to the applicant / resident portal','ap-button'):link(location.pathname+location.search,'Try again','ap-button'));}
 export function initializeOperations(signal:AbortSignal,navigate:Navigate){
+ initializeConnected(signal,navigate);
  const root=document.querySelector<HTMLElement>('[data-operations]');if(!root)return;
  const error=root.querySelector<HTMLElement>('[data-ops-error]')!,notice=root.querySelector<HTMLElement>('[data-ops-notice]')!;
  const showError=(issue:unknown)=>{if(!signal.aborted){error.textContent=errorMessage(issue);error.focus();}};
