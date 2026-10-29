@@ -101,7 +101,7 @@ const portal='/api/applicant',staff='/api/applications';
 // One fixture drives each stage through the same CRM identities. STAGE_CHECK bounds
 // the assertions after each sequential implementation; no retained data is touched.
 const stage=Number(process.env.STAGE_CHECK??'16');
-assert([16,17,18,19].includes(stage),'Use STAGE_CHECK=16,17,18 or 19.');
+assert([16,17,18,19,20].includes(stage),'Use STAGE_CHECK=16,17,18,19 or 20.');
 async function main(){
  await createScratch();await baseline();const before=await snapshot();phase='additive migrations preserve established data';await migrate();assert.deepEqual(await snapshot(before),before);await migrate();assert.deepEqual(await snapshot(before),before);
  const files=(await readdir(path.join(root,'migrations'))).filter(name=>/^\d{3}_[a-z0-9_]+\.sql$/.test(name)).sort();
@@ -130,7 +130,15 @@ async function main(){
  if(stage===16||process.env.JOURNEY_ALL==='true')await checkScreening(context);else await submittedPortal(context);
  if(stage===17||stage>=17&&process.env.JOURNEY_ALL==='true')await checkPayments(context);
  if(stage===18||stage>=18&&process.env.JOURNEY_ALL==='true')await checkLeases(context);
- if(stage>=19)await checkAi(context);
+ if(stage===20){
+  await checkLeases(context);
+  const {checkOperations}=await import('./operations-check.js');
+  const records=await checkOperations({...context,config,database,orgs,properties,memberships,leadIds});
+  if(process.env.OOTLA_JOURNEY_BROWSER==='operations'){
+   const {checkOperationsBrowser}=await import('./operations-browser-check.js');
+   await checkOperationsBrowser({...records,base:api.base,cookie:admin,applicant,config,propertyId:properties[0]!});
+  }
+ } else if(stage>=19)await checkAi(context);
  if(process.env.OOTLA_CHECK_BACKUP==='true'){
   phase='isolated backup and restore';
   const {checkBackupRoundtrip}=await import('./backup-roundtrip.js');
