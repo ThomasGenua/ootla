@@ -40,12 +40,13 @@ export class PaymentService{
  }
  private async reference(c:PoolClient,a:ApplicationRow,create=false):Promise<Row|null>{
   if(create)await c.query('INSERT INTO application_payment_references(organization_id,application_id,property_id,contact_id) VALUES($1,$2,$3,$4) ON CONFLICT(organization_id,application_id) DO NOTHING',[a.organization_id,a.id,a.property_id,a.contact_id]);
-  return(await c.query('SELECT * FROM application_payment_references WHERE organization_id=$1 AND application_id=$2 AND property_id=$3 AND contact_id=$4 FOR UPDATE',[a.organization_id,a.id,a.property_id,a.contact_id])).rows[0]??null;
+  return(await c.query('SELECT *,EXTRACT(EPOCH FROM(clock_timestamp()-verified_at)) AS verification_age_seconds FROM application_payment_references WHERE organization_id=$1 AND application_id=$2 AND property_id=$3 AND contact_id=$4 FOR UPDATE',[a.organization_id,a.id,a.property_id,a.contact_id])).rows[0]??null;
  }
  private async destination(c:PoolClient,organizationId:string):Promise<Row|null>{const r=(await c.query('SELECT * FROM payment_destinations WHERE organization_id=$1 AND enabled',[organizationId])).rows[0];if(r)validateApprovedPaymentDestination(r.url);return r??null;}
  private async snapshot(c:PoolClient,a:ApplicationRow,applicant:boolean,admin:boolean):Promise<PaymentWorkspace>{
   const demo=await this.available(c,a),destination=demo?null:await this.destination(c,a.organization_id),r=await this.reference(c,a),lastKnownStatus=(r?.status??'unknown') as PaymentKnownStatus;
-  const verifiedAt=iso(r?.verified_at),age=verifiedAt?Date.now()-new Date(verifiedAt).getTime():null,stale=age!==null&&(age>verificationSeconds*1000||age<0);
+  // Verification is stamped by PostgreSQL; use that same clock to assess its age.
+  const verifiedAt=iso(r?.verified_at),age=verifiedAt?Number(r!.verification_age_seconds):null,stale=age!==null&&(age>verificationSeconds||age<0);
   const status=stale||r&&!verifiedAt?'verification_needed':lastKnownStatus;
   return{applicationId:a.id,mode:demo?'demo':destination?'external':'not_configured',status,lastKnownStatus,source:r?.source==='ootla_payment_demo'?'Simulated existing payment provider':destination?'Configured external portal; verification not configured':'No verified payment source',verifiedAt,stale,notice:demo?demoNotice:destination?'An approved external portal is configured. Its documented status-read or authenticated callback interface is not configured; Ootla cannot verify a payment.':'Payment destination and status verification are not configured. No payment is assumed or collected.',destination:demo?{name:'Demonstration payment provider',configured:true}:destination?{name:destination.name,configured:true}:null,access:{canOpen:applicant&&['submitted','staff_review'].includes(a.status)&&Boolean(demo||destination),canVerify:demo&&Boolean(r),canConfigure:admin}};
  }

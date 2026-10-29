@@ -319,6 +319,9 @@ async function checkPayments(c:Context){
  state=await json<PaymentWorkspace>(api,route,admin);assert.equal(state.status,'verification_needed');assert.equal(state.lastKnownStatus,'unknown');assert.equal(state.verifiedAt,null);
  const verification={requestKey:randomUUID()};state=await json<PaymentWorkspace>(api,portalPayment+'/verify',applicant,'POST',verification);assert.equal(state.status,'pending');assert.equal(state.lastKnownStatus,'pending');assert(state.verifiedAt&&!state.stale);assert(/simulat|demo/i.test(state.source));
  const pendingVerifiedAt=state.verifiedAt,confirm={token,requestKey:randomUUID()};
+ // The application host and database need not have perfectly synchronized clocks.
+ const originalNow=Date.now;
+ try{Date.now=()=>originalNow()-60000;const fresh=await json<PaymentWorkspace>(api,route,admin);assert.equal(fresh.status,'pending','A host clock behind the database must not make fresh verification stale.');assert.equal(fresh.stale,false);const portal=await json<PortalApplication>(api,'/api/applicant/applications/'+appId,applicant);assert(portal.nextSteps.some(step=>step.includes('Simulated provider status: pending')));}finally{Date.now=originalNow;}
  const confirmations=await Promise.all([api.request('/api/payment-demo/confirm',applicant,'POST',confirm),api.request('/api/payment-demo/confirm',applicant,'POST',confirm)]);for(const r of confirmations)assert.equal(r.status,200);
  const providerRecord=(await database.query('SELECT * FROM payment_demo_provider_records WHERE payment_reference_id=$1',[reference.id])).rows[0]!;assert.equal(providerRecord.status,'confirmed');assert.equal((await database.query('SELECT 1 FROM payment_demo_provider_events WHERE payment_reference_id=$1',[reference.id])).rowCount,1);
  const unchanged=(await database.query('SELECT status,verified_at FROM application_payment_references WHERE id=$1',[reference.id])).rows[0]!;assert.equal(unchanged.status,'pending');assert.equal(unchanged.verified_at.toISOString(),pendingVerifiedAt);
@@ -330,6 +333,8 @@ async function checkPayments(c:Context){
  assert.equal((await database.query('SELECT 1 FROM application_decisions WHERE application_id=$1',[appId])).rowCount,process.env.JOURNEY_ALL==='true'?1:0,'Payment verification must never create an application approval.');
  pass('forged browser parameters and manual status fields cannot confirm payment; controlled synthetic provider confirmation changes only provider records until an authorized adapter read verifies it, with duplicate-safe receipts');
  phase='stale and missing provider verification are explicit';
+ await database.query("UPDATE application_payment_references SET verified_at=clock_timestamp()+interval '1 minute' WHERE id=$1",[reference.id]);
+ state=await json<PaymentWorkspace>(api,route,admin);assert.equal(state.stale,true);assert.equal(state.status,'verification_needed','A timestamp in the database clock’s future is still invalid.');
  await database.query("UPDATE application_payment_references SET verified_at=now()-interval '2 hours' WHERE id=$1",[reference.id]);
  state=await json<PaymentWorkspace>(api,route,admin);assert(state.stale);assert.equal(state.status,'verification_needed');assert.equal(state.lastKnownStatus,'confirmed');assert(state.verifiedAt&&Date.now()-new Date(state.verifiedAt).getTime()>3600000);
  await database.query("UPDATE organizations SET environment='live' WHERE id=ANY($1::uuid[])",[orgs]);

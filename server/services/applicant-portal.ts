@@ -273,9 +273,9 @@ export class ApplicantPortal {
             }
         }
         if(readiness.payments){
-            const p=(await c.query('SELECT status,source,verified_at FROM application_payment_references WHERE organization_id=$1 AND application_id=$2',[a.organization_id,a.id])).rows[0];
+            const p=(await c.query("SELECT status,source,verified_at,verified_at BETWEEN clock_timestamp()-interval '1 hour' AND clock_timestamp() AS verification_fresh FROM application_payment_references WHERE organization_id=$1 AND application_id=$2",[a.organization_id,a.id])).rows[0];
             if(p){
-                const fresh=p.verified_at&&Date.now()-new Date(p.verified_at).getTime()<=3600000&&new Date(p.verified_at).getTime()<=Date.now();
+                const fresh=p.verification_fresh;
                 steps.push(!fresh?'Payment verification is needed; an external portal return does not confirm a payment.':p.source==='ootla_payment_demo'?'Simulated provider status: '+p.status+'. This is demonstration evidence, not a live payment.':'Contact staff for the verified existing-provider payment status.');
             }
         }
