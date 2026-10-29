@@ -1,3 +1,4 @@
+import { assistantRevisionSchema } from '../../shared/operations-contracts.js';
 import { Router, type Request, type Response, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
@@ -25,6 +26,7 @@ export function createPilotRouter(config:ServerConfig,database:Database,requireU
  router.post('/assistant/settings',async(r,s)=>{const input=json(r,z.object({enabled:z.boolean(),confirmed:z.literal(true)}).strict());s.json(await assistant.configure(actor(s),digest(r),input.enabled));});
  router.post('/assistant',async(r,s)=>s.json(await assistant.generate(actor(s),digest(r),json(r,assistantRequestSchema))));
  router.get('/assistant/history/:leadId',async(r,s)=>s.json(await assistant.history(actor(s),digest(r),id(r.params.leadId))));
+ router.post('/assistant/:id/revision',async(r,s)=>s.json(await assistant.revise(actor(s),digest(r),id(r.params.id),json(r,assistantRevisionSchema))));
  router.post('/assistant/:id/review',async(r,s)=>{json(r,z.object({confirmed:z.literal(true)}).strict());s.json(await assistant.review(actor(s),digest(r),id(r.params.id)));});
  router.get('/team',async(r,s)=>{const q=parse(z.object({page:z.coerce.number().int().min(1).max(100000).default(1),propertyPage:z.coerce.number().int().min(1).max(100000).default(1),q:z.string().trim().max(200).default('')}).strict(),r.query);s.json(await team.workspace(actor(s),digest(r),q.page,q.propertyPage,q.q));});
  router.post('/team/invitations',loginRateLimit(),async(r,s)=>s.status(201).json(await team.invite(actor(s),digest(r),json(r,inviteStaffSchema))));

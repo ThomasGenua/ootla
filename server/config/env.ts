@@ -2,6 +2,15 @@ import 'dotenv/config';
 import { z } from 'zod';
 
 const envSchema = z.object({
+  COMMUNICATIONS_ENABLED:z.enum(['true','false']).default('false').transform(v=>v==='true'),
+  COMMUNICATIONS_ORGANIZATION_ID:z.union([z.uuid(),z.literal('')]).default(''),
+  RESEND_API_KEY:z.string().max(1000).default(''),
+  RESEND_FROM_EMAIL:z.union([z.email(),z.literal('')]).default(''),
+  RESEND_REPLY_DOMAIN:z.string().regex(/^$|^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/).default(''),
+  RESEND_WEBHOOK_SECRET:z.string().max(500).default(''),
+  TWILIO_ACCOUNT_SID:z.string().regex(/^$|^AC[a-fA-F0-9]{32}$/).default(''),
+  TWILIO_AUTH_TOKEN:z.string().max(500).default(''),
+  TWILIO_FROM_NUMBER:z.string().regex(/^$|^\+[1-9]\d{7,14}$/).default(''),
   AI_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
   OPENAI_API_KEY: z.string().max(1000).default(''),
   OPENAI_MODEL: z.string().trim().max(100).default(''),
@@ -49,6 +58,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     throw new ConfigurationError(`Invalid server configuration: ${fields}. Check .env.example; SESSION_SECRET needs at least 32 characters. Values are intentionally omitted.`);
   }
   const values = parsed.data;
+  if(values.COMMUNICATIONS_ENABLED && (values.DEMO_MODE || !values.COMMUNICATIONS_ORGANIZATION_ID || !values.APP_URL.startsWith('https://')))throw new ConfigurationError('Live communications require a non-demo environment, HTTPS origin and an explicitly selected organization.');
   if (values.AI_ENABLED && (!values.OPENAI_API_KEY || !values.OPENAI_MODEL || values.DEMO_MODE)) throw new ConfigurationError('Live AI requires a server API key, explicit model and a non-demo environment.');
   const origin = new URL(values.APP_URL);
   if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
@@ -76,6 +86,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     throw new ConfigurationError('SESSION_SECRET must be a newly generated secret, not an example placeholder.');
   }
   return Object.freeze({
+    communications:Object.freeze({enabled:values.COMMUNICATIONS_ENABLED,organizationId:values.COMMUNICATIONS_ORGANIZATION_ID,resendKey:values.RESEND_API_KEY,resendFrom:values.RESEND_FROM_EMAIL,replyDomain:values.RESEND_REPLY_DOMAIN,resendWebhookSecret:values.RESEND_WEBHOOK_SECRET,twilioSid:values.TWILIO_ACCOUNT_SID,twilioToken:values.TWILIO_AUTH_TOKEN,twilioFrom:values.TWILIO_FROM_NUMBER}),
     ai: Object.freeze({ enabled: values.AI_ENABLED, apiKey: values.OPENAI_API_KEY, model: values.OPENAI_MODEL }),
     nodeEnv: values.NODE_ENV,
     databaseUrl: values.DATABASE_URL,
