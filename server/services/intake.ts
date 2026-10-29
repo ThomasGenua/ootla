@@ -10,9 +10,9 @@ import { isIsolatedDemo } from './demo-environment.js';
 export class IntakeService {
  constructor(private database:Database,private config:ServerConfig) {}
  private hmac(value:string) { return createHmac('sha256',this.config.sessionSecret).update(value).digest('hex'); }
- async form(id:string) {
+ async form(id:string):Promise<{id:string;title:string;embed_origins:string[];property_name:string;challenge:string}> {
   const row=(await this.database.query('SELECT f.id,f.title,f.embed_origins,p.name AS property_name FROM intake_forms f JOIN properties p ON p.id=f.property_id AND p.organization_id=f.organization_id WHERE f.id=$1 AND f.enabled',[id])).rows[0];if(!row)throw missing();
-  const time=String(Date.now());return{...row,challenge:time+'.'+this.hmac('intake:'+id+':'+time)};
+  const time=String(Date.now());return{id:row.id,title:row.title,embed_origins:row.embed_origins,property_name:row.property_name,challenge:time+'.'+this.hmac('intake:'+id+':'+time)};
  }
  async submit(id:string,input:z.infer<typeof inquirySchema>,ip:string) {
   const [time,signature]=input.challenge.split('.');const expected=this.hmac('intake:'+id+':'+time);

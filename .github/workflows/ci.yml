@@ -44,6 +44,10 @@ jobs:
         run: npm run check:lease-browser
       - name: Assistant, team, onboarding and analytics browser journeys
         run: npm run check:pilot-browser
+      - name: Intake, inbox, automation, resident and provider contract checks
+        run: npm run check:operations
+      - name: Leasing operations browser journeys
+        run: npm run check:operations-browser
       - name: Stop the owned test cluster
         if: always()
         run: npm run db:local:stop

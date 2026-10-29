@@ -48,7 +48,8 @@ export class Operations {
   const row=id?(await c.query('UPDATE communication_templates SET name=$2,channel=$3,subject=$4,body=$5,created_by=$6,version=version+1,updated_at=now() WHERE organization_id=$1 AND id=$7 AND version=$8 RETURNING *',[...values,id,input.version])).rows[0]:(await c.query('INSERT INTO communication_templates(organization_id,name,channel,subject,body,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',values)).rows[0];if(!row)throw stale();return row;
  });}
  async saveView(user:AuthUser,digest:string,input:z.infer<typeof savedViewSchema>){return this.staff(user,digest,async(c,a)=>{
-  if(Number((await c.query('SELECT count(*) AS n FROM saved_lead_views WHERE organization_id=$1 AND user_id=$2',[a.organization.id,a.id])).rows[0].n)>=50)throw new ApiError(409,'VIEW_LIMIT','Remove an unused saved view before adding another.');
+  await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['saved-views:'+a.organization.id+':'+a.id]);
+  if(!(await c.query('SELECT id FROM saved_lead_views WHERE organization_id=$1 AND user_id=$2 AND name=$3',[a.organization.id,a.id,input.name])).rowCount&&Number((await c.query('SELECT count(*) AS n FROM saved_lead_views WHERE organization_id=$1 AND user_id=$2',[a.organization.id,a.id])).rows[0].n)>=50)throw new ApiError(409,'VIEW_LIMIT','Remove an unused saved view before adding another.');
   return(await c.query('INSERT INTO saved_lead_views(organization_id,user_id,name,filters) VALUES($1,$2,$3,$4) ON CONFLICT(organization_id,user_id,name) DO UPDATE SET filters=$4 RETURNING *',[a.organization.id,a.id,input.name,JSON.stringify(input.filters)])).rows[0];
  });}
  async deleteView(user:AuthUser,digest:string,id:string){return this.staff(user,digest,async(c,a)=>{if(!(await c.query('DELETE FROM saved_lead_views WHERE organization_id=$1 AND user_id=$2 AND id=$3',[a.organization.id,a.id,id])).rowCount)throw missing();return{deleted:true};});}

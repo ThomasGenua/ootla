@@ -7,6 +7,7 @@ import type {Database} from '../server/db/pool.js';
 import type {ServerConfig} from '../server/config/env.js';
 import {createApp} from '../server/app.js';
 import {sendCommunication,DeliveryError} from '../server/services/communication-transport.js';
+import {Inbox} from '../server/services/inbox.js';
 import type {Row} from '../shared/operations-contracts.js';
 type Api={base:string;request:(path:string,cookie?:string,method?:string,body?:unknown,headers?:Record<string,string>)=>Promise<Response>};
 export interface OperationsFixture{api:Api;config:ServerConfig;database:Database;admin:string;agent:string;analyst:string;foreignAdmin:string;applicant:string;applicantId:string;orgs:string[];properties:string[];memberships:string[];leadIds:string[]}
@@ -51,6 +52,21 @@ export async function checkOperations(f:OperationsFixture){
  await call(b+'/inbox/'+conversationId+'/preferences','POST',{channel:'sms',allowed:false,evidence:'Synthetic contact opted out.'});const sms=await call(b+'/inbox/'+conversationId+'/drafts','POST',{requestKey:randomUUID(),channel:'sms',body:'Do not send this.'},admin,201);await denied(b+'/inbox/'+conversationId+'/drafts/'+sms.id+'/send',admin,'POST',{version:1,confirmed:true});
  await denied(b+'/rules/run',agent,'POST',{confirmed:true});await denied(b+'/inbox/'+conversationId+'/drafts',admin,'POST',{requestKey:randomUUID(),channel:'sms',body:'x'.repeat(1601)});
  pass('scoped inbox, per-user unread state, ownership conflicts, draft edits, reviewed simulation, idempotent send and consent enforcement; follow-up creates once and stops after a reply');
+ await call(b+'/rules/'+rule.id,'PATCH',{...ruleBody,version:1,enabled:false});
+ const tour=(await db.query("INSERT INTO viewings(organization_id,property_id,lead_id,starts_at,status) VALUES($1,$2,$3,now()+interval '10 minutes','scheduled') RETURNING id",[orgs[0],properties[0],secondLead])).rows[0];
+ const application=await call('/api/applications','POST',{leadId:secondLead},admin,201);
+ await db.query("UPDATE applications SET created_at=now()-interval '10 minutes',portal_enabled=true WHERE id=$1",[application.application.id]);
+ const tourRule=await call(b+'/rules','POST',{...ruleBody,name:'Tour reminder',trigger:'upcoming_tour',delayMinutes:60},admin,201),applicationRule=await call(b+'/rules','POST',{...ruleBody,name:'Complete application',trigger:'incomplete_application'},admin,201);
+ assert.equal((await call(b+'/rules/run','POST',{confirmed:true})).created,2);
+ const pending=(await db.query('SELECT * FROM followup_runs WHERE rule_id=ANY($1::uuid[])',[[tourRule.id,applicationRule.id]])).rows;assert.equal(pending.length,2);
+ const applicationRun=pending.find(r=>r.rule_id===applicationRule.id)!;
+ await db.query("UPDATE conversation_messages SET body='Staff revised this draft.',version=2 WHERE id=$1",[applicationRun.message_id]);
+ await db.query("UPDATE viewings SET status='cancelled' WHERE id=$1",[tour.id]);await db.query("UPDATE applications SET status='submitted',portal_submitted_at=now() WHERE id=$1",[application.application.id]);
+ assert.equal((await call(b+'/rules/run','POST',{confirmed:true})).stopped,2);assert.equal((await db.query('SELECT status FROM conversation_messages WHERE id=$1',[applicationRun.message_id])).rows[0].status,'draft');
+ const ruleAuthor=(await db.query('SELECT created_by,membership_id FROM followup_rules WHERE id=$1',[rule.id])).rows[0];
+ await db.query("INSERT INTO followup_rules(organization_id,property_id,name,trigger,delay_minutes,enabled,task_title,created_by,membership_id) SELECT $1,$2,'Batch fairness '||n,'unanswered_inquiry',5,false,'Disabled synthetic task',$3,$4 FROM generate_series(1,101) n",[orgs[0],properties[0],ruleAuthor.created_by,ruleAuthor.membership_id]);
+ await call(b+'/rules/run','POST',{confirmed:true});await call(b+'/rules/run','POST',{confirmed:true});assert.equal((await db.query("SELECT count(*)::int AS n FROM followup_rules WHERE name LIKE 'Batch fairness %' AND last_checked_at IS NULL")).rows[0].n,0);
+ pass('tour cancellation and application submission stop their follow-ups, staff-edited drafts survive, and bounded processing visits rules beyond its first batch');
  const saved=await call(b+'/saved-views','POST',{name:'Website inquiries',filters:{source:'website'}},admin,201);assert((await call(b+'/saved-views')).items.some((r:Row)=>r.id===saved.id));assert(!(await call(b+'/saved-views','GET',undefined,agent)).items.some((r:Row)=>r.id===saved.id));await denied(b+'/saved-views/'+saved.id,agent,'DELETE',{});
  const versions=(await db.query('SELECT id,version FROM leads WHERE id=ANY($1::uuid[]) ORDER BY id',[[leadId,secondLead]])).rows;
  await denied(b+'/bulk-assignment',admin,'POST',{leads:versions.map((r,i)=>({...r,version:r.version+(i?1:0)})),ownerMembershipId:null});assert.deepEqual((await db.query('SELECT id,version FROM leads WHERE id=ANY($1::uuid[]) ORDER BY id',[[leadId,secondLead]])).rows,versions);
@@ -79,7 +95,10 @@ export async function checkOperations(f:OperationsFixture){
  const download=await api.request(b+'/residents/'+request.id+'/documents/'+document.id,agent);assert.equal(download.status,200);assert.equal(createHash('sha256').update(Buffer.from(await download.arrayBuffer())).digest('hex'),createHash('sha256').update(pdf).digest('hex'));
  const invalid=await fetch(api.base+'/api/resident/requests/'+request.id+'/documents?name=bad.pdf',{method:'POST',headers:{Cookie:applicant,Origin:config.appUrl,'Content-Type':'application/pdf'},body:Buffer.from('<script>bad</script>')});assert.equal(invalid.status,400);
  const residentDetail=await call('/api/resident/requests/'+request.id,'GET',undefined,applicant);assert.equal(residentDetail.request.status,'in_progress');assert.equal(residentDetail.updates.length,3);assert.equal(residentDetail.documents.length,1);
- pass('active resident identity, private requests, staff ownership/status, applicant updates, validated uploads and scoped downloads');
+ await db.query("INSERT INTO resident_requests(organization_id,resident_id,property_id,lead_id,created_by,request_key,title,category,description,priority) SELECT organization_id,resident_id,property_id,lead_id,created_by,gen_random_uuid(),'Concurrent limit fixture',category,description,priority FROM resident_requests CROSS JOIN generate_series(1,8) WHERE id=$1",[request.id]);
+ const concurrentRequests=await Promise.all([1,2].map(()=>api.request('/api/resident/requests',applicant,'POST',{...requestBody,requestKey:randomUUID(),title:'Concurrent limit fixture'})));assert.deepEqual(concurrentRequests.map(r=>r.status).sort(),[201,429]);
+ await db.query("DELETE FROM resident_request_updates WHERE request_id IN (SELECT id FROM resident_requests WHERE created_by=$1 AND title='Concurrent limit fixture')",[f.applicantId]);await db.query("DELETE FROM resident_requests WHERE created_by=$1 AND title='Concurrent limit fixture'",[f.applicantId]);
+ pass('active resident identity, private requests, staff ownership/status, applicant updates, validated uploads, scoped downloads and concurrent daily request limits');
  await checkProviders(f,conversationId,leadId);
  return{formId:form.id,leadId,conversationId,requestId:request.id,knowledgeId:knowledge.id};
 }
@@ -87,7 +106,8 @@ async function checkProviders(f:OperationsFixture,conversationId:string,leadId:s
  const {config,database:db,orgs,admin}=f;let calls=0,lastBody:RequestInit|undefined;
  const providerId=randomUUID(),smsId='SM'+'1'.repeat(32),secret='whsec_'+Buffer.from('synthetic-webhook-key-for-test-only').toString('base64');
  const live:ServerConfig={...config,demoMode:false,appUrl:'https://ootla.example.test',communications:{enabled:true,organizationId:orgs[0],resendKey:'synthetic-key',resendFrom:'team@approved.example.test',replyDomain:'replies.approved.example.test',resendWebhookSecret:secret,twilioSid:'AC'+'1'.repeat(32),twilioToken:'synthetic-twilio-token',twilioFrom:'+14165550999'}};
- const fetcher:typeof fetch=async(url,init)=>{calls++;lastBody=init;assert(String(url).startsWith('https://api.resend.com/')||String(url).startsWith('https://api.twilio.com/'));return new Response(JSON.stringify({id:providerId,sid:smsId}),{status:200,headers:{'Content-Type':'application/json'}});};
+ const inboundEmailId=randomUUID();
+ const fetcher:typeof fetch=async(url,init)=>{calls++;lastBody=init;assert(String(url).startsWith('https://api.resend.com/')||String(url).startsWith('https://api.twilio.com/'));return new Response(JSON.stringify(String(url).includes('/emails/receiving/')?{id:inboundEmailId,from:'Synthetic customer <operations@example.test>',to:[new Inbox(db,live).replyAddress(conversationId)],subject:'Reply to the tour question',text:'Tuesday works for me.'}:{id:providerId,sid:smsId}),{status:200,headers:{'Content-Type':'application/json'}});};
  const transport=await sendCommunication(live,{id:randomUUID(),channel:'sms',recipient:'+14165550123',subject:'',body:'Synthetic adapter test',replyTo:''},fetcher);assert.equal(transport.id,smsId);assert(String(lastBody?.body).includes('StatusCallback='));
  await assert.rejects(()=>sendCommunication(live,{id:randomUUID(),channel:'sms',recipient:'+14165550123',subject:'',body:'Synthetic',replyTo:''},async()=>{throw Error('timeout');}),e=>e instanceof DeliveryError&&e.uncertain);
  await assert.rejects(()=>sendCommunication(live,{id:randomUUID(),channel:'email',recipient:'synthetic@example.test',subject:'Synthetic',body:'Synthetic',replyTo:'reply@example.test'},async()=>new Response('{}',{status:400})),e=>e instanceof DeliveryError&&!e.uncertain);
@@ -101,6 +121,15 @@ async function checkProviders(f:OperationsFixture,conversationId:string,leadId:s
   assert.equal((await callback('forged')).status,403);assert.equal((await callback()).status,200); // callback before provider response
   const sent=await req('/api/operations/inbox/'+conversationId+'/drafts/'+draft.id+'/send',{version:1,confirmed:true});assert.equal(sent.status,200);assert.equal((await sent.json() as Row).status,'delivered');assert((lastBody?.headers as Record<string,string>)['Idempotency-Key']);const after=calls;
   assert.equal((await req('/api/operations/inbox/'+conversationId+'/drafts/'+draft.id+'/send',{version:1,confirmed:true})).status,200);assert.equal(calls,after);assert.equal((await callback()).status,200);
+  const receivedPayload=JSON.stringify({type:'email.received',created_at:new Date().toISOString(),data:{email_id:inboundEmailId}}),receivedId='msg_'+randomUUID(),receivedAt=new Date();
+  const receiveEmail=()=>fetch(base+'/api/communications/resend',{method:'POST',headers:{'Content-Type':'application/json','svix-id':receivedId,'svix-timestamp':String(Math.floor(receivedAt.getTime()/1000)),'svix-signature':new Webhook(secret).sign(receivedId,receivedAt,receivedPayload)},body:receivedPayload});
+  assert.equal((await receiveEmail()).status,200);const afterReceived=calls;assert.equal((await receiveEmail()).status,200);assert.equal(calls,afterReceived);const received=(await db.query('SELECT * FROM conversation_messages WHERE provider_id=$1',[inboundEmailId])).rows;assert.equal(received.length,1);assert.equal(received[0].conversation_id,conversationId);assert.equal(received[0].body,'Tuesday works for me.');
+  await req('/api/operations/inbox/'+conversationId+'/preferences',{channel:'sms',allowed:true,evidence:'Synthetic SMS permission for adapter testing.'});
+  const smsDraftResponse=await req('/api/operations/inbox/'+conversationId+'/drafts',{requestKey:randomUUID(),channel:'sms',body:'Synthetic SMS delivery test'});assert.equal(smsDraftResponse.status,201);const smsDraft=await smsDraftResponse.json() as Row;
+  const smsSend=await req('/api/operations/inbox/'+conversationId+'/drafts/'+smsDraft.id+'/send',{version:1,confirmed:true});assert.equal(smsSend.status,200);assert.equal((await smsSend.json() as Row).status,'accepted');
+  const statusPath='/api/communications/twilio/status/'+smsDraft.id;
+  for(const status of ['delivered','sent','failed']){const fields={AccountSid:live.communications.twilioSid,MessageSid:smsId,MessageStatus:status,To:'+14165550123'};const response=await fetch(base+statusPath,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','x-twilio-signature':twilio.getExpectedTwilioSignature(live.communications.twilioToken,live.appUrl+statusPath,fields)},body:new URLSearchParams(fields)});assert.equal(response.status,200);}
+  assert.equal((await db.query('SELECT status FROM conversation_messages WHERE id=$1',[smsDraft.id])).rows[0].status,'delivered');
   const unsigned=await req('/api/communications/twilio/incoming',{});assert([400,403].includes(unsigned.status));
   const incoming={AccountSid:live.communications.twilioSid,MessageSid:'SM'+'2'.repeat(32),From:'+14165550123',To:live.communications.twilioFrom,Body:'STOP'},path='/api/communications/twilio/incoming';
   const signature2=twilio.getExpectedTwilioSignature(live.communications.twilioToken,live.appUrl+path,incoming);
@@ -108,6 +137,6 @@ async function checkProviders(f:OperationsFixture,conversationId:string,leadId:s
   assert.equal((await sms()).status,200);assert.equal((await sms()).status,200);
   const prefs=(await db.query("SELECT p.allowed FROM contact_communication_preferences p JOIN contacts c ON c.id=p.contact_id WHERE p.organization_id=$1 AND c.phone='+14165550123' AND p.channel='sms'",[orgs[0]])).rows;assert.equal(prefs.length,2);assert(prefs.every(p=>!p.allowed));
   const unmatched=(await db.query('SELECT count(*)::int AS n FROM unmatched_messages WHERE provider_id=$1',[incoming.MessageSid])).rows[0];assert.equal(unmatched.n,1);
-  console.log('PASS operations: mocked Resend/Twilio transports, ambiguous failures, signed webhooks, delivery callback before send response, replay protection and opt-outs across duplicate contacts; no provider network calls');
+  console.log('PASS operations: mocked Resend/Twilio transports, ambiguous failures, signed incoming email and SMS, threaded replies, early and out-of-order delivery callbacks, replay protection and opt-outs across duplicate contacts; no provider network calls');
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));await db.query("UPDATE organizations SET environment='demo' WHERE id=ANY($1::uuid[])",[orgs]);}
 }

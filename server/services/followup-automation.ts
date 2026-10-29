@@ -13,13 +13,15 @@ export class FollowupAutomation extends Operations {
  async tick(){return this.database.transaction(c=>this.process(c));}
  private async process(c:PoolClient,organizationId?:string){
   const isolated=await isIsolatedDemo(this.config,c);if(this.config.demoMode&&!isolated)return{created:0,stopped:0};
-  const rules=(await c.query("SELECT r.*,u.display_name,u.email,m.role,m.active AS membership_active,u.active AS user_active,o.name AS organization_name,o.environment FROM followup_rules r JOIN organization_memberships m ON m.id=r.membership_id AND m.user_id=r.created_by JOIN users u ON u.id=r.created_by AND u.account_kind='staff' JOIN organizations o ON o.id=r.organization_id WHERE ($1::uuid IS NULL OR r.organization_id=$1) ORDER BY r.id LIMIT 100 FOR UPDATE OF r SKIP LOCKED",[organizationId??null])).rows;
+  const rules=(await c.query("SELECT r.*,u.display_name,u.email,m.role,m.active AS membership_active,u.active AS user_active,o.name AS organization_name,o.environment FROM followup_rules r JOIN organization_memberships m ON m.id=r.membership_id AND m.user_id=r.created_by JOIN users u ON u.id=r.created_by AND u.account_kind='staff' JOIN organizations o ON o.id=r.organization_id WHERE ($1::uuid IS NULL OR r.organization_id=$1) ORDER BY r.last_checked_at NULLS FIRST,r.id LIMIT 100 FOR UPDATE OF r SKIP LOCKED",[organizationId??null])).rows;
   let created=0,stopped=0;
   for(const rule of rules){
    const eligible=rule.enabled&&rule.membership_active&&rule.user_active&&rule.role==='organization_admin'&&(rule.environment==='demo'?isolated:!this.config.demoMode);
-   const runs=(await c.query('SELECT run.*,l.pipeline_stage FROM followup_runs run JOIN leads l ON l.id=run.lead_id WHERE run.rule_id=$1 AND run.status=\'created\' ORDER BY run.created_at DESC LIMIT 500 FOR UPDATE OF run',[rule.id])).rows;
+   await c.query('UPDATE followup_rules SET last_checked_at=clock_timestamp() WHERE id=$1',[rule.id]);
+   const runs=(await c.query('SELECT run.*,l.pipeline_stage FROM followup_runs run JOIN leads l ON l.id=run.lead_id WHERE run.rule_id=$1 AND run.status=\'created\' ORDER BY run.last_checked_at NULLS FIRST,run.id LIMIT 500 FOR UPDATE OF run',[rule.id])).rows;
    for(const run of runs){
     const reason=!eligible?'Rule disabled or its administrator is unavailable.':['leased','won','lost_closed'].includes(run.pipeline_stage)?'Lead closed.':await this.stopReason(c,rule,run);
+    await c.query('UPDATE followup_runs SET last_checked_at=clock_timestamp() WHERE id=$1',[run.id]);
     if(!reason)continue;
     await c.query("UPDATE followup_runs SET status='stopped',reason=$2 WHERE id=$1",[run.id,reason]);
     if(run.task_id)await c.query("UPDATE tasks SET status='cancelled',version=version+1,updated_at=now() WHERE id=$1 AND status='open'",[run.task_id]);
@@ -30,7 +32,7 @@ export class FollowupAutomation extends Operations {
    const sql=rule.trigger==='unanswered_inquiry'?`SELECT l.*,co.id AS conversation_id,(SELECT m.id FROM conversation_messages m WHERE m.conversation_id=co.id AND m.direction='inbound' ORDER BY m.created_at DESC,m.id DESC LIMIT 1)::text AS trigger_key FROM conversations co JOIN leads l ON l.id=co.lead_id WHERE co.organization_id=$1 AND co.property_id=$2 AND co.status='open' AND EXISTS(SELECT 1 FROM conversation_messages m WHERE m.id=(SELECT latest.id FROM conversation_messages latest WHERE latest.conversation_id=co.id AND latest.direction='inbound' ORDER BY latest.created_at DESC,latest.id DESC LIMIT 1) AND m.created_at<=now()-($3::int*interval '1 minute') AND NOT EXISTS(SELECT 1 FROM conversation_messages reply WHERE reply.conversation_id=co.id AND reply.direction='outbound' AND reply.status IN ('accepted','delivered','simulated') AND reply.sent_at>=m.created_at))`
     :rule.trigger==='upcoming_tour'?`SELECT l.*,v.id::text AS trigger_key,v.id AS tour_id FROM viewings v JOIN leads l ON l.id=v.lead_id WHERE v.organization_id=$1 AND v.property_id=$2 AND v.status='scheduled' AND v.starts_at>now() AND v.starts_at<=now()+($3::int*interval '1 minute')`
     :`SELECT l.*,ap.id::text AS trigger_key,ap.id AS application_id FROM applications ap JOIN leads l ON l.id=ap.lead_id WHERE ap.organization_id=$1 AND ap.property_id=$2 AND ap.portal_enabled AND ap.status='draft' AND ap.created_at<=now()-($3::int*interval '1 minute')`;
-   const leads=(await c.query(sql+" AND l.pipeline_stage NOT IN ('leased','won','lost_closed') ORDER BY l.id LIMIT 100",[rule.organization_id,rule.property_id,rule.delay_minutes])).rows;
+   const leads=(await c.query('SELECT candidate.* FROM ('+sql+" AND l.pipeline_stage NOT IN ('leased','won','lost_closed')) candidate WHERE NOT EXISTS(SELECT 1 FROM followup_runs prior WHERE prior.rule_id=$4 AND prior.trigger_key=candidate.trigger_key) ORDER BY candidate.id LIMIT 100",[rule.organization_id,rule.property_id,rule.delay_minutes,rule.id])).rows;
    for(const lead of leads){if(!lead.trigger_key||(await c.query('SELECT 1 FROM followup_runs WHERE rule_id=$1 AND trigger_key=$2',[rule.id,lead.trigger_key])).rowCount)continue;
     await c.query('SELECT id FROM leads WHERE id=$1 FOR SHARE',[lead.id]);
     const run=(await c.query("INSERT INTO followup_runs(organization_id,rule_id,lead_id,trigger_key,status) VALUES($1,$2,$3,$4,'created') ON CONFLICT DO NOTHING RETURNING id",[rule.organization_id,rule.id,lead.id,lead.trigger_key])).rows[0];if(!run)continue;

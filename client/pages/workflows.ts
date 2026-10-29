@@ -83,7 +83,7 @@ export function residentSupportPage(): string {
     <section class="detail-hero" data-public-section="intro" aria-labelledby="resident-support-heading">
       <div class="detail-container detail-hero-grid">
         <div><span class="detail-kicker">OOTLAAI / RESIDENT SUPPORT</span><h1 id="resident-support-heading">Listen to the request.<br>Keep people informed.</h1>
-          <p>OotlaAI clarifies repair, renewal and payment questions with resident context.</p>
+          <p>Residents submit service requests and attachments. Your team assigns ownership, records progress and keeps them informed.</p>
           <div class="public-channel-list" aria-label="Illustrated communication channels"><span>Resident SMS</span><span>Phone &amp; voice</span><span>AI responses</span></div>
           <div class="detail-hero-links"><a class="button button-primary" href="#resident-request">Follow a request ${icon('arrow')}</a>${link('/ai-workflows#ai-demonstrations', 'Try the AI examples', 'text-link')}</div>
           <span class="detail-preview-note">Illustrated workflows. SMS, voice and live AI need configuration. No messages sent.</span>
@@ -93,7 +93,7 @@ export function residentSupportPage(): string {
     </section>
     <section id="resident-request" class="public-primary" data-public-section="main" aria-labelledby="resident-journey-heading">
       <div class="detail-container">
-        <div class="public-primary-heading"><span class="detail-kicker">HELPFUL CONVERSATIONS. VISIBLE FOLLOW-THROUGH.</span><h2 id="resident-journey-heading">Every request.<br>A clear next step.</h2><p>AI gathers details. Staff assign work and confirm appointments.</p></div>
+        <div class="public-primary-heading"><span class="detail-kicker">HELPFUL CONVERSATIONS. VISIBLE FOLLOW-THROUGH.</span><h2 id="resident-journey-heading">Every request.<br>A clear next step.</h2><p>Residents share details and attachments. Staff assign work and post updates in the private portal.</p></div>
         <div class="public-feature-grid">
           <article class="public-feature">
             <span class="detail-kicker">01 / THE REQUEST</span><h3>Clarify the request.</h3>
