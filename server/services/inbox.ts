@@ -5,6 +5,7 @@ import type { AuthUser } from '../../shared/contracts.js';
 import type { Row, draftSchema,editDraftSchema,conversationSchema,consentSchema } from '../../shared/operations-contracts.js';
 import { ApiError } from '../http/errors.js';
 import { assertComposer } from './inbox-composer.js';
+import {assertPropertyDraftCurrent} from './property-message-validation.js';
 import { Operations } from './operations.js';
 import { LeadWorkspaces } from './lead-workspace.js';
 import { leadScope,scopeArgs,eligibleOwner,missing,stale,operationEvent,requireAdmin } from './operations-access.js';
@@ -58,6 +59,7 @@ export class Inbox extends Operations {
   const prepared=await this.staff(user,digest,async(c,a)=>{
    const co=await this.access(c,a,id,true);const m=(await c.query('SELECT * FROM conversation_messages WHERE conversation_id=$1 AND id=$2 FOR UPDATE',[id,messageId])).rows[0];if(!m)throw missing();if(m.status!=='draft')return{existing:m};if(m.version!==version)throw stale();await assertComposer(c,a,id);
    if(m.tour_id&&!(await c.query('SELECT id FROM viewings WHERE id=$1 AND organization_id=$2 AND version=$3 FOR SHARE',[m.tour_id,a.organization.id,m.tour_version])).rowCount)throw new ApiError(409,'TOUR_CHANGED','This tour changed after the draft was prepared. Review its current details and prepare a new reply.');
+   await assertPropertyDraftCurrent(c,messageId);
    if(co.status==='closed')throw new ApiError(409,'CONVERSATION_CLOSED','Reopen the conversation before sending.');
    const preference=(await c.query('SELECT allowed FROM contact_communication_preferences WHERE organization_id=$1 AND contact_id=$2 AND channel=$3 FOR SHARE',[a.organization.id,co.contact_id,m.channel])).rows[0];if(!preference?.allowed)throw new ApiError(409,'CONSENT_REQUIRED','Record permission for this channel before sending.');
    const recipient=m.channel==='email'?co.email:co.phone;if(!(m.channel==='email'?/^[^\s@]+@[^\s@]+\.[^\s@]+$/:/^\+[1-9]\d{7,14}$/).test(recipient??''))throw new ApiError(409,'RECIPIENT_REQUIRED','A valid contact address is required.');

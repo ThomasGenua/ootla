@@ -1,4 +1,5 @@
-﻿import { createOperationsRouter, createIntakeRouter, createResidentRouter } from './routes/operations.js';
+﻿import {createPropertyOperationsRouter,createResidentWorkflowsRouter} from './routes/property-operations.js';
+import { createOperationsRouter, createIntakeRouter, createResidentRouter } from './routes/operations.js';
 import { createCommunicationWebhooks } from './routes/communication-webhooks.js';
 import { IntakeService } from './services/intake.js';
 import { existsSync } from 'node:fs';
@@ -38,7 +39,7 @@ import { adminSummaryQuerySchema } from '../shared/admin-summary-contracts.js';
 import { loadAdminPageSummary } from './services/admin-summary.js';
 
 const frontendRoutes = new Set([
-  '/inquire', '/resident', '/admin/attention', '/admin/intake', '/admin/inbox', '/admin/automations', '/admin/residents', '/admin/workspace', '/admin/knowledge', '/admin/reports',
+  '/inquire', '/resident', '/admin/maintenance','/admin/renewals','/admin/vacancies','/admin/duplicates','/admin/response-targets','/admin/attention', '/admin/intake', '/admin/inbox', '/admin/automations', '/admin/residents', '/admin/workspace', '/admin/knowledge', '/admin/reports',
   '/staff/access', '/admin/team', '/admin/onboarding',
   '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
   '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar',
@@ -208,6 +209,8 @@ export function createApp(config: ServerConfig, database: Database, options: { c
   app.use('/api/connectors', createConnectorRouter(config, database, requireUser));
   app.use('/api/imports', createImportRouter(config, database, requireUser));
   app.use('/api/public/intake',createIntakeRouter(config,database));
+  app.use('/api/property-operations',createPropertyOperationsRouter(config,database,requireUser));
+  app.use('/api/resident-workflows',createResidentWorkflowsRouter(config,database));
   app.use('/api/operations',createOperationsRouter(config,database,requireUser,options.communicationFetch));
   app.use('/api/resident',createResidentRouter(config,database));
   app.use('/api/pilot', createPilotRouter(config, database, requireUser));

@@ -49,9 +49,10 @@ import { notFoundPage, publicPage } from './pages/public';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const publicRoutes = new Set(['/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy']);
 const applicantRoutes = new Set(['/applicant', '/applicant/login', '/applicant/invite']);
-const operationsRoutes=new Set(['/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports']);
+const operationsRoutes=new Set(['/admin/maintenance','/admin/renewals','/admin/vacancies','/admin/duplicates','/admin/response-targets','/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports']);
 const adminRoutes = new Set([...operationsRoutes,'/admin/team', '/admin/onboarding','/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations']);
 const titles: Record<string, string> = {
+  '/admin/maintenance':'Maintenance dispatch — Ootla','/admin/renewals':'Renewals and move-outs — Ootla','/admin/vacancies':'Vacancies and waitlists — Ootla','/admin/duplicates':'Duplicate resolution — Ootla','/admin/response-targets':'Response targets — Ootla',
   '/admin/attention':'Needs attention — Ootla','/admin/intake':'Inquiry forms — Ootla','/admin/inbox':'Shared inbox — Ootla','/admin/automations':'Follow-up rules — Ootla','/admin/residents':'Resident requests — Ootla','/admin/workspace':'Search & saved work — Ootla','/admin/knowledge':'Property knowledge — Ootla','/admin/reports':'Operations reports — Ootla',
   '/admin/team':'Team & access — Ootla', '/admin/onboarding':'Getting started — Ootla', '/staff/access':'Staff access — Ootla',
   '/': 'OotlaAI — Keep leads moving. Keep people informed.', '/platform': 'The platform — OotlaAI', '/ai-workflows': 'AI workflows — OotlaAI', '/integrations': 'Integrations — OotlaAI', '/workflows/leasing': 'Leasing workflow — OotlaAI', '/workflows/resident-support': 'Resident support workflow — OotlaAI', '/admin/login': 'Staff sign in — Ootla',
