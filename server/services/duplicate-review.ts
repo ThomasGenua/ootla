@@ -1,0 +1,24 @@
+import type {z} from 'zod';
+import type {duplicateSchema,portfolioQuery} from '../../shared/property-operations-contracts.js';
+import {PropertyOperations,type Actor,type Client} from './property-operations-base.js';
+import {scopeArgs,missing,requireAdmin,stale} from './operations-access.js';
+const contactScope=(x:string)=>`${x}.organization_id=$1 AND ($2='organization_admin' OR (EXISTS(SELECT 1 FROM contact_property_links cl WHERE cl.contact_id=${x}.id) AND NOT EXISTS(SELECT 1 FROM contact_property_links cl WHERE cl.contact_id=${x}.id AND NOT EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.property_id=cl.property_id AND pa.membership_id=$3 AND pa.organization_id=$1))))`;
+export class DuplicateReview extends PropertyOperations {
+ async contact(c:Client,a:Actor,id:string){const ct=(await c.query(`SELECT ct.* FROM contacts ct WHERE ct.id=$4 AND ${contactScope('ct')} FOR SHARE OF ct`,[...scopeArgs(a),id])).rows[0];if(!ct)throw missing();await c.query('SELECT property_id FROM contact_property_links WHERE contact_id=$1 FOR SHARE',[id]);return ct;}
+ async candidates(u:Actor,d:string,q:z.infer<typeof portfolioQuery>){return this.staff(u,d,async(c,a)=>({items:(await c.query(`SELECT x.id AS first_id,y.id AS second_id,x.display_name AS first_name,y.display_name AS second_name,x.email,y.email AS second_email,r.id AS review_id,r.resolution,r.canonical_contact_id,r.version,count(*) OVER()::int AS total FROM contacts x JOIN contacts y ON x.organization_id=y.organization_id AND x.id<y.id LEFT JOIN contact_duplicate_reviews r ON r.organization_id=x.organization_id AND r.first_contact_id=x.id AND r.second_contact_id=y.id WHERE ${contactScope('x')} AND ${contactScope('y')} AND ((x.email<>'' AND lower(trim(x.email))=lower(trim(y.email))) OR (length(regexp_replace(x.phone,'[^0-9]','','g'))>=7 AND regexp_replace(x.phone,'[^0-9]','','g')=regexp_replace(y.phone,'[^0-9]','','g')) OR r.id IS NOT NULL) AND strpos(lower(x.display_name||' '||y.display_name||' '||x.email),lower($4))>0 ORDER BY (r.id IS NOT NULL),x.id,y.id LIMIT 25 OFFSET $5`,[...scopeArgs(a),q.q,(q.page-1)*25])).rows,page:q.page}));}
+ async detail(u:Actor,d:string,first:string,second:string){return this.staff(u,d,async(c,a)=>{
+  const ids=[first,second].sort(),contacts=[];
+  for(const id of ids){const ct=await this.contact(c,a,id);contacts.push({id:ct.id,name:ct.display_name,email:ct.email,phone:ct.phone,properties:(await c.query('SELECT p.name FROM contact_property_links cl JOIN properties p ON p.id=cl.property_id WHERE cl.contact_id=$1 ORDER BY p.name',[id])).rows,preferences:(await c.query('SELECT channel,allowed,evidence,updated_at FROM contact_communication_preferences WHERE contact_id=$1',[id])).rows,leads:(await c.query('SELECT l.id,l.pipeline_stage,co.id AS conversation_id FROM leads l LEFT JOIN conversations co ON co.lead_id=l.id WHERE l.contact_id=$1 ORDER BY l.created_at DESC LIMIT 50',[id])).rows,applications:(await c.query('SELECT id,status FROM applications WHERE contact_id=$1 ORDER BY created_at DESC LIMIT 50',[id])).rows});}
+  const review=(await c.query('SELECT * FROM contact_duplicate_reviews WHERE organization_id=$1 AND first_contact_id=$2 AND second_contact_id=$3',[a.organization.id,...ids])).rows[0]??null;
+  return{contacts,review,history:review?await this.timeline(c,review.id):[],canResolve:a.organization.role==='organization_admin',notice:'Reviewed links identify duplicate contact records. Conversations, applications, consent and sign-in grants retain their original identities. A link never grants another applicant access or combines permissions.'};
+ });}
+ async resolve(u:Actor,d:string,i:z.infer<typeof duplicateSchema>){return this.staff(u,d,async(c,a)=>{
+  requireAdmin(a);const ids=[i.firstContactId,i.secondContactId].sort();for(const id of ids)await this.contact(c,a,id);
+  await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['duplicate:'+a.organization.id+':'+ids.join(':')]);
+  return this.receipt(c,a,'duplicate:resolve',i,async()=>{
+   const old=(await c.query('SELECT * FROM contact_duplicate_reviews WHERE organization_id=$1 AND first_contact_id=$2 AND second_contact_id=$3 FOR UPDATE',[a.organization.id,...ids])).rows[0];if(old&&old.version!==i.version||!old&&i.version)throw stale();
+   const row=(await c.query('INSERT INTO contact_duplicate_reviews(organization_id,first_contact_id,second_contact_id,canonical_contact_id,resolution,reason,reviewed_by) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(organization_id,first_contact_id,second_contact_id) DO UPDATE SET canonical_contact_id=$4,resolution=$5,reason=$6,reviewed_by=$7,version=contact_duplicate_reviews.version+1,updated_at=now() RETURNING *',[a.organization.id,...ids,i.canonicalContactId,i.resolution,i.reason,a.id])).rows[0];
+   await this.history(c,a,row,'duplicate.reviewed',{...i,requestKey:undefined,previousResolution:old?.resolution??null});return row;
+  });
+ });}
+}

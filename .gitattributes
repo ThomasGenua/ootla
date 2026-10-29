@@ -2,3 +2,4 @@
 # Earlier migrations retain their established checkout behavior.
 /migrations/019_followup_batch_progress.sql -text
 /migrations/020_connected_leasing.sql -text
+/migrations/021_property_operations.sql -text

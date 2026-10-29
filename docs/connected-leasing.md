@@ -2,6 +2,8 @@
 
 This release connects the existing inquiry inbox, public booking and application portal, adds a prioritized staff queue, and supports private inbox collaboration. Apply additive migration `020_connected_leasing.sql` before starting the release. Readiness requires it; earlier migration files are unchanged.
 
+The [property operations extension](property-operations.md) adds maintenance, renewals, vacancies, duplicate review and configurable business-hour reply targets. The current application also requires its migration 021.
+
 ## Inbox to tour to application
 
 Open a conversation and use **Tour and application journey**. The card shows recent tours and applications for the conversation's property. A configured property schedule and eligible staff availability enable **Prepare booking invitation**. Choose a host and optional unit. The expiring private link is appended to the reply editor; saving a draft and sending it are separate staff actions. Existing email/SMS preferences, provider configuration and send review still apply.
@@ -18,7 +20,7 @@ Invitation links deliberately appear in the staff-reviewed draft that will be sh
 
 `/admin/attention` combines accessible work into one paginated queue with ownership and work-type filters. Every item names its property, owner, target time and next action.
 
-- Unanswered open inquiries use a four-hour response target unless staff set a deadline. Drafts do not count as responses; accepted, delivered and simulated replies do.
+- Unanswered open inquiries use the configured property business-hour target, falling back to four hours, unless staff set a deadline. Drafts do not count as responses; accepted, delivered and simulated replies do.
 - Open, actionable overdue tasks use the existing task visibility and lifecycle rules.
 - Draft/submitted/staff-review applications appear after three days without an application-record update or a recorded portal action, including applicant edits and document activity.
 - Unresolved resident requests appear after one day without an update, or immediately when urgent.

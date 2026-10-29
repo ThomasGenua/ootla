@@ -101,7 +101,8 @@ export async function checkOperations(f:OperationsFixture){
  pass('active resident identity, private requests, staff ownership/status, applicant updates, validated uploads, scoped downloads and concurrent daily request limits');
  await checkProviders(f,conversationId,leadId);
  const {checkConnected}=await import('./connected-check.js');try{await checkConnected(f,{conversationId,leadId,requestId:request.id});}catch(error){console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('connected-check.ts')||l.includes('AssertionError')).join('\n'):'Connected checks failed');throw error;}
- return{formId:form.id,leadId,conversationId,requestId:request.id,knowledgeId:knowledge.id};
+ const {checkPropertyOperations}=await import('./property-operations-check.js');let propertyRecords;try{propertyRecords=await checkPropertyOperations(f,{leadId,conversationId,requestId:request.id});}catch(error){console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('property-operations-check.ts')||l.includes('AssertionError')).join('\n'):'Property checks failed');throw error;}
+ return{formId:form.id,leadId,conversationId,requestId:request.id,knowledgeId:knowledge.id,propertyRecords};
 }
 async function checkProviders(f:OperationsFixture,conversationId:string,leadId:string){
  const {config,database:db,orgs,admin}=f;let calls=0,lastBody:RequestInit|undefined;
