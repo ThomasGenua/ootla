@@ -15,7 +15,7 @@ This release extends Ootla's existing CRM with eight connected feature areas. Al
 
 ## Install and validate
 
-Run `npm ci`, `npm run db:migrate`, `npm run build`, then restart the application. Migration `018_leasing_operations.sql` is additive; existing identities are preserved. Readiness requires this migration. Back up the database before a production migration using the existing release guide.
+Run `npm ci`, `npm run db:migrate`, `npm run build`, then restart the application. Migrations `018_leasing_operations.sql` and `019_followup_batch_progress.sql` are additive; existing identities are preserved. Readiness requires both migrations. Migration 018 retains the checksum published in the saved-work release. Back up the database before a production migration using the existing release guide.
 
 Use `npm run check:operations` and `npm run check:operations-browser` with the documented local PostgreSQL test cluster. Both own disposable databases, test the lease-to-resident prerequisites and clean up only their own fixtures. They never send provider messages. `npm run check:release` retains the prior screening, payments, lease, assistant/team and backup/restore checks. CI runs both new suites alongside the existing release/browser/container checks.
 

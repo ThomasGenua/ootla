@@ -68,6 +68,8 @@
     "check:screening-browser": "tsx scripts/check-screening-browser-isolated.ts",
     "check:payment-browser": "tsx scripts/check-payment-browser-isolated.ts",
     "check:lease-browser": "tsx scripts/check-lease-browser-isolated.ts",
+    "check:operations": "tsx scripts/check-operations.ts",
+    "check:operations-browser": "tsx scripts/check-operations-browser-isolated.ts",
     "check:pilot": "tsx scripts/check-pilot.ts",
     "check:pilot-browser": "tsx scripts/check-pilot-browser-isolated.ts",
     "check:backup": "tsx scripts/check-backup.ts",

@@ -41,5 +41,6 @@ export async function checkOperationsBrowser(input:{base:string;cookie:string;ap
    if((width===390||width===1586)&&['/admin/reports','/admin/inbox?conversation='+input.conversationId,'/resident'].includes(route))await page.screenshot({path:path.join(root,'.local/screenshots/operations-'+route.split('?')[0].split('/').at(-1)+'-'+width+'.png'),fullPage:true});
   }
   assert.deepEqual(errors,[]);console.log('PASS browser operations: eight workspaces at four widths, no page errors or external network requests');
- }finally{await browser.close();await web.close();(input.config as {appUrl:string}).appUrl=previous;}
+ }catch(error){console.error('Operations browser failure: '+(error instanceof Error?error.message:'Unknown failure'));console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('operations-browser-check.ts')).join('\n'):'');const page=browser.contexts()[0]?.pages()[0];if(page){console.error((await page.locator('body').innerText()).slice(0,2000));await mkdir(path.join(root,'.local/screenshots'),{recursive:true});await page.screenshot({path:path.join(root,'.local/screenshots/operations-failure.png'),fullPage:true});}throw error;}
+ finally{await browser.close();await web.close();(input.config as {appUrl:string}).appUrl=previous;}
 }

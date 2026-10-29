@@ -102,7 +102,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
     document.title=path==='/inquire'?'Property inquiry — Ootla':'My resident workspace — Ootla';document.body.className='applicant-body';
     app.innerHTML=loading('Opening your workspace');
     const module=await import('./lib/operations');
-    try{const page=await module.loadPublicOperations(path,query,signal);if(signal.aborted||generation!==routeGeneration)return;app.innerHTML='<main id="main-content" class="ops-public">'+page+'</main>';module.initializeOperations(signal,navigate);}
+    try{const page=await module.loadPublicOperations(path,query,signal);if(signal.aborted||generation!==routeGeneration)return;app.innerHTML='<main id="main-content" class="ops-public">'+page.replace('<h2>','<h1>').replace('</h2>','</h1>')+'</main>';module.initializeOperations(signal,navigate);}
     catch(error){if(!signal.aborted)app.innerHTML='<main class="ops-public">'+module.operationsError(error)+'</main>';}
   } else if (path === '/payment-demo') {
     document.body.className = 'applicant-body';

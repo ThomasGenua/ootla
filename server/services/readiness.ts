@@ -5,7 +5,7 @@ export async function releaseReady(database: Database): Promise<boolean> {
   if (await database.state() !== 'ready') return false;
   try {
     const migrations = await database.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-    return migrations.rows.length >= 18 && migrations.rows.some(row => row.name === '018_leasing_operations.sql') && migrations.rows.some(row => row.name === '017_pilot_features.sql')
+    return migrations.rows.length >= 19 && migrations.rows.some(row => row.name === '019_followup_batch_progress.sql') && migrations.rows.some(row => row.name === '018_leasing_operations.sql') && migrations.rows.some(row => row.name === '017_pilot_features.sql')
       && (await database.query<{ ready: boolean }>(`SELECT
         to_regclass('public.conversation_messages') IS NOT NULL AND
         to_regclass('public.resident_requests') IS NOT NULL AND
