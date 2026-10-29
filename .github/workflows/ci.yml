@@ -40,13 +40,15 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Screening, payments, leases, assistant, team, analytics and restore
         run: npm run check:release
+      - name: Calendar scheduling and Google sync contract checks
+        run: npm run check:google-calendar
       - name: Lease browser journey
         run: npm run check:lease-browser
       - name: Assistant, team, onboarding and analytics browser journeys
         run: npm run check:pilot-browser
       - name: Intake, inbox, automation, resident and provider contract checks
         run: npm run check:operations
-      - name: Leasing operations browser journeys
+      - name: Connected leasing and operations browser journeys
         run: npm run check:operations-browser
       - name: Stop the owned test cluster
         if: always()

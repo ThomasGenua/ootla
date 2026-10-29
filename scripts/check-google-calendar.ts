@@ -206,12 +206,12 @@ class SyntheticGoogle {
 
 
 
-async function migrateStage14(){
+async function migrateCurrentRelease(){
  const before=await snapshot();
  const names=(await readdir(path.join(root,'migrations'))).filter(n=>/^\d{3}_[a-z0-9_]+\.sql$/.test(n)).sort();
  assert(names.includes('011_calendar_viewings.sql')&&names.includes('012_google_calendar.sql'));
  for(const name of names.filter(n=>n>'010_connectors.sql')){
-  assert(/^01[12]_/.test(name),'Only Stage 13 dependency and current Stage 14 migration may be applied.');
+  // Regression checks use the full current schema in this owned scratch database.
   const sql=await readFile(path.join(root,'migrations',name),'utf8');
   await database.transaction(async c=>{await c.query(sql.replace(/^\uFEFF/,''));await c.query('INSERT INTO schema_migrations(name,checksum) VALUES($1,$2)',[name,createHash('sha256').update(sql).digest('hex')]);});
  }
@@ -253,7 +253,7 @@ async function connect(user:AuthUser,digest:string){
 async function main(){
  await createScratch();await baseline();
  await database.query("INSERT INTO viewings(organization_id,property_id,lead_id,unit_id,starts_at,status) VALUES($1,$2,$3,$4,now()-interval '10 days','completed')",[organizationIds[0],propertyId,leadId,unitId]);
- await migrateStage14();pass('additive migrations preserve established columns and history; all record mutations use a uniquely owned guarded scratch database');
+ await migrateCurrentRelease();pass('additive migrations preserve established columns and history; all record mutations use a uniquely owned guarded scratch database');
  const api=await start();const admin=await session(api,0),agent=await session(api,1),analyst=await session(api,3),other=await session(api,4);
 
  phase='HTTP authentication, origin and diagnostic protection';

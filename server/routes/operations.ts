@@ -1,3 +1,6 @@
+import {Attention} from '../services/attention.js';
+import {InboxTeam} from '../services/inbox-team.js';
+import {attentionQuery,noteSchema,timingSchema,composerSchema} from '../../shared/connected-contracts.js';
 import { Router,raw,type Request,type Response,type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
@@ -44,6 +47,13 @@ export function createOperationsRouter(config:ServerConfig,database:Database,req
  router.post('/inbox/open',async(r,s)=>s.json(await inbox.open(actor(s),digest(r),json(r,z.object({leadId:z.uuid()}).strict()).leadId)));
  router.get('/inbox/unmatched',async(r,s)=>{const q=parse(pageQuery,r.query);s.json(await inbox.unmatched(actor(s),digest(r),q.page));});
  router.post('/inbox/unmatched/:id',async(r,s)=>s.json(await inbox.resolveUnmatched(actor(s),digest(r),id(r.params.id),json(r,z.object({conversationId:z.uuid()}).strict()).conversationId)));
+ router.get('/attention',async(r,s)=>s.json(await new Attention(database,config).queue(actor(s),digest(r),parse(attentionQuery,r.query))));
+ router.get('/inbox/:id/team',async(r,s)=>{const q=parse(pageQuery,r.query);s.json(await new InboxTeam(database,config).team(actor(s),digest(r),id(r.params.id),q.page));});
+ router.get('/inbox/:id/journey',async(r,s)=>s.json(await new InboxTeam(database,config).journey(actor(s),digest(r),id(r.params.id))));
+ router.post('/inbox/:id/notes',async(r,s)=>s.status(201).json(await new InboxTeam(database,config).note(actor(s),digest(r),id(r.params.id),json(r,noteSchema))));
+ router.post('/inbox/:id/notes/:noteId/read',async(r,s)=>{json(r,z.object({}).strict());s.json(await new InboxTeam(database,config).acknowledge(actor(s),digest(r),id(r.params.id),id(r.params.noteId)));});
+ router.patch('/inbox/:id/timing',async(r,s)=>s.json(await new InboxTeam(database,config).timing(actor(s),digest(r),id(r.params.id),json(r,timingSchema))));
+ router.post('/inbox/:id/composer',async(r,s)=>s.json(await new InboxTeam(database,config).compose(actor(s),digest(r),id(r.params.id),json(r,composerSchema))));
  router.get('/inbox/:id',async(r,s)=>{const q=parse(pageQuery,r.query);s.json(await inbox.detail(actor(s),digest(r),id(r.params.id),q.page));});
  router.post('/inbox/:id/read',async(r,s)=>{json(r,z.object({}).strict());s.json(await inbox.read(actor(s),digest(r),id(r.params.id)));});
  router.patch('/inbox/:id',async(r,s)=>s.json(await inbox.updateConversation(actor(s),digest(r),id(r.params.id),json(r,conversationSchema))));

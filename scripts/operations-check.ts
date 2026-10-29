@@ -100,6 +100,7 @@ export async function checkOperations(f:OperationsFixture){
  await db.query("DELETE FROM resident_request_updates WHERE request_id IN (SELECT id FROM resident_requests WHERE created_by=$1 AND title='Concurrent limit fixture')",[f.applicantId]);await db.query("DELETE FROM resident_requests WHERE created_by=$1 AND title='Concurrent limit fixture'",[f.applicantId]);
  pass('active resident identity, private requests, staff ownership/status, applicant updates, validated uploads, scoped downloads and concurrent daily request limits');
  await checkProviders(f,conversationId,leadId);
+ const {checkConnected}=await import('./connected-check.js');try{await checkConnected(f,{conversationId,leadId,requestId:request.id});}catch(error){console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('connected-check.ts')||l.includes('AssertionError')).join('\n'):'Connected checks failed');throw error;}
  return{formId:form.id,leadId,conversationId,requestId:request.id,knowledgeId:knowledge.id};
 }
 async function checkProviders(f:OperationsFixture,conversationId:string,leadId:string){
