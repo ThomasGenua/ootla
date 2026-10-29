@@ -1,3 +1,10 @@
+import {patchLocalHtml,captureLocalScroll,updateSummaryFromShell} from './lib/local-update';
+import {loadRenewalWorkspace,initializeRenewalWorkspace} from './lib/renewals';
+import {renewalWorkspacePage,renewalHeaderSummary} from './pages/renewals';
+import {loadResidentAdministrationWorkspace,initializeResidentAdministration} from './lib/resident-administration';
+import {residentAdministrationPage,residentAdministrationHeaderSummary} from './pages/resident-administration';
+import './renewals.css';
+import {initializeTablePagination} from './lib/table-pagination-controller';
 import type {PublicAccessPresentation} from '../shared/public-access';
 import {staffInvitationPage} from './pages/staff-invitation';
 import {takeStaffInvitation,initializeStaffInvitation} from './lib/staff-invitation';
@@ -22,9 +29,13 @@ import './property-foundation.css';
 import './leads.css';
 import './lead-workspace.css';
 import './tasks.css';
+import './table-pagination.css';
+import './maintenance-directory.css';
 import './imports.css';
 import './brand.css';
 import './account.css';
+import './workspace-navigation.css';
+import { settingsNavigation, reportsNavigation } from './pages/workspace-navigation';
 import './applicant.css';
 import './ai-assistant.css';
 import './conversations.css';
@@ -32,6 +43,8 @@ import './automations.css';
 import './google-analytics.css';
 import './portfolio-reports.css';
 import './resident.css';
+import './maintenance-detail.css';
+import './maintenance-conversation.css';
 import './voice.css';
 import './organization-admin.css';
 import {loadOrganizationWorkspace,initializeOrganizationWorkspace} from './lib/organization-admin';
@@ -45,13 +58,14 @@ import {residentLoginPage,residentInvitationPage,residentErrorPage} from './page
 import {residentWorkspacePage} from './pages/resident';
 import {loadMaintenanceWorkspace,initializeMaintenanceWorkspace} from './lib/maintenance';
 import {maintenanceWorkspacePage,maintenanceHeaderSummary} from './pages/maintenance';
-import {loadPortfolioWorkspace,initializePortfolioWorkspace} from './lib/portfolio-reports';
-import {portfolioReportsPage,portfolioHeaderSummary,portfolioScopeLabel} from './pages/portfolio-reports';
+import {loadPortfolioWorkspace} from './lib/portfolio-reports';
+import {createPortfolioNavigation,type ReportNavigator} from './lib/report-navigation';
+import {portfolioReportsPage,portfolioHeaderSummary} from './pages/portfolio-reports';
 import {loadGoogleAnalyticsWorkspace,initializeGoogleAnalyticsWorkspace} from './lib/google-analytics';
 import {googleAnalyticsPage,analyticsHeaderSummary} from './pages/google-analytics';
 import {loadAutomationWorkspace,initializeAutomationWorkspace} from './lib/automations';
 import {automationWorkspacePage} from './pages/automations';
-import {initializeAskOotla} from './lib/ask-ootla';
+import {initializeAskOotla,type AskOotlaController} from './lib/ask-ootla';
 import {loadConversationWorkspace,initializeConversationWorkspace} from './lib/conversations';
 import {conversationWorkspacePage} from './pages/conversations';
 import {initializePublicConversation} from './lib/public-conversation';
@@ -65,7 +79,8 @@ import { applicationsWorkspacePage } from './pages/applications';
 import { takeApplicantInvitation, renderApplicantAuthentication, initializeApplicantAuthentication, loadApplicantWorkspace, applicantWorkspacePage, initializeApplicantWorkspace, applicantRouteError } from './lib/applicant';
 import './connectors.css';
 import './public-refresh.css';
-import { loadCalendarWorkspace,initializeCalendarWorkspace } from './lib/calendar';
+import {loadCalendarWorkspace} from './lib/calendar';
+import {createCalendarNavigation,type CalendarNavigator} from './lib/calendar-navigation';
 import { calendarWorkspacePage } from './pages/calendar';
 import { bookingPage } from './pages/booking';
 import { initializeBooking } from './lib/booking';
@@ -81,6 +96,7 @@ import { taskWorkspacePage } from './pages/tasks';
 import type { TaskRecord, TaskReminder } from '../shared/task-contracts';
 import type { Paginated } from '../shared/property-contracts';
 import { initializeLeadWorkspace08 } from './lib/lead-workspace';
+import { initializeLeadDetail } from './lib/lead-detail';
 import { loadLeadWorkspace, initializeLeadWorkspace } from './lib/leads';
 import { leadWorkspacePage } from './pages/leads';
 import { persistentDashboardOverview } from './pages/dashboard';
@@ -101,8 +117,9 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 const publicRoutes = new Set(['/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy']);
 const residentRoutes = new Set(['/resident','/resident/login','/resident/invite']);
 const applicantRoutes = new Set(['/applicant', '/applicant/login', '/applicant/invite']);
-const adminRoutes = new Set(['/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations', '/admin/conversations', '/admin/automations', '/admin/reports', '/admin/maintenance', '/admin/voice', '/admin/organization', '/admin/integration-health', '/admin/audit']);
+const adminRoutes = new Set(['/admin/renewals', '/admin/resident-access', '/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations', '/admin/conversations', '/admin/automations', '/admin/reports', '/admin/maintenance', '/admin/voice', '/admin/organization', '/admin/integration-health', '/admin/audit']);
 const titles: Record<string, string> = {
+  '/admin/renewals':'Property renewals - Ootla', '/admin/resident-access':'Resident access - Ootla',
   '/staff/invite':'Your Ootla invitation - Ootla',
   '/admin/organization':'Organization administration - Ootla', '/admin/integration-health':'Integration health - Ootla', '/admin/audit':'Audit history - Ootla',
   '/admin/voice':'Voice simulation - Ootla',
@@ -120,75 +137,107 @@ const titles: Record<string, string> = {
 };
 let currentController = new AbortController();
 let routeGeneration = 0;
+let currentBindingsController = new AbortController();
+let currentAssistantController = new AbortController();
+let assistantContextKey = '';
+let assistantHandle:AskOotlaController|undefined;
+let assistantIdentity = '';
+let renderedUrl = location.href;
+let submittedForm:HTMLFormElement|null = null;
+type InPlaceRefresh={previousUrl:string;committedForm:HTMLFormElement|null};
+function sameWorkspace(url:URL,previous=new URL(location.href)):boolean{
+ if(url.origin!==previous.origin||url.pathname!==previous.pathname||!document.querySelector('#main-content'))return false;
+ if(!adminRoutes.has(url.pathname)&&!['/resident','/applicant'].includes(url.pathname))return false;
+ for(const key of ['lead','task','request','application','viewing','relationship','property','contact','unit','conversation','batch','connection'])if(url.searchParams.get(key)!==previous.searchParams.get(key))return false;
+ if(['new','create','edit'].some(view=>url.searchParams.get('view')===view||previous.searchParams.get('view')===view)&&url.searchParams.get('view')!==previous.searchParams.get('view'))return false;
+ return true;
+}
+document.addEventListener('submit',event=>{submittedForm=event.target instanceof HTMLFormElement?event.target:null;},{capture:true});
 let workspaceMenuOpen = false;
+let reportNavigation: ReportNavigator | null = null;
+let calendarNavigation: CalendarNavigator | null = null;
 export function navigate(path: string, replace = false, focusSelector?: string): void {
   const url = new URL(path, location.origin);
-  if (!focusSelector) workspaceMenuOpen = false;
+  if (reportNavigation && location.pathname === '/admin/reports' && url.origin === location.origin && url.pathname === '/admin/reports') { reportNavigation(url, replace, focusSelector); return; }
+  if (calendarNavigation && location.pathname === '/admin/calendar' && url.origin === location.origin && url.pathname === '/admin/calendar') { calendarNavigation(url, replace, focusSelector); return; }
+  const refresh:InPlaceRefresh|undefined = sameWorkspace(url) ? {previousUrl:location.href,committedForm:replace&&submittedForm?.isConnected?submittedForm:null} : undefined;
+  submittedForm=null;
+  if (!focusSelector && !refresh) workspaceMenuOpen = false;
   if (url.origin !== location.origin) return;
   if (replace) history.replaceState({}, '', url.pathname + url.search + url.hash);
   else history.pushState({}, '', url.pathname + url.search + url.hash);
-  void render(true, focusSelector);
+  const retainedScroll=['#maintenance-results','#renewal-results','#resident-access-results'].includes(focusSelector??'') || focusSelector?.startsWith('#table-pagination-') ? window.scrollY : undefined;
+  void render(true, focusSelector,retainedScroll,refresh);
 }
-async function render(moveFocus = false, focusSelector?: string): Promise<void> {
+async function render(moveFocus = false, focusSelector?: string, retainedScroll?:number,refresh?:InPlaceRefresh): Promise<void> {
+  reportNavigation = null;
+  calendarNavigation = null;
+  if(!refresh){currentBindingsController.abort();currentAssistantController.abort();assistantContextKey='';assistantHandle=undefined;assistantIdentity='';}
   currentController.abort();
   currentController = new AbortController();
   const { signal } = currentController;
   const generation = ++routeGeneration;
+  if(refresh){app.dataset.refreshPending='true';document.querySelector('#main-content')?.setAttribute('aria-busy','true');}else delete app.dataset.refreshPending;
+  const writePage=(html:string)=>{
+   if(!refresh){app.innerHTML=html;return;}
+   const restore=captureLocalScroll(app);patchLocalHtml(app,html,{committedForm:refresh.committedForm});restore();
+  };
+  const showRefreshError=(issue:unknown)=>{if(!refresh)return;history.replaceState({},'',refresh.previousUrl);delete app.dataset.refreshPending;document.querySelector('#main-content')?.removeAttribute('aria-busy');let output=document.querySelector<HTMLElement>('[data-workspace-refresh-error]');if(!output){output=document.createElement('p');output.className='cv-error';output.dataset.workspaceRefreshError='';output.setAttribute('role','alert');document.querySelector('#main-content')?.append(output);}output.textContent=customerError(issue);};
   const path = location.pathname.replace(/\/$/, '') || '/';
   const staffInvitation = path === '/staff/invite' ? takeStaffInvitation() : null;
   const query = new URLSearchParams(location.search);
   const residentInvitation = path === '/resident/invite' ? takeResidentInvitation() : null;
   const applicantInvitation = path === '/applicant/invite' ? takeApplicantInvitation() : null;
   const paymentDemoToken = path === '/payment-demo' ? takePaymentDemoToken() : null;
-  delete document.body.dataset.accountMotion;
+  if(!refresh) delete document.body.dataset.accountMotion;
   document.title = titles[path] ?? 'Page not found — Ootla';
   applyRouteSeo(path);
   document.body.className = residentRoutes.has(path) ? 'resident-body' : applicantRoutes.has(path) ? 'applicant-body' : adminRoutes.has(path) ? 'admin-body' : path === '/admin/login' || path === '/staff/invite' ? 'login-body' : 'public-body';
   if(path==='/staff/invite'){
-    app.innerHTML=staffInvitationPage(Boolean(staffInvitation));
+    writePage(staffInvitationPage(Boolean(staffInvitation)));
     initializeStaffInvitation(signal,staffInvitation);
   } else if(path==='/try'){
-    document.title='Try Ootla';app.innerHTML=previewEntryPage(true);
-    if(query.size){app.innerHTML=previewEntryPage();return;}
+    document.title='Try Ootla';writePage(previewEntryPage(true));
+    if(query.size){writePage(previewEntryPage());return;}
     try{
       const response=await fetch('/api/preview-entry',{credentials:'same-origin',cache:'no-store',signal});
       if(![200,503].includes(response.status)||!response.headers.get('content-type')?.includes('application/json'))throw new Error('Preview entry unavailable.');
       const entry=await response.json() as PreviewEntry;if(signal.aborted||generation!==routeGeneration)return;
-      if(entry.kind==='unavailable'||!entry.destination){app.innerHTML=previewEntryPage();return;}
+      if(entry.kind==='unavailable'||!entry.destination){writePage(previewEntryPage());return;}
       const target=new URL(entry.destination);
       if(!['staff_sign_in','isolated_preview','separate_preview'].includes(entry.kind)||!['http:','https:'].includes(target.protocol)||target.username||target.password||target.pathname!=='/admin/login'||target.search||target.hash||['staff_sign_in','isolated_preview'].includes(entry.kind)&&target.origin!==location.origin||entry.kind==='separate_preview'&&target.origin===location.origin)throw new Error('Preview entry unavailable.');
       location.replace(target.href);return;
-    }catch{if(signal.aborted||generation!==routeGeneration)return;app.innerHTML=previewEntryPage();}
+    }catch{if(signal.aborted||generation!==routeGeneration)return;writePage(previewEntryPage());}
   } else if(residentRoutes.has(path)){
-    if(path!=='/resident'){app.innerHTML=path==='/resident/invite'?residentInvitationPage(Boolean(residentInvitation)):residentLoginPage();void initializeResidentAuthentication(signal,navigate,residentInvitation);}
-    else{app.innerHTML=loading('Loading your private resident workspace');try{const resident=await loadResidentWorkspace(query,signal);if(signal.aborted||generation!==routeGeneration)return;app.innerHTML=residentWorkspacePage(resident,query);initializeResidentWorkspace(signal,navigate,resident);}catch(issue){if(signal.aborted||generation!==routeGeneration)return;if(issue instanceof ApiError&&issue.status===401){navigate('/resident/login',true);return;}app.innerHTML=residentErrorPage(customerError(issue));}}
+    if(path!=='/resident'){writePage(path==='/resident/invite'?residentInvitationPage(Boolean(residentInvitation)):residentLoginPage());void initializeResidentAuthentication(signal,navigate,residentInvitation);}
+    else{if(!refresh) writePage(loading('Loading your private resident workspace'));try{const resident=await loadResidentWorkspace(query,signal);if(signal.aborted||generation!==routeGeneration)return;writePage(residentWorkspacePage(resident,query));initializeResidentWorkspace(signal,navigate,resident);}catch(issue){if(signal.aborted||generation!==routeGeneration)return;if(issue instanceof ApiError&&issue.status===401){navigate('/resident/login',true);return;}if(refresh)showRefreshError(issue);else writePage(residentErrorPage(customerError(issue)));}}
   } else if (path === '/payment-demo') {
     document.body.className = 'applicant-body';
     document.title = 'Payment preview — Ootla';
-    app.innerHTML = paymentDemoPage();
+    writePage(paymentDemoPage());
     void initializePaymentDemo(signal, paymentDemoToken);
   } else if (applicantRoutes.has(path)) {
     document.title = path === '/applicant/login' ? 'Applicant sign in — Ootla' : path === '/applicant/invite' ? 'Your application invitation — Ootla' : 'My applications — Ootla';
     if (path !== '/applicant') {
-      app.innerHTML = renderApplicantAuthentication(path, applicantInvitation);
+      writePage(renderApplicantAuthentication(path, applicantInvitation));
       void initializeApplicantAuthentication(signal, navigate, applicantInvitation);
     } else {
-      app.innerHTML = loading('Loading your private applications');
+      if(!refresh) writePage(loading('Loading your private applications'));
       try {
         const applicant = await loadApplicantWorkspace(query, signal);
         if (signal.aborted || generation !== routeGeneration) return;
-        app.innerHTML = applicantWorkspacePage(applicant);
+        writePage(applicantWorkspacePage(applicant));
         initializeApplicantWorkspace(signal, navigate);
       } catch (issue) {
         if (signal.aborted || generation !== routeGeneration) return;
         const errorPage = applicantRouteError(issue, navigate);
         if (errorPage === null) return;
-        app.innerHTML = errorPage;
+        if(refresh)showRefreshError(issue);else writePage(errorPage);
       }
     }
   } else if (path === '/book') {
     document.title='Book a viewing — Ootla';
-    app.innerHTML=bookingPage();
+    writePage(bookingPage());
     initializeBooking(signal);
   } else if (publicRoutes.has(path)) {
     let demoAccess = false;
@@ -197,7 +246,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       demoAccess = response.demoAccess === true;
     } catch { /* Access controls remain hidden if runtime verification is unavailable. */ }
     if (signal.aborted || generation !== routeGeneration) return;
-    app.innerHTML = publicPage(path, demoAccess);
+    writePage(publicPage(path, demoAccess));
     initializePublicConversation(signal);
     initializePhotoCredits(signal);
     if (path === '/') initializePublicWorkflow(signal);
@@ -205,10 +254,10 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
     if (path === '/integrations') initializeOnboardingDemo(signal);
   }
   else if (path === '/admin/login') {
-    app.innerHTML = loginPage();
+    writePage(loginPage());
     void initializeLogin(signal, navigate);
   } else if (adminRoutes.has(path)) {
-    app.innerHTML = loading();
+    if(!refresh) writePage(loading());
     try {
       const { user } = await api<{ user: AuthUser }>('/api/auth/me', { signal });
       const account = await api<AccountSnapshot>('/api/account', { signal });
@@ -225,6 +274,8 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       const organization = path === '/admin/organization' ? await loadOrganizationWorkspace(query,signal) : undefined;
       const operations = path === '/admin/integration-health' || path === '/admin/audit' ? await loadOperationsWorkspace(path,query,signal) : undefined;
       const voice = path === '/admin/voice' ? await loadVoiceWorkspace(query,signal) : undefined;
+      const renewals = path === '/admin/renewals' ? await loadRenewalWorkspace(query,signal) : undefined;
+      const residentAdministration = path === '/admin/resident-access' ? await loadResidentAdministrationWorkspace(query,signal) : undefined;
       const maintenance = path === '/admin/maintenance' ? await loadMaintenanceWorkspace(query,signal) : undefined;
       const portfolio = path === '/admin/reports' ? await loadPortfolioWorkspace(query,signal) : undefined;
       const analytics = path === '/admin/analytics' ? await loadGoogleAnalyticsWorkspace(query,signal) : undefined;
@@ -236,6 +287,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
         ? await loadPropertyWorkspace(path, query, signal) : undefined;
       const leads = path === '/admin/leads' ? await loadLeadWorkspace(query, signal) : undefined;
       const calendar = path === '/admin/calendar' ? await loadCalendarWorkspace(query,signal) : undefined;
+      const calendarSummary = calendar && pageSummary ? {...pageSummary,scopeLabel:'Your viewing schedule'} : pageSummary;
       const imports = path === '/admin/imports' ? await loadImportsWorkspace(query, signal) : undefined;
       const connectors = path === '/admin/integrations' ? await loadConnectorWorkspace(query, signal) : undefined;
       const canManageTasks = user.permissions.includes('leasing.manage');
@@ -244,19 +296,28 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       const followupQuery = new URLSearchParams();
       for (const key of ['q', 'stages']) if (query.has(key)) followupQuery.set(key, query.get(key)!);
       const followups = path === '/admin' ? (canManageTasks ? await api<{ items: TaskRecord[] }>(`/api/tasks/follow-ups?${followupQuery}`, { signal }) : { items: [] }) : undefined;
-      const demo = !organization && !operations && !voice && !maintenance && !portfolio && !analytics && !automations && !conversations && !ai && !applications && !calendar && !accountPage && !connectors && path !== '/admin/imports' && path !== '/admin/tasks' && !foundation && !leads && !followups && overview.demoEnabled && user.organization.role === 'organization_admin'
+      const demo = !renewals && !residentAdministration && !organization && !operations && !voice && !maintenance && !portfolio && !analytics && !automations && !conversations && !ai && !applications && !calendar && !accountPage && !connectors && path !== '/admin/imports' && path !== '/admin/tasks' && !foundation && !leads && !followups && overview.demoEnabled && user.organization.role === 'organization_admin'
         ? await api<DemoData>('/api/demo/data', { signal })
         : undefined;
       if (signal.aborted || generation !== routeGeneration) return;
-      app.innerHTML = adminShell(path, user, overview, false, demo, query, organization ? organizationWorkspacePage(organization,query) : operations ? operationsWorkspacePage(operations,query) : voice ? voiceWorkspacePage(voice,query) : maintenance ? maintenanceWorkspacePage(maintenance,user) : portfolio ? portfolioReportsPage(portfolio,query) : analytics ? googleAnalyticsPage(analytics,query) : automations ? automationWorkspacePage(automations,query,reminders) : conversations ? conversationWorkspacePage(conversations,query) : ai ? aiAssistantPage(ai,user,query) : applications ? applicationsWorkspacePage(applications, user, query) : calendar ? calendarWorkspacePage(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage(connectors, user, query) : imports ? importWorkspacePage(imports, user, query) : foundation ? propertyWorkspacePage(foundation, user, query) : leads ? leadWorkspacePage(leads, user, query) : tasks ? taskWorkspacePage(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined, reminders, organization ? organizationHeaderSummary(organization) : operations ? operationsHeaderSummary(operations) : voice ? voiceHeaderSummary(voice) : maintenance ? maintenanceHeaderSummary(maintenance) : portfolio ? portfolioHeaderSummary(portfolio) : analytics ? analyticsHeaderSummary(analytics) : pageSummary, headerCollapsed);
-      if (organization) initializeOrganizationWorkspace(signal,navigate,organization);
-      if (operations) initializeOperationsWorkspace(signal,navigate);
-      if (voice) initializeVoiceWorkspace(signal,navigate,voice);
-      if (maintenance) initializeMaintenanceWorkspace(signal,navigate,maintenance);
-      if (portfolio) initializePortfolioWorkspace(signal,navigate,portfolio);
-      if (analytics) initializeGoogleAnalyticsWorkspace(signal,navigate);
-      if (automations) initializeAutomationWorkspace(signal,navigate,automations);
-      if (conversations) initializeConversationWorkspace(signal,navigate);
+      const workspaceContent = renewals ? renewalWorkspacePage(renewals,user) : residentAdministration ? residentAdministrationPage(residentAdministration,user) : organization ? organizationWorkspacePage(organization,query) : operations ? operationsWorkspacePage(operations,query) : voice ? voiceWorkspacePage(voice,query) : maintenance ? maintenanceWorkspacePage(maintenance,user) : portfolio ? portfolioReportsPage(portfolio,query) : analytics ? googleAnalyticsPage(analytics,query) : automations ? automationWorkspacePage(automations,query,reminders) : conversations ? conversationWorkspacePage(conversations,query) : ai ? aiAssistantPage(ai,user,query) : applications ? applicationsWorkspacePage(applications, user, query) : calendar ? calendarWorkspacePage(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage(connectors, user, query) : imports ? importWorkspacePage(imports, user, query) : foundation ? propertyWorkspacePage(foundation, user, query) : leads ? leadWorkspacePage(leads, user, query) : tasks ? taskWorkspacePage(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined;
+      const sectionNavigation = ['/admin/resident-access','/admin/settings','/admin/organization','/admin/integrations','/admin/imports','/admin/automations','/admin/integration-health','/admin/audit'].includes(path)
+        ? settingsNavigation(path,user) : ['/admin/reports','/admin/analytics'].includes(path) ? reportsNavigation(path) : '';
+      const groupedContent = workspaceContent === undefined ? undefined : sectionNavigation + workspaceContent;
+      writePage(adminShell(path, user, overview, false, demo, query, groupedContent, reminders, renewals ? renewalHeaderSummary(renewals) : residentAdministration ? residentAdministrationHeaderSummary(residentAdministration) : organization ? organizationHeaderSummary(organization) : operations ? operationsHeaderSummary(operations) : voice ? voiceHeaderSummary(voice) : maintenance ? maintenanceHeaderSummary(maintenance) : portfolio ? portfolioHeaderSummary(portfolio) : analytics ? analyticsHeaderSummary(analytics) : calendarSummary, headerCollapsed));
+      currentBindingsController.abort();currentBindingsController=new AbortController();
+      const bindingSignal=currentBindingsController.signal;
+      if (!portfolio && !calendar) initializeTablePagination(bindingSignal,navigate);
+      if (organization) initializeOrganizationWorkspace(bindingSignal,navigate,organization);
+      if (operations) initializeOperationsWorkspace(bindingSignal,navigate);
+      if (voice) initializeVoiceWorkspace(bindingSignal,navigate,voice);
+      if (maintenance) initializeMaintenanceWorkspace(bindingSignal,navigate,maintenance,summary=>updateSummaryFromShell(adminShell(path,user,overview,false,undefined,new URLSearchParams(location.search),'',reminders,summary,readHeaderCollapsed(user))));
+      if (renewals) initializeRenewalWorkspace(bindingSignal,navigate,renewals,summary=>updateSummaryFromShell(adminShell(path,user,overview,false,undefined,new URLSearchParams(location.search),'',reminders,summary,readHeaderCollapsed(user))));
+      if (residentAdministration) initializeResidentAdministration(bindingSignal,navigate,residentAdministration);
+      if (portfolio) reportNavigation = createPortfolioNavigation(bindingSignal,navigate,portfolio,user,overview);
+      if (analytics) initializeGoogleAnalyticsWorkspace(bindingSignal,navigate);
+      if (automations) initializeAutomationWorkspace(bindingSignal,navigate,automations);
+      if (conversations) initializeConversationWorkspace(bindingSignal,navigate);
       const askContext:AskContext={page:path};
       if(!portfolio&&query.get('propertyId'))askContext.propertyId=query.get('propertyId')!;
       if(foundation?.kind==='property')askContext.propertyId=foundation.detail.property.id;
@@ -271,16 +332,16 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       if(portfolio?.kind==='ready'&&portfolio.report){const q=portfolio.report.query;askContext.report={from:q.from,to:q.to,attention:q.attention,q:q.q,...(q.groupId?{groupId:q.groupId}:{}),...(q.region?{region:q.region}:{}),...(q.agentMembershipId?{agentMembershipId:q.agentMembershipId}:{}),...(q.teamId?{teamId:q.teamId}:{})};if(q.propertyId)askContext.propertyId=q.propertyId;}
       if(maintenance?.kind==='ready'&&maintenance.detail){askContext.propertyId=maintenance.detail.request.property.id;askContext.maintenanceRequestId=maintenance.detail.request.id;}
       if(voice?.kind==='ready'&&voice.detail){askContext.propertyId=voice.detail.session.property.id;askContext.leadId=voice.detail.session.leadId;}
-      initializeAskOotla(signal,askContext,user,portfolio?portfolioScopeLabel(portfolio):undefined);
-      if (ai) initializeAiAssistant(signal,navigate);
-      if (applications) initializeApplicationsWorkspace(signal,navigate,user);
-      if (calendar) initializeCalendarWorkspace(signal,navigate);
-      if (accountPage) initializeAccountWorkspace(signal, navigate);
-      if (connectors) initializeConnectorWorkspace(signal, navigate);
-      if (imports) initializeImportsWorkspace(signal, navigate);
-      if (tasks) initializeTasksWorkspace(signal, navigate);
-      if (foundation) initializePropertyWorkspace(signal, navigate);
-      if (leads) { initializeLeadWorkspace(signal, navigate); if (leads.kind === 'detail') initializeLeadWorkspace08(signal, navigate); }
+      if (!portfolio && !calendar) {const key=JSON.stringify(askContext),identity=user.id+':'+user.organization.id;if(assistantHandle&&assistantIdentity===identity&&document.querySelector('#ask-ootla-dialog')){assistantHandle.updateContext(askContext);assistantContextKey=key;}else{currentAssistantController.abort();currentAssistantController=new AbortController();assistantIdentity=identity;assistantContextKey=key;assistantHandle=initializeAskOotla(currentAssistantController.signal,askContext,user);}}
+      if (ai) initializeAiAssistant(bindingSignal,navigate);
+      if (applications) initializeApplicationsWorkspace(bindingSignal,navigate,user);
+      if (calendar) calendarNavigation = createCalendarNavigation(bindingSignal,navigate,calendar,user,overview);
+      if (accountPage) initializeAccountWorkspace(bindingSignal, navigate);
+      if (connectors) initializeConnectorWorkspace(bindingSignal, navigate);
+      if (imports) initializeImportsWorkspace(bindingSignal, navigate);
+      if (tasks) initializeTasksWorkspace(bindingSignal, navigate);
+      if (foundation) initializePropertyWorkspace(bindingSignal, navigate);
+      if (leads) { initializeLeadWorkspace(bindingSignal, navigate); if (leads.kind === 'detail') { initializeLeadWorkspace08(bindingSignal, navigate); initializeLeadDetail(bindingSignal, navigate); } }
       document.querySelector('#admin-sidebar-nav')?.classList.toggle('is-open', workspaceMenuOpen);
       document.querySelector('[data-action="admin-menu"]')?.setAttribute('aria-expanded', String(workspaceMenuOpen));
     } catch (error) {
@@ -290,12 +351,14 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
         navigate(`/admin/login?returnTo=${encodeURIComponent(returnTo)}`, true);
         return;
       }
-      app.innerHTML = adminError(['/admin/organization','/admin/integration-health','/admin/audit','/admin/integrations'].includes(path)?errorMessage(error):customerError(error));
+      if(refresh){showRefreshError(error);return;}
+      writePage(adminError(['/admin/organization','/admin/integration-health','/admin/audit','/admin/integrations'].includes(path)?errorMessage(error):customerError(error)));
     }
-  } else app.innerHTML = notFoundPage();
-  if (moveFocus && generation === routeGeneration) {
+  } else writePage(notFoundPage());
+  if (!refresh && moveFocus && generation === routeGeneration) {
     const requestedFocus = focusSelector ? document.querySelector<HTMLElement>(focusSelector) : null;
     if (requestedFocus) {
+      if(retainedScroll!==undefined)window.scrollTo({top:Math.min(retainedScroll,Math.max(0,document.documentElement.scrollHeight-window.innerHeight)),behavior:'instant'});
       requestedFocus.focus({ preventScroll: true });
       if (focusSelector?.startsWith('#lead08-')) requestedFocus.scrollIntoView({ block: 'start', behavior: 'instant' });
     }
@@ -306,6 +369,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       main?.focus({ preventScroll: true });
     }
   }
+  if(generation===routeGeneration){renderedUrl=location.href;delete app.dataset.refreshPending;document.querySelector('#main-content')?.removeAttribute('aria-busy');}
   if (generation === routeGeneration && publicRoutes.has(path) && location.hash) {
     let anchorId: string;
     try { anchorId = decodeURIComponent(location.hash.slice(1)); }
@@ -424,5 +488,5 @@ async function logout(button: HTMLButtonElement): Promise<void> {
     if (errorElement) errorElement.textContent = customerError(error);
   }
 }
-window.addEventListener('popstate', () => { void render(true); });
+window.addEventListener('popstate', () => { if (reportNavigation && location.pathname === '/admin/reports') reportNavigation(new URL(location.href),false,undefined,true); else if(calendarNavigation && location.pathname === '/admin/calendar') calendarNavigation(new URL(location.href),false,undefined,true); else {const previous=new URL(renderedUrl,location.origin),target=new URL(location.href);void render(true,undefined,undefined,sameWorkspace(target,previous)?{previousUrl:renderedUrl,committedForm:null}:undefined);} });
 void render();

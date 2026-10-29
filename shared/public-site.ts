@@ -12,7 +12,7 @@ export const publicPages = {
 export type PublicPagePath = keyof typeof publicPages;
 export const publicPagePaths = Object.keys(publicPages) as PublicPagePath[];
 export const privatePagePaths = [
-  '/staff/invite', '/try',
+  '/staff/invite', '/try', '/admin/renewals', '/admin/resident-access',
   '/admin/voice', '/admin/organization', '/admin/integration-health', '/admin/audit',
   '/resident','/resident/login','/resident/invite','/admin/maintenance',
  '/admin/login','/admin','/admin/leads','/admin/contacts','/admin/properties','/admin/applications','/admin/calendar',

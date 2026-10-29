@@ -1,0 +1,8 @@
+/* Section tabs share the current workspace typography and keep the global header unchanged. */
+.workspace-section-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;max-width:100%;margin:0 0 24px;padding:0 0 8px;border-bottom:1px solid #dbe5df}
+.workspace-section-navigation>a{display:inline-flex;align-items:center;justify-content:center;min-height:45px;max-width:100%;padding:10px 15px;border:1px solid transparent;border-radius:9px;color:#53685c;background:transparent;font:inherit;font-size:14px;line-height:1.4;text-align:center;text-decoration:none;overflow-wrap:anywhere}
+.workspace-section-navigation>a:hover{color:#1d6240;background:#edf5f0}
+.workspace-section-navigation>a[aria-current=page]{border-color:#c9dfd1;background:#e6f3eb;color:#195b39;font-weight:550}
+.workspace-section-navigation>a:focus-visible{outline:3px solid #297b50;outline-offset:3px}
+@media(max-width:700px){.workspace-section-navigation{gap:4px;margin-bottom:19px}.workspace-section-navigation>a{min-height:45px;padding:10px 11px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){.workspace-section-navigation>a{scroll-behavior:auto;transition:none;animation:none}}

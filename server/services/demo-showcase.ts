@@ -1,3 +1,4 @@
+import {demoTaskDescriptions} from './demo-task-descriptions.js';
 import {createHash} from 'node:crypto';
 import type {ServerConfig} from '../config/env.js';
 import type {Database} from '../db/pool.js';
@@ -86,7 +87,7 @@ export async function prepareDemoShowcase(db:Database,config:ServerConfig):Promi
     }
     await put('application_portal_events','application.event.'+p.key,{application_id:application,participant_id:participant,actor_user_id:uid,actor_kind:'staff',kind:'demo_prepared',summary:'Illustrative '+applicationStatus.replaceAll('_',' ')+' application. Staff can review private example files. No real applicant consent or external decision was created.',metadata:JSON.stringify({simulation:true,dataset})});
    }
-   const completed=p.key==='riley',task=await put('tasks','task.'+p.key,{property_id:p.property,lead_id:lead,contact_id:contact,application_id:hasApplication?id('application.'+p.key):null,title:p.action,details:'Saved showcase work. Complete, reassign or change it through the normal task workflow.',due_at:p.due,status:completed?'completed':'open',priority:p.key==='ethan'?'high':'normal',origin:'demo',owner_membership_id:mid,created_by_user_id:uid,created_by_membership_id:mid,completed_at:completed?at(-1,15):null,completed_by_user_id:completed?uid:null,completed_by_membership_id:completed?mid:null,purpose:p.key==='alex'?'move_in':'crm',seed_key:seed('task.'+p.key)});
+   const completed=p.key==='riley',task=await put('tasks','task.'+p.key,{property_id:p.property,lead_id:lead,contact_id:contact,application_id:hasApplication?id('application.'+p.key):null,title:p.action,details:demoTaskDescriptions[seed('task.'+p.key)],due_at:p.due,status:completed?'completed':'open',priority:p.key==='ethan'?'high':'normal',origin:'demo',owner_membership_id:mid,created_by_user_id:uid,created_by_membership_id:mid,completed_at:completed?at(-1,15):null,completed_by_user_id:completed?uid:null,completed_by_membership_id:completed?mid:null,purpose:p.key==='alex'?'move_in':'crm',seed_key:seed('task.'+p.key)});
    await put('task_events','task.event.'+p.key,{task_id:task,kind:completed?'completed':'created',actor_user_id:uid,actor_membership_id:mid,metadata:JSON.stringify({simulation:true,dataset})});
    if(!completed&&p.stage!=='leased')await put('task_reminders','reminder.'+p.key,{task_id:task,generation:1,recipient_membership_id:mid,status:'pending',scheduled_at:p.due,next_attempt_at:p.due});
   }

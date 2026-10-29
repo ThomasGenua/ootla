@@ -1,3 +1,5 @@
+import {RecordSuggestions} from '../services/record-suggestions.js';
+import {suggestionConfirmSchema} from '../../shared/task-suggestion-contracts.js';
 import { Router, type Request, type Response, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
@@ -26,6 +28,8 @@ export function createTaskRouter(config: ServerConfig, database: Database, requi
     router.post('/teams', async (req, res) => res.status(201).json({ team: await tasks.team(actor(res), body(req, taskTeamSchema)) }));
     router.put('/teams/:teamId', async (req, res) => res.json({ team: await tasks.team(actor(res), body(req, taskTeamSchema), id(req.params.teamId)) }));
     router.post('/routing-rules', async (req, res) => res.json({ rule: await tasks.routing(actor(res), body(req, taskRoutingSchema)) }));
+    router.get('/:taskId/suggestions',async(req,res)=>res.json(await new RecordSuggestions(database,config).task(actor(res),id(req.params.taskId))));
+    router.post('/:taskId/suggestions/confirm',async(req,res)=>res.json(await new RecordSuggestions(database,config).confirmTask(actor(res),id(req.params.taskId),body(req,suggestionConfirmSchema))));
     router.get('/:taskId', async (req, res) => res.json(await tasks.detail(actor(res), id(req.params.taskId), parse(taskPageSchema, req.query))));
     router.post('/', async (req, res) => res.status(201).json({ task: await tasks.create(actor(res), body(req, taskCreateSchema)) }));
     router.patch('/:taskId', async (req, res) => res.json({ task: await tasks.update(actor(res), id(req.params.taskId), body(req, taskUpdateSchema)) }));

@@ -1,3 +1,4 @@
+import {presentRecordText} from '../lib/presentation';
 import type { PaymentWorkspace, PaymentDestinations } from '../../shared/payment-contracts';
 import { escapeHtml as e, link, wordmark } from '../lib/ui';
 const label=(value:string):string=>value.replaceAll('_',' ').replace(/^./,character=>character.toUpperCase());
@@ -12,7 +13,7 @@ export function paymentPanel(data:PaymentWorkspace,kind:'staff'|'applicant',dest
  (kind==='applicant'&&data.access.canOpen?'<form method="post" data-payment-action="handoff">'+error+'<button type="submit" class="ap-button ap-primary">'+(demo?'Open payment example':'Open approved payment portal')+'</button></form>':'')+
  (data.access.canVerify?'<form method="post" data-payment-action="verify">'+error+'<button type="submit" class="ap-button">Check payment status</button></form>':'')+'</div><p class="ap-message" data-payment-success role="status" hidden></p>'+
  (kind==='staff'&&data.access.canConfigure?'<details><summary class="ap-plain-button">Approved payment destinations</summary><p class="ap-muted">Choose the payment destination approved by your organization. Saving a link does not confirm a payment.</p>'+
- (destinations?'<ul class="ap-list">'+destinations.items.map(item=>'<li class="ap-list-item"><strong>'+e(item.name)+'</strong><p class="ap-muted">'+e(item.url)+' · '+(item.enabled?'Enabled':'Disabled')+'</p></li>').join('')+'</ul><p class="ap-muted">'+'Only approved destinations can be opened from an application.'+'</p>':'')+
+ (destinations?'<ul class="ap-list">'+destinations.items.map(item=>'<li class="ap-list-item"><strong>'+e(presentRecordText(item.name))+'</strong><p class="ap-muted">'+e(item.url)+' · '+(item.enabled?'Enabled':'Disabled')+'</p></li>').join('')+'</ul><p class="ap-muted">'+'Only approved destinations can be opened from an application.'+'</p>':'')+
  '<form method="post" data-payment-action="destination"><div class="ap-field"><label for="payment-destination-name">Destination name</label><input id="payment-destination-name" name="name" required maxlength="100"/></div><div class="ap-field"><label for="payment-destination-url">Approved HTTPS portal URL</label><input id="payment-destination-url" name="url" type="url" required maxlength="1000" placeholder="https://"/></div><label class="ap-inline-check"><input type="checkbox" name="enabled" checked/><span>Enable this approved destination</span></label><label class="ap-inline-check"><input type="checkbox" name="confirmed" required/><span>I have verified that this is an approved payment provider destination for our organization.</span></label>'+error+'<button type="submit" class="ap-button">Save approved destination</button></form></details>':'')+'</section>';
 }
 export function paymentDemoPage():string {

@@ -7,13 +7,13 @@ type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 export async function loadAiWorkspace(query:URLSearchParams,signal:AbortSignal):Promise<AiWorkspace>{
  try{
   const params=new URLSearchParams();for(const key of ['propertyId','propertySearch','recordSearch','page'])if(query.get(key))params.set(key,query.get(key)!);
-  params.set('pageSize','25');
+  params.set('pageSize',query.get('pageSize')??'25');
   const [configuration,options]=await Promise.all([api<AiConfiguration>('/api/ai/config',{signal}),api<AiOptions>('/api/ai/options?'+params,{signal})]);
-  const [knowledge,result]=await Promise.all([options.selectedProperty?api<AiKnowledgeDirectory>('/api/ai/knowledge?'+new URLSearchParams({propertyId:options.selectedProperty.id,q:query.get('knowledgeSearch')??'',page:query.get('knowledgePage')??'1',pageSize:'10'}),{signal}):null,query.get('request')?api<AiResponse>('/api/ai/requests/'+encodeURIComponent(query.get('request')!),{signal}):null]);
+  const [knowledge,result]=await Promise.all([options.selectedProperty?api<AiKnowledgeDirectory>('/api/ai/knowledge?'+new URLSearchParams({propertyId:options.selectedProperty.id,q:query.get('knowledgeSearch')??'',page:query.get('knowledgePage')??'1',pageSize:query.get('knowledgePageSize')??'10'}),{signal}):null,query.get('request')?api<AiResponse>('/api/ai/requests/'+encodeURIComponent(query.get('request')!),{signal}):null]);
   return{kind:'ready',configuration,options,knowledge,result};
  }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:productError(issue)};throw issue;}
 }
-function errorIn(form:HTMLElement,issue:unknown):void{const output=form.querySelector<HTMLElement>('[data-ai-error]')??document.querySelector<HTMLElement>('[data-ai-global-error]');if(output){output.textContent=productError(issue);output.tabIndex=-1;output.focus();}}
+function errorIn(form:HTMLElement,issue:unknown):void{const output=form.querySelector<HTMLElement>('[data-ai-error]')??document.querySelector<HTMLElement>('[data-ai-global-error]');if(output){output.textContent=productError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}}
 const scenarios:Record<string,string>={property_question:'What approved information is available about this property?',availability:'What units are currently available at this property?',viewing_options:'What viewing options are available at this property?',application_checklist:'What is missing from this application checklist?',create_follow_up:'Create a follow-up task for this lead.',staff_handoff:'Please request a staff handoff for this property.'};
 export function initializeAiAssistant(signal:AbortSignal,navigate:Navigate):void{
  const workspace=document.querySelector<HTMLElement>('[data-ai-workspace]');if(!workspace)return;
@@ -24,11 +24,11 @@ export function initializeAiAssistant(signal:AbortSignal,navigate:Navigate):void
   if(!(event.target instanceof Element))return;
   const scenario=event.target.closest<HTMLElement>('[data-ai-scenario]');
   if(scenario){const form=workspace.querySelector<HTMLFormElement>('[data-ai-request]'),message=form?.querySelector<HTMLTextAreaElement>('[name=message]'),name=scenario.dataset.aiScenario!;
-   if(message&&scenarios[name]){message.value=scenarios[name];message.focus();}
+   if(message&&scenarios[name]){message.value=scenarios[name];message.focus({preventScroll:true});}
    if(name==='create_follow_up'&&form){const details=form.querySelector<HTMLDetailsElement>('[data-ai-task-details]');if(details)details.open=true;const title=form.querySelector<HTMLInputElement>('[name=taskTitle]'),due=form.querySelector<HTMLInputElement>('[name=taskDue]');if(title&&!title.value)title.value='Follow up with this prospect';if(due&&!due.value){const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);tomorrow.setHours(10,0,0,0);const local=new Date(tomorrow.getTime()-tomorrow.getTimezoneOffset()*60000);due.value=local.toISOString().slice(0,16);}}
    updateConfirmation();return;
   }
-  const refresh=event.target.closest<HTMLButtonElement>('[data-ai-refresh]');if(refresh&&!refresh.disabled){refresh.disabled=true;try{const result=await api<AiResponse>('/api/ai/requests/'+encodeURIComponent(refresh.dataset.aiRefresh!),{signal});if(!signal.aborted){const host=workspace.querySelector<HTMLElement>('[data-ai-result]');if(host){host.innerHTML=aiResultContent(result);host.tabIndex=-1;host.focus();}}}catch(issue){if(!signal.aborted)errorIn(workspace,issue);}finally{if(!signal.aborted)refresh.disabled=false;}}
+  const refresh=event.target.closest<HTMLButtonElement>('[data-ai-refresh]');if(refresh&&!refresh.disabled){refresh.disabled=true;try{const result=await api<AiResponse>('/api/ai/requests/'+encodeURIComponent(refresh.dataset.aiRefresh!),{signal});if(!signal.aborted){const host=workspace.querySelector<HTMLElement>('[data-ai-result]');if(host){host.innerHTML=aiResultContent(result);host.tabIndex=-1;host.focus({preventScroll:true});}}}catch(issue){if(!signal.aborted)errorIn(workspace,issue);}finally{if(!signal.aborted)refresh.disabled=false;}}
  },{signal});
  workspace.addEventListener('submit',async event=>{
   const form=event.target;if(!(form instanceof HTMLFormElement))return;

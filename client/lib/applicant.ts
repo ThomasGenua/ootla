@@ -16,7 +16,7 @@ export function takeApplicantInvitation():string|null{
 }
 function errorIn(form:HTMLElement,issue:unknown):void{
  const output=form.querySelector<HTMLElement>('[data-applicant-error]')??document.querySelector<HTMLElement>('[data-applicant-global-error]');
- if(!output)return;output.textContent=customerError(issue);output.tabIndex=-1;output.focus();
+ if(!output)return;output.textContent=customerError(issue);output.tabIndex=-1;output.focus({preventScroll:true});
 }
 async function enablePortalForm(signal:AbortSignal):Promise<{demoEnabled:boolean;demoCredentials?:{email:string;password:string}}|null>{
  const setup=document.querySelector<HTMLElement>('[data-applicant-setup]'),form=document.querySelector<HTMLFormElement>('[data-applicant-form]');

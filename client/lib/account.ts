@@ -45,7 +45,7 @@ export function initializeAccountWorkspace(signal: AbortSignal, navigate: (path:
       }
     } catch (issue) {
       if (signal.aborted) return;
-      if (error) { error.textContent = customerError(issue); error.tabIndex = -1; error.focus(); }
+      if (error) { error.textContent = customerError(issue); error.tabIndex = -1; error.focus({preventScroll:true}); }
       if (issue instanceof ApiError && issue.status === 409 && recovery) recovery.hidden = false;
       if (issue instanceof ApiError && issue.status === 401 && recovery) { recovery.hidden = false; recovery.textContent = 'Sign in again'; recovery.setAttribute('href', '/admin/login?returnTo=' + encodeURIComponent(location.pathname + location.search)); }
       if (kind === 'password') form.querySelectorAll<HTMLInputElement>('input[type="password"]').forEach(input => { input.value = ''; });

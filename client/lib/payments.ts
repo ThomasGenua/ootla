@@ -3,7 +3,7 @@ import { api, errorMessage } from './api';
 import type { PaymentHandoff, DemoPaymentHandoff } from '../../shared/payment-contracts';
 type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 function errorIn(scope:HTMLElement,issue:unknown):void {
- const output=scope.querySelector<HTMLElement>('[data-payment-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}
+ const output=scope.querySelector<HTMLElement>('[data-payment-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}
 }
 export function takePaymentDemoToken():string|null {
  const fragment=location.hash;history.replaceState(history.state,'',location.pathname);

@@ -13,7 +13,7 @@ export function propertyMoveInInstant(local:string,timeZone:string):string {
  if(candidates.length!==1)throw new Error(candidates.length?'This time occurs twice during a timezone change. Choose another unambiguous property time.':'This time does not exist in the property timezone. Choose another time.');
  return new Date(candidates[0]!).toISOString();
 }
-function errorIn(form:HTMLElement,issue:unknown):void {const output=form.querySelector<HTMLElement>('[data-lease-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}}
+function errorIn(form:HTMLElement,issue:unknown):void {const output=form.querySelector<HTMLElement>('[data-lease-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}}
 export function initializeLeaseWorkflow(signal:AbortSignal,navigate:Navigate):void {
  const workspace=document.querySelector<HTMLElement>('[data-lease-workspace]');if(!workspace)return;
  workspace.addEventListener('click',event=>{

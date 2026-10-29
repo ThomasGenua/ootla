@@ -1,0 +1,106 @@
+/* Lease renewals and resident access share compact, protected record layouts. */
+.renewals-workspace{color:#284332;min-width:0;font-size:14px;line-height:1.5}
+.renewals-workspace *{box-sizing:border-box}
+.renewals-workspace :is(h2,h3,h4,p,dl,dd){margin:0}
+.renewals-workspace :is(button,input,select,textarea,a,summary):focus-visible{outline:3px solid #287c50;outline-offset:3px}
+.renewals-workspace :is(h2,h3,p,dd,th,td,strong,a){overflow-wrap:anywhere}
+.renewals-workspace .rw-heading{margin-bottom:20px}
+.renewals-workspace .rw-heading h2{font-size:27px;font-weight:550;letter-spacing:-.6px}
+.renewals-workspace .rw-heading p{color:#75847b;font-size:13px;margin-top:5px}
+.renewals-workspace .rw-panel{min-width:0;padding:21px;border:1px solid #dce6df;border-radius:13px;background:#fff;margin-bottom:17px}
+.renewals-workspace .rw-panel h3{font-size:17px;font-weight:550;letter-spacing:-.2px;margin-bottom:14px}
+.renewals-workspace .rw-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:15px}
+.renewals-workspace .rw-search{display:flex;gap:8px;align-items:center;flex:1;min-width:0;max-width:620px}
+.renewals-workspace .rw-search>.icon{position:absolute;margin-left:13px;color:#708477;pointer-events:none}
+.renewals-workspace .rw-search input{width:100%;min-width:0;height:42px;padding:10px 13px 10px 40px;border:1px solid #c6d5ca;border-radius:9px;font:inherit;font-size:13px;background:#fff;color:#284332}
+.renewals-workspace .rw-search .cv-button{height:42px;font-size:13px}
+.renewals-workspace .rw-filters{position:relative;flex:none;margin-left:auto}
+.renewals-workspace .rw-filters>summary{list-style:none;display:flex;align-items:center;gap:8px;font-size:13px;min-height:42px;cursor:pointer;max-width:none}
+.renewals-workspace .rw-filters>summary::-webkit-details-marker{display:none}
+.renewals-workspace .rw-filters>summary>span{display:inline-flex;justify-content:center;min-width:19px;padding:1px 5px;border-radius:20px;background:#e9f3ec;font-size:11px}
+.renewals-workspace .rw-filter-popover{position:absolute;right:0;top:calc(100% + 7px);z-index:15;display:grid;gap:13px;width:min(350px,calc(100vw - 64px));max-height:min(640px,75dvh);overflow:auto;background:#fff;border:1px solid #d8e2db;border-radius:12px;padding:18px;box-shadow:0 12px 35px #173f2420}
+.renewals-workspace .rw-filter-heading,.renewals-workspace .rw-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px}
+.renewals-workspace .rw-filter-heading{margin:0}
+.renewals-workspace .rw-filter-heading h3{font-size:15px;font-weight:550;margin:0}
+.renewals-workspace .rw-filter-heading>button,.renewals-workspace .rw-icon-button{display:inline-flex;align-items:center;justify-content:center;width:31px;height:31px;flex:none;margin:-5px -5px 0 0;padding:4px;border:0;border-radius:7px;background:transparent;color:#6c7e72;cursor:pointer}
+.renewals-workspace :is(.rw-filter-popover,.rw-dialog,.rw-issued) label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#3f5b48}
+.renewals-workspace :is(.rw-filter-popover,.rw-dialog,.rw-issued) :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;max-width:100%;min-height:40px;border:1px solid #c4d2c8;border-radius:8px;background:#fff;padding:9px 10px;color:#2d4737;font:inherit;font-size:13px;line-height:1.45}
+.renewals-workspace .rw-property-picker{display:grid;gap:10px}
+.renewals-workspace .rw-choice-pages{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between;font-size:11px;color:#7d8d82;min-height:16px}
+.renewals-workspace .rw-choice-pages button{border:0;background:transparent;color:#346c48;text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:11px;padding:2px 0;cursor:pointer}
+.renewals-workspace .rw-choice-pages button:disabled{opacity:.5}
+.renewals-workspace .rw-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:17px}
+.renewals-workspace .rw-actions .cv-button,.renewals-workspace .rw-section-heading .cv-button{font-size:12px;min-height:38px;padding:8px 12px}
+.renewals-workspace .rw-chips{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:17px}
+.renewals-workspace .rw-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #d7e3da;border-radius:24px;background:#f2f7f3;padding:5px 9px;color:#3c654b;font-size:11px;text-decoration:none}
+.renewals-workspace .rw-chip .icon{width:13px;height:13px}
+.renewals-workspace .rw-clear{font-size:11px;color:#637b6c;text-underline-offset:3px;margin-left:5px}
+.renewals-workspace .rw-result-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px;flex-wrap:wrap;font-size:12px;color:#75867b}
+.renewals-workspace .rw-result-heading form,.renewals-workspace .rw-result-heading label{display:flex;align-items:center;gap:8px;font-size:11px}
+.renewals-workspace .rw-result-heading select{padding:6px 8px;min-height:33px;border:1px solid #c9d7ce;border-radius:7px;background:#fff;color:#46604d;font:inherit;font-size:11px}
+.renewals-workspace .rw-result-heading form>button{font-size:11px;min-height:32px;padding:5px 9px}
+.renewals-workspace .rw-table-wrap{max-width:100%;overflow:auto;border:1px solid #e0e7e2;border-radius:11px;background:#fff}
+.renewals-workspace .rw-table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px;text-align:left}
+.renewals-workspace .rw-table th{padding:13px 15px;border-bottom:1px solid #dfe7e1;background:#f7faf8;font-weight:500;font-size:11px;color:#718378;white-space:nowrap}
+.renewals-workspace .rw-table td{padding:17px 15px;border-bottom:1px solid #e8eee9;vertical-align:top}
+.renewals-workspace .rw-table tr:last-child td{border-bottom:0}
+.renewals-workspace .rw-table td>a{font-weight:500;color:#315f41;text-decoration:none;text-underline-offset:3px}
+.renewals-workspace .rw-table td>a:hover{text-decoration:underline}
+.renewals-workspace .rw-table small{display:block;font-size:11px;color:#859287;margin-top:4px}
+.renewals-workspace .rw-tag{display:inline-flex;align-items:center;border-radius:30px;background:#edf3ef;color:#5c7264;font-size:11px;line-height:1.4;padding:4px 9px;white-space:nowrap}
+.renewals-workspace .rw-tag[data-state=current],.renewals-workspace .rw-tag[data-state=active]{color:#2d7048;background:#e8f5ec}
+.renewals-workspace .rw-tag[data-state=expired],.renewals-workspace .rw-tag[data-state=pending],.renewals-workspace .rw-tag[data-state=open]{color:#906b2c;background:#fff5df}
+.renewals-workspace .rw-tag[data-state=completed]{color:#3d658b;background:#eaf3fa}
+.renewals-workspace .rw-tag[data-state=revoked]{color:#905252;background:#faeded}
+.renewals-workspace .rw-empty{padding:45px 20px;border:1px solid #e1e9e3;border-radius:12px;background:#fff;text-align:center}
+.renewals-workspace .rw-empty h3{font-size:16px;font-weight:500;margin-bottom:8px}
+.renewals-workspace .rw-empty p,.renewals-workspace .rw-muted{font-size:12px;color:#7a8a7f;line-height:1.6}
+.renewals-workspace .rw-record-summary h2{font-size:25px;font-weight:550;letter-spacing:-.5px}
+.renewals-workspace .rw-record-summary .rw-section-heading p{font-size:13px;color:#718277;margin-top:4px}
+.renewals-workspace .rw-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px 23px}
+.renewals-workspace .rw-facts dt{font-size:11px;color:#829086;margin:0 0 5px}
+.renewals-workspace .rw-facts dd{font-size:13px;color:#37533f}
+.renewals-workspace .rw-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 295px;gap:17px;align-items:start}
+.renewals-workspace .rw-main,.renewals-workspace .rw-side{min-width:0}
+.renewals-workspace .rw-section-heading h3{margin:0}
+.renewals-workspace .rw-offer+.rw-offer{border-top:1px solid #e1e9e3;margin-top:20px;padding-top:20px}
+.renewals-workspace .rw-offer .rw-section-heading{margin-bottom:10px;font-size:12px}
+.renewals-workspace .rw-terms{white-space:pre-wrap;font-size:14px;line-height:1.65;color:#375740;margin:0 0 18px}
+.renewals-workspace .rw-evidence{margin-top:15px;font-size:11px;color:#728277}
+.renewals-workspace .rw-evidence summary{cursor:pointer}
+.renewals-workspace .rw-evidence p{padding-top:9px;white-space:pre-wrap}
+.renewals-workspace .rw-source-note{margin-top:16px}
+.renewals-workspace .rw-fold>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;font-size:14px;font-weight:500;color:#3d5d46}
+.renewals-workspace .rw-fold>summary::-webkit-details-marker{display:none}
+.renewals-workspace .rw-fold>summary:after{content:'+';font-size:20px;font-weight:400;color:#8a9c8e}
+.renewals-workspace .rw-fold[open]>summary:after{content:'−'}
+.renewals-workspace .rw-fold>summary>span{margin-left:auto;font-size:11px;color:#8a9c8e}
+.renewals-workspace .rw-fold[open]>summary{padding-bottom:17px;border-bottom:1px solid #e3eae5;margin-bottom:17px}
+.renewals-workspace .rw-task-list{list-style:none;padding:0;margin:0}
+.renewals-workspace .rw-task-list li+li{margin-top:15px;padding-top:15px;border-top:1px solid #e4ebe6}
+.renewals-workspace .rw-task-list li>div{display:flex;align-items:center;gap:9px;justify-content:space-between}
+.renewals-workspace .rw-task-list strong{font-size:13px;font-weight:500}
+.renewals-workspace .rw-task-list p{font-size:11px;color:#7c8e81;margin-top:5px}
+.renewals-workspace .rw-followup-status{margin:9px 0}
+.renewals-workspace .rw-related{display:grid;gap:10px;font-size:13px}
+.renewals-workspace .rw-related a{color:#477053;text-underline-offset:3px}
+.renewals-workspace .rw-dialog{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;padding:24px;border:1px solid #cbdacf;border-radius:14px;background:#fff;color:#36543f;box-shadow:0 18px 70px #10251c40}
+.renewals-workspace .rw-dialog::backdrop{background:#13251c66}
+.renewals-workspace .rw-dialog h3{font-size:19px;font-weight:550;letter-spacing:-.25px;margin-bottom:13px}
+.renewals-workspace .rw-dialog .rw-section-heading h3{margin:0}
+.renewals-workspace .rw-dialog form>label{margin-top:15px}
+.renewals-workspace .rw-dialog textarea{resize:vertical;min-height:115px}
+.renewals-workspace .rw-dialog small{font-size:11px;color:#7d8f82;font-weight:400}
+.renewals-workspace .rw-dialog .rw-check{display:flex;flex-direction:row;align-items:flex-start;gap:8px;font-size:12px;font-weight:400;line-height:1.6}
+.renewals-workspace .rw-check input{flex:none;width:17px;height:17px;min-height:17px;margin:2px 0 0;accent-color:#37744d}
+.renewals-workspace .rw-error{font-size:12px;color:#a44646;white-space:pre-wrap;margin-top:12px}
+.renewals-workspace .rw-error:empty{display:none}
+.renewals-workspace .rw-saved{margin-bottom:16px;padding:12px 15px;background:#eaf5ed;border:1px solid #cee2d3;border-radius:9px;color:#376746;font-size:13px}
+.renewals-workspace .rw-issued p{margin-bottom:12px}
+.renewals-workspace .rw-issued input{font-size:12px}
+.renewals-workspace .rw-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.renewals-workspace [hidden]{display:none!important}
+@media(max-width:1100px){.renewals-workspace .rw-detail-grid{grid-template-columns:minmax(0,1fr) 260px}.renewals-workspace .rw-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.renewals-workspace .rw-detail-grid{grid-template-columns:1fr}.renewals-workspace .rw-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}}
+@media(max-width:600px){.renewals-workspace .rw-toolbar{flex-wrap:wrap}.renewals-workspace .rw-search{flex-basis:100%;max-width:none}.renewals-workspace .rw-filters{margin-left:0}.renewals-workspace .rw-filter-popover{left:0;right:auto}.renewals-workspace .rw-panel{padding:18px 16px}.renewals-workspace .rw-facts{grid-template-columns:1fr;gap:15px}.renewals-workspace .rw-record-summary h2{font-size:23px}.renewals-workspace .rw-section-heading{flex-wrap:wrap}.renewals-workspace .rw-side{grid-template-columns:1fr;gap:0}.renewals-workspace .rw-dialog{padding:20px}.renewals-workspace .rw-dialog .rw-actions .cv-button{flex:1}.renewals-workspace .rw-table td{padding:14px 13px}}
+@media(prefers-reduced-motion:reduce){.renewals-workspace *{animation:none!important;transition:none!important;scroll-behavior:auto}}

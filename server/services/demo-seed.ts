@@ -1,3 +1,4 @@
+import {demoTaskDescriptions} from './demo-task-descriptions.js';
 ﻿import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { ServerConfig } from '../config/env.js';
@@ -52,7 +53,7 @@ export async function seedDemo(database: Database, config: ServerConfig, reset =
       const existing = (await client.query<{id: string}>(`SELECT id FROM ${entity} WHERE organization_id=$1 AND seed_key=$2`,[organizationId,seedKey])).rows[0];
       if (existing && (!ownership || ownership.record_id !== existing.id)) throw new ApiError(409,'SEED_CONFLICT','A demo seed key conflicts with a record outside the owned dataset. No data was changed.');
       const recordId = ownership?.record_id ?? randomUUID();
-      const recordValues: Values = entity === 'properties' ? { source_system: 'demo', ...values } : entity === 'units' ? { source_system: 'demo', availability_source: 'demo', availability_verified_at: null, ...values } : entity === 'leads' ? { source: 'demo', ...fixtureLeadActions[key], ...values } : entity === 'tasks' ? { origin: 'demo', ...values } : values;
+      const recordValues: Values = entity === 'properties' ? { source_system: 'demo', ...values } : entity === 'units' ? { source_system: 'demo', availability_source: 'demo', availability_verified_at: null, ...values } : entity === 'leads' ? { source: 'demo', ...fixtureLeadActions[key], ...values } : entity === 'tasks' ? { origin: 'demo', details:demoTaskDescriptions[seedKey]??'', ...values } : values;
       const columns = ['id','organization_id','seed_key',...Object.keys(recordValues)];
       const parameters = [recordId,organizationId,seedKey,...Object.values(recordValues)];
       const conflict = reset ? `DO UPDATE SET ${Object.keys(recordValues).map((column)=>`${column}=EXCLUDED.${column}`).join(',')},updated_at=now()` : 'DO NOTHING';

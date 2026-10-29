@@ -1,3 +1,5 @@
+import {createRenewalsRouter} from './routes/renewals.js';
+import {createResidentAdministrationRouter} from './routes/resident-administration.js';
 import {publicDemoAccess,installPublicAccess} from './http/public-access.js';
 import {rewritePublicAccess} from '../shared/public-access.js';
 import {createStaffOnboardingRouter} from './routes/staff-onboarding.js';
@@ -42,6 +44,7 @@ import { createImportRouter } from './routes/imports.js';
 import { createAccountRouter } from './routes/account.js';
 import { createConnectorRouter } from './routes/connectors.js';
 import { createPropertyFoundationRouter } from './routes/property-foundation.js';
+import {isIsolatedDemo} from './services/demo-environment.js';
 import { preparedDemoAccount } from './services/demo-environment.js';
 import { preparedStandaloneDemo, standaloneDemoEmail } from './services/standalone-demo.js';
 import { loadDemoData } from './services/demo-data.js';
@@ -50,7 +53,7 @@ import { adminSummaryQuerySchema } from '../shared/admin-summary-contracts.js';
 import { loadAdminPageSummary } from './services/admin-summary.js';
 
 const frontendRoutes = new Set([
-  '/staff/invite',
+  '/staff/invite', '/admin/renewals', '/admin/resident-access',
   '/admin/organization','/admin/integration-health','/admin/audit',
   '/admin/voice', '/resident','/resident/login','/resident/invite','/admin/maintenance', '/applicant', '/applicant/login', '/applicant/invite', '/payment-demo', '/book', '/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy', '/admin/login', '/admin',
   '/admin/leads', '/admin/contacts', '/admin/properties', '/admin/applications', '/admin/calendar',
@@ -168,6 +171,7 @@ export function createApp(config: ServerConfig, database: Database) {
     `,parameters);
     const demoOrganization = scope && (await database.query("SELECT id FROM organizations WHERE id=$1 AND environment='demo' AND slug='ootla-demo'",[user.organization.id])).rowCount;
     return {
+      previewSummaryZeros: Boolean(config.previewZeroSummaryCards && await isIsolatedDemo(config,database)),
       organization:user.organization,
       dashboard:await loadDashboard(database,user,period,config),
       counts:{properties:result.rows[0]?.properties??0,leads:result.rows[0]?.leads??0,tasks:result.rows[0]?.tasks??0,applications:result.rows[0]?.applications??0},
@@ -206,6 +210,8 @@ export function createApp(config: ServerConfig, database: Database) {
   app.use('/api/voice',createVoiceRouter(config,database,requireUser));
   app.use('/api/resident',createResidentPortalRouter(config,database));
   app.use('/api/maintenance',createMaintenanceRouter(config,database,requireUser));
+  app.use('/api/renewals',createRenewalsRouter(config,database,requireUser));
+  app.use('/api/resident-administration',createResidentAdministrationRouter(config,database,requireUser));
   app.use('/api/portfolio-reporting',createPortfolioReportingRouter(config,database,requireUser));
   app.use('/api/google-analytics',createGoogleAnalyticsRouter(config,database,requireUser));
   app.use('/api/google-calendar', createGoogleCalendarRouter(config,database,requireUser));

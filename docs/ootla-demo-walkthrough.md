@@ -4,7 +4,7 @@ Current preloaded review setup: see the [prepared demo guide](ootla-demo-showcas
 
 Use the existing local application at **http://127.0.0.1:7673**. All examples are isolated synthetic records. AI inference, website delivery, screening/signing/payment demonstrations and voice are labelled simulations; they do not contact customers or move money.
 
-Start the project-owned cluster from `C:/Users/user/Documents/software/Ootla` with `npm.cmd run db:local`, then run `npm.cmd run dev` in the demo checkout `C:/Users/user/Documents/software/Ootla-demo`. The retained demo is already prepared; do not reset or reseed to start. For a new isolated demo, use the explicit preparation commands in the guide above. See the [handover](ootla-final-handover.md) and [Apache guide](ootla-apache-demo.md) for installation/compiled hosting.
+Start the project-owned cluster from `C:/Users/user/Documents/software/Ootla` with `npm.cmd run db:local`, then run `npm.cmd run dev` in the demo checkout `C:/Users/user/Documents/software/ootlademo`. The retained demo is already prepared; do not reset or reseed to start. For a new isolated demo, use the explicit preparation commands in the guide above. See the [handover](ootla-final-handover.md) and [Apache guide](ootla-apache-demo.md) for installation/compiled hosting.
 
 ## Sign in to the correct organization
 

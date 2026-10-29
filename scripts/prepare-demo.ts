@@ -1,3 +1,4 @@
+import {polishDemoTaskDescriptions} from '../server/services/demo-task-descriptions.js';
 import {readInstanceDefaults} from '../server/config/instance-files.js';
 import {assertOotlaDatabase,ConfigurationError,loadConfig} from '../server/config/env.js';
 import {Database} from '../server/db/pool.js';
@@ -12,6 +13,7 @@ async function main(){
  const db=new Database(config);
  try{
   const r=await prepareDemoEnvironment(db,config);
+  await polishDemoTaskDescriptions(db,config);
   console.info(r.changedRecords?'Prepared representative synthetic demo records through the persistent application modules.':'The synthetic demo is already prepared. Existing records and staff edits were preserved.');
   console.info('Existing passwords, memberships and customer data were preserved. No emails, SMS, telephone calls, payments or real Google invitations were sent.');
   console.info('Open /admin/login and use Fill demo credentials, then Sign in. Applicant and resident walkthroughs remain separate authorized accounts.');

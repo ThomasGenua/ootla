@@ -46,6 +46,8 @@ export interface DashboardSummary {
   metrics: { newLeads: number; toursBooked: number; applications: number | null; leasesSigned: number | null };
 }
 export interface AdminOverview {
+  /** Server-verified presentation override; record counts remain authoritative. */
+  previewSummaryZeros?: boolean;
   dashboard: DashboardSummary;
   organization: AuthUser['organization'];
   counts: { leads: number; properties: number; applications: number; tasks: number };

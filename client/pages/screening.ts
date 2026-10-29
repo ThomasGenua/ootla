@@ -1,3 +1,4 @@
+import {presentRecordText} from '../lib/presentation';
 import {customerText} from '../lib/customer-copy';
 import type { ScreeningWorkspace, ScreeningConsent } from '../../shared/screening-contracts';
 import { escapeHtml as e } from '../lib/ui';
@@ -10,7 +11,7 @@ const title=(status:string):string=>titles[status]??status.replaceAll('_',' ').r
 const date=(value:string|null):string=>value?new Date(value).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Not yet';
 const error='<p class="ap-error" data-screening-error role="alert"></p>';
 function action(action:string,label:string,extra=''):string {
- return '<form method="post" data-screening-action="'+e(action)+'" '+extra+'>'+error+'<button type="submit" class="ap-button ap-small">'+e(label)+'</button></form>';
+ return '<form method="post" data-screening-action="'+e(action)+'" '+extra+'>'+error+'<button type="submit" class="ap-button ap-small">'+e(presentRecordText(label))+'</button></form>';
 }
 function reportUrl(value:string|null|undefined,applicationId:string,screeningId:string):string|null {
  if(!value)return null;
@@ -24,7 +25,7 @@ export function screeningPanel(data:ScreeningWorkspace,applicationId:string):str
  '<div class="ap-list-heading"><h3 id="screening-heading">Screening and staff review</h3></div>'+
  '<p class="ap-muted">Follow consent, screening progress and your team’s review.</p><p><strong>'+e(title(data.status))+'</strong></p>'+
  '<p class="ap-message" data-screening-success role="status" hidden></p>'+
- '<ul class="ap-list">'+data.participants.map(person=>'<li class="ap-list-item"><div class="ap-list-heading"><div><h4>'+e(person.name)+'</h4><p class="ap-muted">'+e(person.role.replaceAll('_',' '))+'</p></div><span class="ap-tag">'+e(title(person.status))+'</span></div>'+
+ '<ul class="ap-list">'+data.participants.map(person=>'<li class="ap-list-item"><div class="ap-list-heading"><div><h4>'+e(presentRecordText(person.name))+'</h4><p class="ap-muted">'+e(person.role.replaceAll('_',' '))+'</p></div><span class="ap-tag">'+e(title(person.status))+'</span></div>'+
  '<p class="ap-muted">'+(person.consentAcceptedAt?'Separate screening consent recorded '+e(date(person.consentAcceptedAt))+'.':'Screening consent must be recorded by this applicant in their own portal. Application-information consent is separate.')+'</p>'+
  (demo&&access.canRequest&&!person.screeningId&&person.consentAcceptedAt?action('request','Request screening','data-participant-id="'+e(person.id)+'"'):'')+'</li>').join('')+'</ul>'+
  (data.screenings.length?'<h4>Provider request history</h4><ul class="ap-list">'+data.screenings.map(screening=>{
@@ -39,7 +40,7 @@ export function screeningPanel(data:ScreeningWorkspace,applicationId:string):str
  (demo&&access.canProcess&&data.screenings.some(record=>record.status==='failed'&&record.attempts<record.maxAttempts)?'<div class="ap-actions">'+action('retry','Retry screening')+'</div>':'')+
  (access.canReview&&data.screenings.some(record=>record.status==='staff_review_pending'&&!record.reviewedAt)?'<div class="ap-actions">'+action('review','Record staff report review')+'</div>':'')+
  '<h4>Application decision</h4><p class="ap-muted">Screening status and the application decision are separate. Authorized staff record the decision; AI never approves or rejects an applicant.</p>'+
- (data.decisions.length?'<ol class="ap-list">'+data.decisions.map(decision=>'<li class="ap-list-item"><strong>'+e(title(decision.decision))+'</strong><p>'+e(decision.reason)+'</p><p class="ap-muted">'+e(decision.actorName)+' · '+e(date(decision.createdAt))+'</p></li>').join('')+'</ol>':'<p class="ap-muted">No staff decision recorded.</p>')+
+ (data.decisions.length?'<ol class="ap-list">'+data.decisions.map(decision=>'<li class="ap-list-item"><strong>'+e(title(decision.decision))+'</strong><p>'+e(presentRecordText(decision.reason))+'</p><p class="ap-muted">'+e(decision.actorName)+' · '+e(date(decision.createdAt))+'</p></li>').join('')+'</ol>':'<p class="ap-muted">No staff decision recorded.</p>')+
  (access.canDecide?'<form method="post" data-screening-action="decision"><div class="ap-field"><label for="screening-decision">Staff decision</label><select id="screening-decision" name="decision" required><option value="">Choose a decision</option><option value="request_information">Request additional information</option><option value="approved">Approved</option><option value="declined">Declined</option><option value="withdrawn">Withdrawn</option></select></div><div class="ap-field"><label for="screening-reason">Reason and next steps</label><textarea id="screening-reason" name="reason" required minlength="5" maxlength="2000" rows="3"></textarea></div><label class="ap-inline-check"><input name="confirmed" type="checkbox" required/><span>I am recording an authorized staff decision after review.</span></label>'+error+'<button type="submit" class="ap-button">Record staff decision</button></form>':'<p class="ap-muted">A submitted application and authorized review permissions are required. Decisions and sensitive reports are restricted to organization administrators and property managers.</p>')+
  '<p class="ap-muted">Your team reviews the application and records the decision.</p><p class="ap-error" data-screening-global-error role="alert"></p></section>';
 }

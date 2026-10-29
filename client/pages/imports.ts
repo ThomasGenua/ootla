@@ -1,3 +1,4 @@
+import {pageSizeControl} from '../lib/table-pagination';
 import type { AuthUser } from '../lib/api';
 import type { ImportsWorkspacePayload } from '../lib/imports';
 import type { ImportBatch, ImportBatchDetail, ImportRow, ImportStatus, ImportUndoPreview } from '../../shared/import-contracts';
@@ -31,7 +32,7 @@ function stepNavigation(active: string, batch?: ImportBatch): string {
 function pagination<T>(data: Paginated<T>, query: URLSearchParams, name = 'page'): string {
   if (!data.total) return '';
   const change = (number: number, title: string): string => { const next = new URLSearchParams(query); next.set(name, String(number)); return button('/admin/imports?' + next, title); };
-  return `<nav class="im-pagination" aria-label="${name === 'undoPage' ? 'Undo preview' : 'Import results'} pagination"><span>${((data.page - 1) * data.pageSize + 1).toLocaleString()}–${Math.min(data.page * data.pageSize, data.total).toLocaleString()} of ${data.total.toLocaleString()}</span><div>${data.page > 1 ? change(data.page - 1, 'Previous') : '<span>Previous</span>'}<span>Page ${data.page} of ${data.totalPages}</span>${data.page < data.totalPages ? change(data.page + 1, 'Next') : '<span>Next</span>'}</div></nav>`;
+  return (`<nav class="im-pagination" aria-label="${name === 'undoPage' ? 'Undo preview' : 'Import results'} pagination"><span>${((data.page - 1) * data.pageSize + 1).toLocaleString()}–${Math.min(data.page * data.pageSize, data.total).toLocaleString()} of ${data.total.toLocaleString()}</span><div>${data.page > 1 ? change(data.page - 1, 'Previous') : '<span>Previous</span>'}<span>Page ${data.page} of ${data.totalPages}</span>${data.page < data.totalPages ? change(data.page + 1, 'Next') : '<span>Next</span>'}</div></nav>`) + pageSizeControl(query,{path:'/admin/imports',pageSize:data.pageSize,pageKey:name,sizeKey:name==='page'?'pageSize':name+'Size'});
 }
 function sourceGuidance(): string {
   return '<p class="im-notice">Import in this order: <strong>Properties → Units → Contacts → Leads.</strong> Keep the same source name across related files and reuse each record’s stable source ID. A property and its units are always separate records.</p>';

@@ -63,7 +63,7 @@ export function initializeLeadWorkspace08(signal: AbortSignal, navigate: (path: 
           case 'decision': path += '/decisions'; body = { summary: value(data, 'summary'), context: 'follow_up', applicationId: null }; break;
           case 'task-create': path += '/tasks'; body = taskBody(data); break;
           case 'task-edit': path += '/tasks/' + encodeURIComponent(form.dataset.taskId!); method = 'PATCH'; body = { version: Number(form.dataset.version), ...taskBody(data) }; break;
-          case 'task-status': path += '/tasks/' + encodeURIComponent(form.dataset.taskId!); method = 'PATCH'; body = { version: Number(form.dataset.version), status: form.dataset.taskStatus }; break;
+          case 'task-status': path += '/tasks/' + encodeURIComponent(form.dataset.taskId!); method = 'PATCH'; body = { version: Number(form.dataset.version), status: form.dataset.taskStatus, ...(form.dataset.taskStatus === 'completed' && value(data,'completionComment') ? {completionComment:value(data,'completionComment')} : {}) }; break;
           default: throw new Error('This staff action is not available.');
         }
         await api(path, { method, body: JSON.stringify(body), signal });
@@ -72,12 +72,13 @@ export function initializeLeadWorkspace08(signal: AbortSignal, navigate: (path: 
       const next = new URLSearchParams(location.search);
       next.delete('saved'); next.delete('timelinePage'); next.set('saved08', action);
       const section = action.startsWith('task-') ? 'lead08-tasks' : action === 'document' ? 'lead08-documents' : 'lead08-timeline';
+      next.set('leadTab', action.startsWith('task-') ? 'tasks' : action === 'document' ? 'documents' : 'activity'); next.delete('editor'); next.delete('assistant');
       if (action.startsWith('task-')) next.delete('tasksPage');
       if (action === 'document') next.delete('documentsPage');
       navigate('/admin/leads?' + next + '#' + section, true, '#' + section);
     } catch (issue) {
       if (signal.aborted) return;
-      if (error) { error.textContent = productError(issue); error.tabIndex = -1; error.focus(); }
+      if (error) { error.textContent = productError(issue); error.tabIndex = -1; error.focus({preventScroll:true}); }
     } finally {
       if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); }
     }

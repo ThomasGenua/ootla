@@ -1,0 +1,53 @@
+/* Compact resident-facing correspondence within the existing request detail. */
+.maintenance-detail .mc-panel{padding:0;overflow:hidden}
+.maintenance-detail .mc-heading{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:19px 21px 0}
+.maintenance-detail .mc-heading h3{margin:0}
+.maintenance-detail .mc-connection{font-size:11px;color:#718176;text-align:right}
+.maintenance-detail .mc-resident{padding:9px 21px 0;font-size:12px;color:#607466;white-space:pre-wrap}
+.maintenance-detail .mc-error{margin:12px 21px 0;color:#9c3737;font-size:12px;white-space:pre-wrap}
+.maintenance-detail .mc-error:empty{display:none}
+.maintenance-detail .mc-retry{margin:12px 21px 19px}
+.maintenance-detail .mc-older{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px 18px 0;min-height:50px}
+.maintenance-detail .mc-older .cv-button{min-height:35px;padding:7px 11px;font-size:11px}
+.maintenance-detail .mc-older>span{font-size:11px;color:#718176}
+.maintenance-detail .mc-viewport{max-height:400px;min-height:130px;overflow:auto;overscroll-behavior:contain;scroll-behavior:auto;overflow-anchor:none;margin:0 8px;padding:17px 13px}
+.maintenance-detail .mc-stream{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:15px}
+.maintenance-detail .mc-message{max-width:88%;align-self:flex-start;min-width:0}
+.maintenance-detail .mc-message[data-actor=staff]{align-self:flex-end}
+.maintenance-detail .mc-message[data-actor=system]{max-width:100%;align-self:stretch}
+.maintenance-detail .mc-message-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px;font-size:11px;color:#667c6c}
+.maintenance-detail .mc-message-meta strong{font-size:11px;font-weight:550;color:#3e5948}
+.maintenance-detail .mc-message-meta time{margin-left:auto;color:#7b8c80;font-size:10px}
+.maintenance-detail .mc-message-body{padding:11px 13px;border-radius:11px 11px 11px 3px;background:#f1f5f2;color:#304d3a;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.maintenance-detail .mc-message[data-actor=staff] .mc-message-body{background:#eaf4ed;border-radius:11px 11px 3px 11px}
+.maintenance-detail .mc-message[data-actor=system] .mc-message-body{padding:8px 11px;background:#f7f8f7;font-size:12px;color:#718176;border-radius:7px}
+.maintenance-detail .mc-message-state{margin-top:4px;text-align:right;font-size:10px;color:#788b7d;min-height:14px}
+.maintenance-detail .mc-message-state[data-state=failed]{color:#9c3737}
+.maintenance-detail .mc-empty{padding:26px 0;text-align:center;color:#7a8b7f;font-size:12px}
+.maintenance-detail .mc-new-row{display:flex;justify-content:center;position:relative;height:0;padding:0 18px}
+.maintenance-detail .mc-new{position:absolute;bottom:8px;z-index:1;min-height:34px;padding:6px 11px;font-size:11px;box-shadow:0 3px 12px #193c2820}
+.maintenance-detail .mc-announcement{height:0;overflow:hidden;position:absolute;clip-path:inset(50%);width:1px}
+.maintenance-detail .mc-composer{display:grid;gap:10px;padding:17px 21px 19px;border-top:1px solid #e2eae5}
+.maintenance-detail .mc-composer label{display:flex;gap:6px;flex-direction:column;font-size:12px;color:#3e5948;font-weight:500;min-width:0}
+.maintenance-detail .mc-composer .mc-channel-label{display:flex;flex-direction:row;align-items:center;gap:9px;flex-wrap:wrap;font-weight:400}
+.maintenance-detail .mc-composer select{font:inherit;font-size:12px;min-height:35px;padding:6px 9px;border:1px solid #bdcdc2;border-radius:8px;background:#fff;color:#344e3d;max-width:100%}
+.maintenance-detail .mc-composer textarea{width:100%;min-width:0;min-height:91px;padding:10px 12px;border:1px solid #bdcdc2;border-radius:9px;color:#304d3a;background:#fff;font:inherit;font-size:13px;line-height:1.6;resize:vertical;box-sizing:border-box}
+.maintenance-detail .mc-channel-hint,.maintenance-detail .mc-readonly{font-size:11px;color:#718176;line-height:1.5}
+.maintenance-detail .mc-readonly{padding:12px 21px 19px}
+.maintenance-detail .mc-compose-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.maintenance-detail .mc-compose-actions .cv-button{font-size:12px;min-height:37px;padding:8px 11px}
+.maintenance-detail .mc-draft-state{margin-right:auto;font-size:11px;color:#7a8b7f;flex:1;min-width:100px}
+.maintenance-detail .mc-compose-actions button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){.maintenance-detail .mc-heading{padding:17px 16px 0;align-items:flex-start}.maintenance-detail .mc-resident{padding:9px 16px 0}.maintenance-detail .mc-error{margin-inline:16px}.maintenance-detail .mc-composer{padding:15px 16px}.maintenance-detail .mc-viewport{padding-inline:8px;max-height:360px}.maintenance-detail .mc-message{max-width:94%}.maintenance-detail .mc-message-meta time{width:100%;margin-left:0}.maintenance-detail .mc-draft-state{flex-basis:100%;margin-bottom:1px}.maintenance-detail .mc-compose-actions .cv-button{flex:1}.maintenance-detail .mc-connection{max-width:125px}}
+@media(prefers-reduced-motion:reduce){.maintenance-detail .mc-panel *{scroll-behavior:auto;animation:none!important;transition:none!important}}
+.maintenance-detail .mc-message-retry{margin-left:8px;padding:0;border:0;background:transparent;color:#8e3838;font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}.maintenance-detail .mc-message-retry:disabled{opacity:.5;cursor:wait}
+.maintenance-detail .mc-conflict{margin:12px 21px 4px;min-height:36px;font-size:12px}
+.maintenance-detail .mc-draft-dialog{width:min(570px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:24px;border:1px solid #cbdacf;border-radius:14px;color:#304d3a;background:#fff;box-shadow:0 18px 70px #10251c40}
+.maintenance-detail .mc-draft-dialog::backdrop{background:#13251c66}
+.maintenance-detail .mc-draft-dialog h3{margin:0 0 10px;font-size:19px}
+.maintenance-detail .mc-draft-dialog p{font-size:13px;color:#657a6c;line-height:1.6;margin:0 0 18px}
+.maintenance-detail .mc-draft-dialog h4{font-size:12px;font-weight:500;margin:15px 0 7px}
+.maintenance-detail .mc-draft-dialog pre{margin:0;padding:12px;max-height:140px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dce6df;border-radius:8px;background:#f5f8f6;font:inherit;font-size:12px;line-height:1.6}
+.maintenance-detail .mc-dialog-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:22px}
+.maintenance-detail .mc-dialog-actions .cv-button{font-size:12px;min-height:39px}
+@media(max-width:600px){.maintenance-detail .mc-conflict{margin-inline:16px}.maintenance-detail .mc-draft-dialog{padding:19px}.maintenance-detail .mc-dialog-actions .cv-button{flex:1}}

@@ -1,0 +1,13 @@
+/* High specificity keeps record-form styles from stretching compact table controls. */
+.table-pagination{display:flex;align-items:center;justify-content:flex-end;gap:18px;flex-wrap:wrap;width:100%;min-width:0;margin:18px 0 0;padding-block:8px}
+.table-page-size.table-page-size.table-page-size{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:flex-start;flex-wrap:nowrap;gap:8px;width:max-content;max-width:100%;min-width:0;margin:0;padding:0;font-size:12px;color:#596275;grid-template-columns:none;align-self:center}
+.table-page-size.table-page-size.table-page-size label{display:inline;flex:0 0 auto;width:auto;margin:0;font-weight:400;font-size:inherit;white-space:nowrap;grid-column:auto}
+.table-page-size.table-page-size.table-page-size select{display:inline-block;flex:0 0 auto;width:auto;min-width:4.6rem;max-width:6rem;min-height:36px;margin:0;padding:6px 25px 6px 9px;border:1px solid #d6ded9;border-radius:8px;background:#fff;color:#17251f;font:inherit}
+.table-page-size.table-page-size.table-page-size button{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:auto;min-height:36px;margin:0;padding:6px 10px;border:1px solid #d6ded9;border-radius:8px;background:#fff;color:#244b36;font:inherit;cursor:pointer}
+.table-page-size.table-page-size.table-page-size button:hover{background:#f0f6f2}
+.table-pagination>:is(nav,[class*="-pager"],[class*="-pagination"]){display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex:0 1 auto;width:auto;min-width:0;margin:0;padding:0;border:0}
+.table-pagination-nav .table-pagination-links,.table-pagination>:is(nav,[class*="-pager"],[class*="-pagination"])>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.table-pagination :is(.table-pagination-count,p,span){font-size:12px}
+.table-pagination [aria-disabled="true"]{color:#87948d}
+.table-pagination:focus{outline:0}.table-pagination:focus-visible{outline:2px solid #236b48;outline-offset:5px}
+@media(max-width:600px){.table-pagination{justify-content:flex-start;gap:12px}.table-pagination>:is(nav,[class*="-pager"],[class*="-pagination"]){flex-basis:100%;justify-content:flex-start;gap:10px}.table-page-size.table-page-size.table-page-size select,.table-page-size.table-page-size.table-page-size button{min-height:44px}.table-pagination-links a{min-height:44px;display:inline-flex;align-items:center}}

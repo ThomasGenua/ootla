@@ -22,18 +22,18 @@ export async function loadApplicationsWorkspace(query:URLSearchParams,signal:Abo
   if(id){
    if(query.get('preview')==='1')return{kind:'preview',preview:await api<PortalApplication>('/api/applications/'+encodeURIComponent(id)+'/preview',{signal})};
    const detail=await api<StaffApplicationWorkspace>('/api/applications/'+encodeURIComponent(id),{signal});
-   const contacts=detail.application.coApplicantsEnabled&&query.get('participants')==='add'?await api<Paginated<ContactRecord>>(foundationApi+'/contacts?'+new URLSearchParams({propertyId:detail.application.property.id,q:query.get('contactSearch')??'',page:query.get('contactPage')??'1',pageSize:'20'}),{signal}):null;
+   const contacts=detail.application.coApplicantsEnabled&&query.get('participants')==='add'?await api<Paginated<ContactRecord>>(foundationApi+'/contacts?'+new URLSearchParams({propertyId:detail.application.property.id,q:query.get('contactSearch')??'',page:query.get('contactPage')??'1',pageSize:query.get('contactPageSize')??'20'}),{signal}):null;
    const [screening,payment,lease]=await Promise.all([api<ScreeningWorkspace>('/api/application-journey/'+encodeURIComponent(id)+'/screening',{signal}),api<PaymentWorkspace>('/api/application-payments/'+encodeURIComponent(id),{signal}),api<LeaseWorkflowWorkspace>('/api/application-leases/'+encodeURIComponent(id),{signal})]);
    const destinations=payment.access.canConfigure?await api<PaymentDestinations>('/api/application-payments/destinations',{signal}):null;
    return{kind:'detail',detail,contacts,screening,payment,destinations,lease};
   }
-  if(query.get('view')==='new')return{kind:'create',leads:await api<LeadDirectory>('/api/leads?'+new URLSearchParams({intent:'leasing',q:query.get('leadSearch')??'',page:query.get('leadPage')??'1',pageSize:'20'}),{signal})};
+  if(query.get('view')==='new')return{kind:'create',leads:await api<LeadDirectory>('/api/leads?'+new URLSearchParams({intent:'leasing',q:query.get('leadSearch')??'',page:query.get('leadPage')??'1',pageSize:query.get('leadPageSize')??'20'}),{signal})};
   const params=new URLSearchParams();for(const key of ['q','status','page','pageSize'])if(query.has(key))params.set(key,query.get(key)!);
   return{kind:'directory',directory:await api<StaffApplications>('/api/applications/list?'+params,{signal})};
  }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:productError(issue)};throw issue;}
 }
 const value=(data:FormData,key:string):string=>String(data.get(key)??'').trim();
-function displayError(form:HTMLElement,issue:unknown):void{const error=form.querySelector<HTMLElement>('[data-application-error]')??document.querySelector<HTMLElement>('[data-application-global-error]');if(error){error.textContent=productError(issue);error.tabIndex=-1;error.focus();}}
+function displayError(form:HTMLElement,issue:unknown):void{const error=form.querySelector<HTMLElement>('[data-application-error]')??document.querySelector<HTMLElement>('[data-application-global-error]');if(error){error.textContent=productError(issue);error.tabIndex=-1;error.focus({preventScroll:true});}}
 export function initializeApplicationsWorkspace(signal:AbortSignal,navigate:(path:string,replace?:boolean,focusSelector?:string)=>void,user:AuthUser):void{
  const workspace=document.querySelector<HTMLElement>('[data-applications-workspace]');if(!workspace)return;
  initializeScreeningWorkspace(signal,navigate);

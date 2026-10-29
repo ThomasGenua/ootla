@@ -6,8 +6,8 @@ import type {AiOptions} from '../../shared/ai-contracts';
 type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 export async function loadConversationWorkspace(query:URLSearchParams,signal:AbortSignal):Promise<ConversationWorkspace>{
  try{
-  const params=new URLSearchParams({page:query.get('page')??'1',pageSize:'20',ownership:query.get('ownership')??'all',q:query.get('q')??''});if(query.get('propertyId'))params.set('propertyId',query.get('propertyId')!);
-  const[configuration,directory,detail]=await Promise.all([api<ConversationConfiguration>('/api/conversations/config',{signal}),api<ConversationDirectory>('/api/conversations?'+params,{signal}),query.get('conversation')?api<ConversationDetail>('/api/conversations/'+encodeURIComponent(query.get('conversation')!)+'?'+new URLSearchParams({page:query.get('messagesPage')??'1',pageSize:'25'}),{signal}):null]);
+  const params=new URLSearchParams({page:query.get('page')??'1',pageSize:query.get('pageSize')??'20',ownership:query.get('ownership')??'all',q:query.get('q')??''});if(query.get('propertyId'))params.set('propertyId',query.get('propertyId')!);
+  const[configuration,directory,detail]=await Promise.all([api<ConversationConfiguration>('/api/conversations/config',{signal}),api<ConversationDirectory>('/api/conversations?'+params,{signal}),query.get('conversation')?api<ConversationDetail>('/api/conversations/'+encodeURIComponent(query.get('conversation')!)+'?'+new URLSearchParams({page:query.get('messagesPage')??'1',pageSize:query.get('messagesPageSize')??'25'}),{signal}):null]);
   const options=configuration.canConfigure&&!detail?await api<AiOptions>('/api/ai/options?'+new URLSearchParams({propertySearch:query.get('propertySearch')??'',pageSize:'25'}),{signal}):null;
   return{kind:'ready',configuration,directory,detail,options};
  }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:productError(issue)};throw issue;}

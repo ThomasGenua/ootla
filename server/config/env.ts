@@ -39,6 +39,7 @@ const envSchema = z.object({
   GOOGLE_CALENDAR_CLIENT_SECRET: z.string().max(1000).default(''),
   GOOGLE_CALENDAR_REDIRECT_URI: z.string().trim().max(1000).default(''),
   GOOGLE_CALENDAR_TOKEN_KEY: z.string().default('').refine(value => value === '' || (/^[A-Za-z0-9+/]{43}=$/.test(value) && Buffer.from(value,'base64').length === 32 && Buffer.from(value,'base64').toString('base64') === value), 'Use a base64-encoded 32-byte server-only key.'),
+  PREVIEW_ZERO_SUMMARY_CARDS: z.enum(['true','false']).default('false').transform(value=>value==='true'),
   DEMO_MODE: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   DEMO_ADMIN_EMAIL: z.string().trim().toLowerCase().email().max(254).default('admin@demo.ootla.test'),
   INTEGRATIONS_MODE: z.literal('simulation').default('simulation'),
@@ -72,6 +73,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     throw new ConfigurationError(`Invalid server configuration: ${fields}. Check .env.example; SESSION_SECRET needs at least 32 characters. Values are intentionally omitted.`);
   }
   const values = parsed.data;
+  if(values.PREVIEW_ZERO_SUMMARY_CARDS && (!values.DEMO_MODE || values.NODE_ENV === 'production'))throw new ConfigurationError('PREVIEW_ZERO_SUMMARY_CARDS is allowed only in an isolated non-production preview with DEMO_MODE=true.');
   const origin = new URL(values.APP_URL);
   if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
     throw new ConfigurationError('APP_URL must be an HTTP(S) origin without a path, credentials, query or fragment.');
@@ -138,6 +140,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env) {
     googleCalendar: Object.freeze({enabled:values.GOOGLE_CALENDAR_ENABLED,clientId:values.GOOGLE_CALENDAR_CLIENT_ID,clientSecret:values.GOOGLE_CALENDAR_CLIENT_SECRET,redirectUri:values.GOOGLE_CALENDAR_REDIRECT_URI,tokenEncryptionKey:values.GOOGLE_CALENDAR_TOKEN_KEY || null}),
     connectorCredentialKey: values.CONNECTOR_CREDENTIAL_KEY || null,
     demoMode: values.DEMO_MODE,
+    previewZeroSummaryCards: values.PREVIEW_ZERO_SUMMARY_CARDS,
     demoAdminEmail: values.DEMO_ADMIN_EMAIL,
     demoAdminPassword: values.DEMO_ADMIN_PASSWORD,
     integrationsMode: values.INTEGRATIONS_MODE,

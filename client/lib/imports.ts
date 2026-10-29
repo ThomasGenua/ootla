@@ -15,11 +15,11 @@ export async function loadImportsWorkspace(query: URLSearchParams, signal: Abort
   catch (issue) { if (issue instanceof ApiError && issue.status === 403) return { kind: 'denied', message: productError(issue) }; throw issue; }
   if (!onboarding.canImport || onboarding.organization.mode !== 'standalone') return { kind: 'restricted', onboarding };
   const batch = query.get('batch');
-  if (!batch) return { kind: 'directory', onboarding, batches: await api<Paginated<ImportBatch>>(importsApi + '?' + new URLSearchParams({ page: query.get('page') ?? '1', pageSize: '25' }), { signal }) };
+  if (!batch) return { kind: 'directory', onboarding, batches: await api<Paginated<ImportBatch>>(importsApi + '?' + new URLSearchParams({ page: query.get('page') ?? '1', pageSize: query.get('pageSize') ?? '25' }), { signal }) };
   const path = importsApi + '/' + encodeURIComponent(batch);
   const detail = await api<ImportBatchDetail>(path, { signal });
-  if (query.get('rows') || query.get('page')) detail.rows = await api(path + '/rows?' + new URLSearchParams({ view: query.get('rows') ?? 'all', page: query.get('page') ?? '1', pageSize: '25' }), { signal });
-  const undo = query.get('undo') === 'review' ? await api<ImportUndoPreview>(path + '/undo-preview?' + new URLSearchParams({ page: query.get('undoPage') ?? '1', pageSize: '25' }), { method: 'POST', body: '{}', signal }) : null;
+  if (query.get('rows') || query.get('page') || query.get('pageSize')) detail.rows = await api(path + '/rows?' + new URLSearchParams({ view: query.get('rows') ?? 'all', page: query.get('page') ?? '1', pageSize: query.get('pageSize') ?? '25' }), { signal });
+  const undo = query.get('undo') === 'review' ? await api<ImportUndoPreview>(path + '/undo-preview?' + new URLSearchParams({ page: query.get('undoPage') ?? '1', pageSize: query.get('undoPageSize') ?? '25' }), { method: 'POST', body: '{}', signal }) : null;
   return { kind: 'batch', onboarding, detail, undo };
 }
 const value = (data: FormData, key: string): string => String(data.get(key) ?? '').trim();

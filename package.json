@@ -109,7 +109,21 @@
     "check:demo-showcase:journey": "tsx scripts/check-demo-showcase-remaining.ts",
     "check:demo-showcase:applicant": "tsx scripts/check-demo-showcase-applicant.ts",
     "check:demo-showcase:browser": "node scripts/check-demo-showcase-browser.mjs",
-    "check:demo-showcase:milestones": "tsx scripts/check-demo-dashboard-milestones.ts"
+    "check:demo-showcase:milestones": "tsx scripts/check-demo-dashboard-milestones.ts",
+    "check:lead-cleanup": "tsx scripts/check-lead-cleanup.ts",
+    "check:lead-cleanup:browser": "tsx scripts/check-lead-cleanup.ts --browser",
+    "check:lead-cleanup:preservation": "tsx scripts/check-lead-cleanup-runtime-cursors.ts",
+    "check:workspace-navigation": "tsx scripts/check-workspace-navigation.ts",
+    "check:workspace-navigation:browser": "node scripts/check-workspace-navigation-browser.mjs",
+    "check:workspace-navigation:preservation": "tsx scripts/check-workspace-navigation.ts --preservation-only",
+    "demo:polish-tasks": "tsx scripts/polish-demo-tasks.ts",
+    "check:client-review": "tsx scripts/check-client-review.ts",
+    "check:client-review:preservation": "tsx scripts/check-client-review-preservation.ts",
+    "check:client-review:browser": "tsx scripts/check-client-review.ts --browser",
+    "check:client-review:pagination": "tsx scripts/check-client-review-pagination.ts",
+    "check:client-review:retained": "node scripts/check-client-review-retained.mjs",
+    "demo:renewals": "tsx scripts/prepare-renewals-pilot.ts",
+    "demo:current-pipeline": "tsx scripts/prepare-demo-current-pipeline.ts"
   },
   "dependencies": {
     "argon2": "0.45.1",

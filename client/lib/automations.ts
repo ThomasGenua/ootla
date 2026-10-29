@@ -11,12 +11,12 @@ const base='/api/automations';
 export async function loadAutomationWorkspace(query:URLSearchParams,signal:AbortSignal):Promise<AutomationWorkspace>{
  try{
   const configuration=await api<AutomationConfiguration>(base+'/config',{signal}),id=query.get('rule'),isNew=query.get('view')==='new';
-  const detail=id?await api<AutomationDetail>(base+'/rules/'+encodeURIComponent(id)+'?'+new URLSearchParams({page:query.get('activityPage')??'1',pageSize:'10'}),{signal}):null;
+  const detail=id?await api<AutomationDetail>(base+'/rules/'+encodeURIComponent(id)+'?'+new URLSearchParams({page:query.get('activityPage')??'1',pageSize:query.get('activityPageSize')??'10'}),{signal}):null;
   const optionQuery=new URLSearchParams({q:query.get('propertySearch')??'',ownerSearch:query.get('ownerSearch')??'',knowledgeSearch:query.get('knowledgeSearch')??'',page:query.get('propertyPage')??'1',pageSize:'25'}),propertyId=detail?detail.rule.propertyId:query.get('propertyId');if(propertyId)optionQuery.set('propertyId',propertyId);
   const options=await api<AutomationOptions>(base+'/options?'+optionQuery,{signal});
-  const rules=!detail&&!isNew&&query.get('view')!=='activity'?await api<Paginated<AutomationRule>>(base+'?'+new URLSearchParams({page:query.get('page')??'1',pageSize:'20',enabled:query.get('enabled')??'all',...(query.get('propertyId')?{propertyId:query.get('propertyId')!}:{})}),{signal}):null;
-  const activity=query.get('view')==='activity'?await api<Paginated<AutomationJob>>(base+'/activity?'+new URLSearchParams({page:query.get('page')??'1',pageSize:'20',status:query.get('status')??'all',...(query.get('propertyId')?{propertyId:query.get('propertyId')!}:{})}),{signal}):null;
-  const preview=id&&query.get('preview')==='1'?await api<AutomationPreview>(base+'/rules/'+encodeURIComponent(id)+'/preview?'+new URLSearchParams({page:query.get('previewPage')??'1',pageSize:'20'}),{signal}):null;
+  const rules=!detail&&!isNew&&query.get('view')!=='activity'?await api<Paginated<AutomationRule>>(base+'?'+new URLSearchParams({page:query.get('page')??'1',pageSize:query.get('pageSize')??'20',enabled:query.get('enabled')??'all',...(query.get('propertyId')?{propertyId:query.get('propertyId')!}:{})}),{signal}):null;
+  const activity=query.get('view')==='activity'?await api<Paginated<AutomationJob>>(base+'/activity?'+new URLSearchParams({page:query.get('page')??'1',pageSize:query.get('pageSize')??'20',status:query.get('status')??'all',...(query.get('propertyId')?{propertyId:query.get('propertyId')!}:{})}),{signal}):null;
+  const preview=id&&query.get('preview')==='1'?await api<AutomationPreview>(base+'/rules/'+encodeURIComponent(id)+'/preview?'+new URLSearchParams({page:query.get('previewPage')??'1',pageSize:query.get('previewPageSize')??'20'}),{signal}):null;
   return{kind:'ready',configuration,options,rules,detail,preview,activity,isNew};
  }catch(issue){if(issue instanceof ApiError&&issue.status===403)return{kind:'restricted',message:productError(issue)};throw issue;}
 }

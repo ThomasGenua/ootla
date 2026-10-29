@@ -1,4 +1,4 @@
-import { api} from './api';
+import { api, ApiError } from './api';
 import {productError} from './product-copy';
 import { loadLeadWorkspace08 } from './lead-workspace';
 import type { LeadWorkspace } from '../../shared/lead-workspace-contracts';
@@ -9,7 +9,7 @@ import type { Paginated, PropertySummary } from '../../shared/property-contracts
 
 export const leadsApi = '/api/leads';
 export type LeadWorkspacePayload =
-  | { kind: 'directory'; directory: LeadDirectory; options: LeadOptions; properties: Paginated<PropertySummary> }
+  | { kind: 'directory'; directory: LeadDirectory; options: LeadOptions; properties: Paginated<PropertySummary>; selectedPropertyName?: string }
   | { kind: 'new'; options: LeadOptions; properties: Paginated<PropertySummary>; property: { id: string; name: string } | null }
   | { kind: 'detail'; detail: LeadDetail; options: LeadOptions; properties: Paginated<PropertySummary>; workspace08: LeadWorkspace | null };
 const only = (query: URLSearchParams, names: string[]): URLSearchParams => new URLSearchParams(names.filter(name => query.has(name) && query.get(name)).map(name => [name, query.get(name)!]));
@@ -42,9 +42,19 @@ export async function loadLeadWorkspace(query: URLSearchParams, signal: AbortSig
   search.set('view', query.get('view') === 'board' ? 'board' : 'list');
   const [directory, options, properties] = await Promise.all([
     api<LeadDirectory>(leadsApi + '?' + search, { signal }),
-    optionsFor(query.get('propertyId'), query, signal), propertyChoices(query, signal),
+    optionsFor(query.get('propertyId'), new URLSearchParams(), signal), propertyChoices(new URLSearchParams(), signal),
   ]);
-  return { kind: 'directory', directory, options, properties };
+  const selectedProperty = query.get('propertyId');
+  let selectedPropertyName = properties.items.find(property => property.id === selectedProperty)?.name || directory.items.find(lead => lead.propertyId === selectedProperty)?.propertyName || '';
+  if (selectedProperty && !selectedPropertyName) {
+    try {
+      const selected = await api<{ property: PropertySummary }>('/api/property-foundation/properties/' + encodeURIComponent(selectedProperty), { signal });
+      selectedPropertyName = selected.property.name;
+    } catch (error) {
+      if (!(error instanceof ApiError && [403, 404].includes(error.status))) throw error;
+    }
+  }
+  return { kind: 'directory', directory, options, properties, selectedPropertyName };
 }
 const nullableNumber = (value: FormDataEntryValue | null): number | null => typeof value === 'string' && value.trim() ? Number(value) : null;
 const text = (data: FormData, name: string): string => String(data.get(name) ?? '').trim();
@@ -60,9 +70,85 @@ function opportunityBody(data: FormData): Record<string, unknown> {
     nextAction: text(data, 'nextAction'), notes: text(data, 'notes'),
   };
 }
+function initializeDirectoryFilters(workspace: HTMLElement, signal: AbortSignal): void {
+  const filters = workspace.querySelector<HTMLDetailsElement>('[data-directory-filters]');
+  if (!filters) return;
+  const pending = new Map<string, { timer?: ReturnType<typeof setTimeout>; request?: AbortController; version: number }>();
+  const initialSelections = [...filters.querySelectorAll<HTMLSelectElement>('select')].map(select => ({ select, value: select.value, name: select.selectedOptions[0]?.textContent ?? '' }));
+  const initialStatuses = [...filters.querySelectorAll<HTMLElement>('[data-picker-status]')].map(node => ({ node, text: node.textContent }));
+  const close = (focus: boolean): void => { filters.open = false; if (focus) filters.querySelector<HTMLElement>('summary')?.focus(); };
+  workspace.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target.closest('[data-close-lead-filters]') : null;
+    if (!target) return;
+    for (const state of pending.values()) { if (state.timer) clearTimeout(state.timer); state.request?.abort(); }
+    pending.clear(); filters.querySelector<HTMLFormElement>('form')?.reset();
+    for (const initial of initialSelections) {
+      if (![...initial.select.options].some(option => option.value === initial.value)) initial.select.add(new Option(initial.name, initial.value));
+      initial.select.value = initial.value;
+    }
+    filters.querySelector<HTMLSelectElement>('#lead-intent')?.dispatchEvent(new Event('change', { bubbles: true }));
+    const initialStage = initialSelections.find(initial => initial.select.id === 'lead-stage-filter');
+    if (initialStage) initialStage.select.value = initialStage.value;
+    for (const initial of initialStatuses) initial.node.textContent = initial.text;
+    for (const group of filters.querySelectorAll('[data-directory-picker]')) group.removeAttribute('aria-busy');
+    close(true);
+  }, { signal });
+  document.addEventListener('click', event => { if (filters.open && event.target instanceof Node && !filters.contains(event.target)) close(false); }, { signal });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && filters.open) { event.preventDefault(); close(true); } }, { signal });
+  const searchPicker = (kind: 'property' | 'owner', immediate = false): void => {
+    const group = filters.querySelector<HTMLElement>('[data-directory-picker="' + kind + '"]');
+    const input = group?.querySelector<HTMLInputElement>('[data-directory-picker-search]');
+    const select = group?.querySelector<HTMLSelectElement>('select');
+    const status = group?.querySelector<HTMLElement>('[data-picker-status]');
+    if (!group || !input || !select || !status) return;
+    const previous = pending.get(kind); if (previous?.timer) clearTimeout(previous.timer); previous?.request?.abort();
+    const state = { version: (previous?.version ?? 0) + 1, request: new AbortController(), timer: undefined as ReturnType<typeof setTimeout> | undefined }; pending.set(kind, state);
+    const version = state.version;
+    const run = async (): Promise<void> => {
+      if (signal.aborted) return;
+      group.setAttribute('aria-busy', 'true'); status.textContent = 'Searching…';
+      const search = new URLSearchParams({ pageSize: '25', q: input.value.trim() });
+      const propertyId = filters.querySelector<HTMLSelectElement>('#lead-property-filter')?.value;
+      if (kind === 'owner' && propertyId) search.set('propertyId', propertyId);
+      try {
+        const result = kind === 'property'
+          ? await api<Paginated<PropertySummary>>('/api/property-foundation/properties?' + search, { signal: state.request.signal })
+          : await api<LeadOptions>(leadsApi + '/options?' + search, { signal: state.request.signal });
+        if (signal.aborted || state.request.signal.aborted || pending.get(kind)?.version !== version || !group.isConnected) return;
+        const currentId = select.value, currentName = select.selectedOptions[0]?.textContent || (kind === 'property' ? 'Selected property' : 'Selected owner');
+        const choices: { id: string; name: string }[] = 'items' in result ? result.items.map(property => ({ id: property.id, name: property.name })) : result.owners.map(owner => ({ id: owner.membershipId, name: owner.name }));
+        const total = 'items' in result ? result.total : result.ownerTotal;
+        const fixed = [{ id: '', name: kind === 'property' ? 'All properties' : 'All owners' }, ...(kind === 'owner' ? [{ id: 'unassigned', name: 'Unassigned' }] : [])];
+        if (currentId && !fixed.some(choice => choice.id === currentId) && !choices.some(choice => choice.id === currentId)) choices.unshift({ id: currentId, name: currentName });
+        select.innerHTML = [...fixed, ...choices].map(choice => '<option value="' + e(choice.id) + '"' + (choice.id === currentId ? ' selected' : '') + '>' + e(choice.name) + '</option>').join('');
+        const resultCount = 'items' in result ? result.items.length : result.owners.length;
+        status.textContent = Number(resultCount).toLocaleString() + ' of ' + Number(total).toLocaleString() + (kind === 'property' ? ' properties' : ' owners') + (total > resultCount ? ' · Refine your search' : '');
+      } catch (error) {
+        if (!signal.aborted && !state.request.signal.aborted && pending.get(kind)?.version === version) status.textContent = productError(error);
+      } finally {
+        if (!signal.aborted && pending.get(kind) === state) group.removeAttribute('aria-busy');
+      }
+    };
+    if (immediate) void run(); else state.timer = setTimeout(() => { void run(); }, 250);
+  };
+  filters.addEventListener('input', event => {
+    const input = event.target; if (!(input instanceof HTMLInputElement)) return;
+    if (input.dataset.directoryPickerSearch === 'property') searchPicker('property');
+    if (input.dataset.directoryPickerSearch === 'owner') searchPicker('owner');
+  }, { signal });
+  workspace.addEventListener('change', event => {
+    const control = event.target;
+    if (!(control instanceof HTMLSelectElement)) return;
+    if (control.id === 'lead-property-filter') searchPicker('owner', true);
+    const form = control.closest<HTMLFormElement>('[data-lead-directory-form="results"]');
+    if (form) form.requestSubmit();
+  }, { signal });
+  signal.addEventListener('abort', () => { for (const state of pending.values()) { if (state.timer) clearTimeout(state.timer); state.request?.abort(); } pending.clear(); }, { once: true });
+}
 export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: string, replace?: boolean, focusSelector?: string) => void): void {
   const workspace = document.querySelector<HTMLElement>('[data-lead-workspace]');
   if (!workspace) return;
+  initializeDirectoryFilters(workspace, signal);
   let duplicateRequest = 0;
   workspace.addEventListener('change', event => {
     const control = event.target;
@@ -76,12 +162,21 @@ export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: st
   }, { signal });
   workspace.addEventListener('submit', async event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
+    if (!(form instanceof HTMLFormElement) || !form.matches('[data-lead-filter],[data-lead-form],[data-lead-directory-form]')) return;
     event.preventDefault();
     const data = new FormData(form);
+    if (form.hasAttribute('data-lead-directory-form')) {
+      const search = new URLSearchParams(location.search);
+      for (const name of ['page', 'saved', 'propertySearch', 'optionSearch', 'lead', 'leadTab', 'editor', 'eventsPage']) search.delete(name);
+      const kind = form.dataset.leadDirectoryForm;
+      const names = kind === 'search' ? ['q'] : kind === 'results' ? ['sort', 'pageSize'] : ['intent', 'stage', 'propertyId', 'ownerMembershipId', 'source', 'nextAction'];
+      for (const name of names) { search.delete(name); const value = text(data, name); if (value) search.set(name, value); }
+      navigate('/admin/leads' + (search.size ? '?' + search : ''), false, '[data-lead-results]');
+      return;
+    }
     if (form.hasAttribute('data-lead-filter')) {
-      const search = new URLSearchParams();
-      for (const [name, value] of data) if (typeof value === 'string' && value.trim()) search.append(name, value.trim());
+      const search = new URLSearchParams(form.hasAttribute('data-lead-preserve-query') || data.has('lead') ? location.search : '');
+      for (const [name, value] of data) if (typeof value === 'string') { search.delete(name); if (value.trim()) search.append(name, value.trim()); }
       navigate('/admin/leads' + (search.size ? '?' + search : ''), false, form.dataset.focus ?? '[data-lead-results]');
       return;
     }
@@ -104,8 +199,10 @@ export function initializeLeadWorkspace(signal: AbortSignal, navigate: (path: st
       }
       const result = await api<{ lead: LeadRecord }>(form.dataset.endpoint!, { method: form.dataset.method ?? 'POST', body: JSON.stringify(body), signal });
       if (signal.aborted) return;
-      const boardQuery = new URLSearchParams(location.search); boardQuery.set('saved', 'stage');
-      const destination = form.dataset.return === 'board' ? '/admin/leads?' + boardQuery : '/admin/leads?lead=' + encodeURIComponent(result.lead.id) + '&saved=' + (action === 'stage' ? 'stage' : 'lead');
+      const returnQuery = new URLSearchParams(action === 'create' ? '' : location.search);
+      returnQuery.set('saved', action === 'stage' ? 'stage' : 'lead');
+      if (form.dataset.return !== 'board') returnQuery.set('lead', result.lead.id);
+      const destination = '/admin/leads?' + returnQuery;
       navigate(destination, true, '[data-lead-results]');
     } catch (error) {
       if (signal.aborted) return;

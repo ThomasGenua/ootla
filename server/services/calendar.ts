@@ -154,8 +154,10 @@ export class Calendar{
   return this.database.transaction(async c=>{
    const u=await authorize(c,user,digest);if(i.propertyId)await property(c,u,i.propertyId);
    let date=i.date??localDate(new Date(),i.timeZone);
-   if(i.view==='week')date=addLocalDays(date,-((weekday(date)+6)%7));
-   const end=addLocalDays(date,i.view==='day'?1:i.view==='week'?7:30),from=localDayBounds(date,i.timeZone).from,until=localDayBounds(end,i.timeZone).from;
+   // The month grid always includes six complete Monday-first weeks.
+   if(i.view==='month'){const first=date.slice(0,7)+'-01';date=addLocalDays(first,-((weekday(first)+6)%7));}
+   else if(i.view==='week')date=addLocalDays(date,-((weekday(date)+6)%7));
+   const end=addLocalDays(date,i.view==='month'?42:i.view==='day'?1:i.view==='week'?7:30),from=localDayBounds(date,i.timeZone).from,until=localDayBounds(end,i.timeZone).from;
    const values=[u.organization.id,u.organization.role,u.membershipId,from,until,i.propertyId??null,i.ownerMembershipId??null,i.status];
    const where="v.organization_id=$1 AND "+propertyScope+" AND "+leadScope+" AND v.starts_at<$5 AND ((v.managed_by_ootla AND v.ends_at>$4) OR (NOT v.managed_by_ootla AND v.starts_at>=$4)) AND ($6::uuid IS NULL OR v.property_id=$6) AND ($7::uuid IS NULL OR v.owner_membership_id=$7) AND ($8='all' OR v.status=$8)";
    const total=Number((await c.query('SELECT count(*) AS total FROM viewings v'+viewingJoins+' WHERE '+where,values)).rows[0].total);

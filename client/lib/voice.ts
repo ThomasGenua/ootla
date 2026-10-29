@@ -10,7 +10,7 @@ import {voiceSessionContent,voiceHeaderSummary} from '../pages/voice';
 type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 const base='/api/voice';
 function listParams(query:URLSearchParams,options=false):URLSearchParams{
- const raw:Record<string,string>={q:query.get(options?'optionsSearch':'q')??'',page:query.get(options?'optionsPage':'page')??'1',pageSize:'25'};if(query.get('propertyId'))raw.propertyId=query.get('propertyId')!;
+ const raw:Record<string,string>={q:query.get(options?'optionsSearch':'q')??'',page:query.get(options?'optionsPage':'page')??'1',pageSize:query.get(options?'optionsPageSize':'pageSize')??'25'};if(query.get('propertyId'))raw.propertyId=query.get('propertyId')!;
  const parsed=voiceListSchema.safeParse(raw);if(!parsed.success)throw new Error('Choose a valid voice property scope, search and pagination.');return new URLSearchParams(Object.entries(parsed.data).filter(([,value])=>value!==undefined).map(([key,value])=>[key,String(value)]));
 }
 export async function loadVoiceWorkspace(query:URLSearchParams,signal:AbortSignal):Promise<VoiceWorkspace>{
@@ -23,7 +23,7 @@ export async function loadVoiceWorkspace(query:URLSearchParams,signal:AbortSigna
 export function initializeVoiceWorkspace(signal:AbortSignal,navigate:Navigate,data:VoiceWorkspace):void{
  const host=document.querySelector<HTMLElement>('[data-voice-workspace]');if(!host||data.kind!=='ready')return;nameFormControls(host);let busy=false,applicantApplications:ApplicationSummary[]=[];
  const q=new URLSearchParams(location.search),sessionHost=host.querySelector<HTMLElement>('[data-voice-session]')!;
- const showError=(scope:HTMLElement,issue:unknown)=>{const output=scope.querySelector<HTMLElement>('[data-voice-error]')??host.querySelector<HTMLElement>('[data-voice-session-error]')??host.querySelector<HTMLElement>('[data-voice-global-error]');if(output){output.textContent=productError(issue);output.tabIndex=-1;output.focus();}};
+ const showError=(scope:HTMLElement,issue:unknown)=>{const output=scope.querySelector<HTMLElement>('[data-voice-error]')??host.querySelector<HTMLElement>('[data-voice-session-error]')??host.querySelector<HTMLElement>('[data-voice-global-error]');if(output){output.textContent=productError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}};
  const busyButtons=new Map<HTMLButtonElement,boolean>();
  const disableBusyButtons=()=>{if(!busy)return;for(const button of host.querySelectorAll<HTMLButtonElement>('button')){if(!busyButtons.has(button))busyButtons.set(button,button.disabled);button.disabled=true;}};
  const render=()=>{sessionHost.innerHTML=voiceSessionContent(data,q);nameFormControls(sessionHost);applicantApplications=[];disableBusyButtons();};

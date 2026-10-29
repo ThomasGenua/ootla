@@ -1,3 +1,5 @@
+import {renewalSummaryCounts} from './renewals.js';
+import {maintenanceStaffScope} from './maintenance-access.js';
 import {maintenanceTaskScope,maintenanceTaskActive} from './maintenance-task-scope.js';
 import {maintenanceAutomationJobScope} from './automation-maintenance-scope.js';
 import type { AuthUser, DashboardPeriod } from '../../shared/contracts.js';
@@ -20,7 +22,7 @@ const relevantTask = `t.status='open' AND (l.id IS NULL OR ${openLead} OR (l.pip
   (t.tour_id IS NULL OR (v.id IS NOT NULL AND v.status<>'cancelled' AND v.lead_id=t.lead_id AND v.property_id=t.property_id)) AND
   (t.application_id IS NULL OR EXISTS(SELECT 1 FROM applications ra WHERE ra.id=t.application_id AND ra.organization_id=t.organization_id
     AND ra.property_id=t.property_id AND ra.lead_id IS NOT DISTINCT FROM t.lead_id AND ra.contact_id IS NOT DISTINCT FROM t.contact_id))`+maintenanceTaskActive('t');
-const metric = (key: string, label: string, value: number|string|null, icon: AdminSummaryMetric['icon'], note?: string): AdminSummaryMetric =>
+const metric = (key: string, label: string, value: number|null, icon: AdminSummaryMetric['icon'], note?: string): AdminSummaryMetric =>
   ({ key, label, value, icon, ...(note ? { note } : {}) });
 const values = (user: AuthUser): unknown[] => [user.organization.id, user.organization.role, user.membershipId];
 const roles: Record<AuthUser['organization']['role'], string> = {
@@ -48,7 +50,18 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   if(page==='audit')return result([metric('events','Matching events',null,'document'),metric('roles','Role changes',null,'users'),metric('integrations','Integration writes',null,'link'),metric('failed','Failed or denied',null,'clock')],'Load the authorized audit history for current filtered counts.');
   if(page==='voice')return result([metric('sessions','Sessions',null,'users'),metric('active','Active',null,'clock'),metric('booked','Viewings booked',null,'calendar'),metric('handoffs','Staff requests',null,'users')],'Load the voice workspace for actual authorized session counts.');
 
-  if(page==='maintenance')return result([metric('matching','Matching requests',null,'document'),metric('open','Open',null,'home'),metric('unassigned','Unassigned',null,'users'),metric('overdue','Overdue',null,'clock')],'Load the maintenance workspace for current authorized request counts.');
+  if(page==='renewals'||page==='resident-access'){
+    const resident=page==='resident-access',labels:[string,string,string,string]=resident?['Active grants','Pending invitations','Not invited','Inactive leases']:['Published terms','Expired terms','Not published','Inactive leases'];
+    if(!leasing||resident&&!['organization_admin','property_manager'].includes(user.organization.role))return restricted(page,labels,'Requires current assigned resident-record access; resident administration requires an administrator or property manager.');
+    const row=await renewalSummaryCounts(database,user,resident);
+    return result(resident?[metric('active_grants','Active grants',row.active_grants??0,'users'),metric('pending_invitations','Pending invitations',row.pending_invitations??0,'clock'),metric('not_invited','Not invited',row.not_invited??0,'document'),metric('inactive','Inactive leases',row.inactive??0,'home')]:[metric('current','Published terms',row.current??0,'document'),metric('expired','Expired terms',row.expired??0,'clock'),metric('not_published','Not published',row.not_published??0,'users'),metric('inactive','Inactive leases',row.inactive??0,'home')],'Current canonical lease relationships in your property access');
+  }
+
+  if(page==='maintenance'){
+    if(!leasing)return restricted(page,['Matching requests','Open requests','Unassigned requests','Overdue requests'],'Requires current maintenance access.');
+    const row=await read(`SELECT count(*)::int AS matching,count(*) FILTER(WHERE mr.status NOT IN('resolved','closed'))::int AS open,count(*) FILTER(WHERE mr.status NOT IN('resolved','closed') AND mr.owner_membership_id IS NULL)::int AS unassigned,count(*) FILTER(WHERE mr.status NOT IN('resolved','closed') AND mr.due_at<clock_timestamp())::int AS overdue FROM maintenance_requests mr WHERE ${maintenanceStaffScope('mr')}`);
+    return result([metric('matching','Matching requests',count(row,'matching'),'document'),metric('open','Open requests',count(row,'open'),'home'),metric('unassigned','Unassigned requests',count(row,'unassigned'),'users'),metric('overdue','Overdue requests',count(row,'overdue'),'clock')],'Current authorized maintenance records');
+  }
 
   if(page==='automations'){
     if(!leasing)return restricted(page,['Enabled rules','Awaiting approval','Queued work','Failed work'],'Requires current lead-management permission.');
@@ -68,26 +81,14 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
     return result([metric('ai','AI active',count(row,'ai'),'sparkles'),metric('requested','Staff requested',count(row,'requested'),'users'),metric('handling','Staff handling',count(row,'handling'),'users'),metric('queued','Queued replies',count(queued,'n'),'clock','Local simulated outbox.')]);
   }
 
-  if (page === 'profile') {
-    const row = await read(`SELECT u.staff_phone,u.staff_job_title,
-      (SELECT count(*)::int FROM property_access_assignments pa WHERE pa.organization_id=$1 AND pa.membership_id=$2) AS assigned
-      FROM users u WHERE u.id=$3 AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.id=$2 AND m.organization_id=$1 AND m.user_id=u.id AND m.active)`, [user.organization.id,user.membershipId,user.id]);
-    return result([
-      metric('role','Your role',roles[user.organization.role],'key'),
-      metric('property_access','Property access',admin?'All':count(row,'assigned'),'home',admin?'This organization only.':'Explicit property assignments.'),
-      metric('contact_details','Contact details',Number(Boolean(row.staff_phone))+Number(Boolean(row.staff_job_title)),'users','Optional phone and job title fields completed, out of two.'),
-      metric('session','Session','Active','check','Your current authenticated staff session.'),
-    ], 'Your account in this organization');
-  }
-  if (page === 'settings') {
-    const row = (await read(`SELECT default_page,lead_view,motion FROM staff_user_preferences WHERE organization_id=$1 AND membership_id=$2 AND user_id=$3`, [user.organization.id,user.membershipId,user.id])) ?? {};
-    const defaultPage = row.default_page === '/admin/tasks' && !leasing ? '/admin' : row.default_page ?? '/admin';
-    return result([
-      metric('start_page','Start page',({'/admin':'Overview','/admin/leads':'Leads','/admin/tasks':'Tasks'} as Record<string,string>)[defaultPage] ?? 'Overview','home'),
-      metric('lead_view','Lead view',row.lead_view === 'board' ? 'Board' : 'List','users'),
-      metric('motion','Motion',row.motion === 'reduce' ? 'Reduced' : 'System','settings'),
-      metric('session','Session','Active','check','Your current authenticated staff session.'),
-    ], 'Your saved personal settings');
+  if (page === 'profile' || page === 'settings') {
+    const row=await read(`SELECT
+      (SELECT count(*)::int FROM organization_memberships m WHERE m.organization_id=$1 AND m.user_id=$4 AND m.active) AS memberships,
+      (SELECT count(*)::int FROM properties p WHERE ${propertyScope('p','id')}) AS properties,
+      (SELECT count(*)::int FROM sessions s WHERE s.user_id=$4 AND s.organization_id=$1 AND s.expires_at>now()) AS sessions,
+      (SELECT count(*)::int FROM staff_user_preferences sp WHERE sp.organization_id=$1 AND sp.membership_id=$3 AND sp.user_id=$4) AS preferences,
+      COALESCE((SELECT (COALESCE((btrim(staff_phone)<>'')::int,0)+COALESCE((btrim(staff_job_title)<>'')::int,0)) FROM users WHERE id=$4),0) AS contact_details`,[...args,user.id]);
+    return result(page==='profile'?[metric('memberships','Active memberships',count(row,'memberships'),'users'),metric('property_access','Accessible properties',count(row,'properties'),'home'),metric('contact_details','Contact fields completed',count(row,'contact_details'),'document'),metric('sessions','Active sessions',count(row,'sessions'),'check')]:[metric('preferences','Saved preference profiles',count(row,'preferences'),'settings'),metric('properties','Accessible properties',count(row,'properties'),'home'),metric('memberships','Active memberships',count(row,'memberships'),'users'),metric('sessions','Active sessions',count(row,'sessions'),'check')],'Your account in this organization');
   }
   if (page === 'imports') {
     if (!admin) return restricted(page,['Import batches','Processing','Rows needing review','Rows created'],'Requires an organization administrator.');
@@ -121,10 +122,10 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
     return result([metric('requests','Your requests',count(row,'requests'),'sparkles'),metric('completed','Completed requests',count(row,'completed'),'check'),metric('tasks','Saved tasks',count(row,'tasks'),'document','Tasks verified after successful domain-service execution.'),metric('handoffs','Needs staff help',count(row,'handoffs'),'users','Requests requiring authorized staff assistance.')],'Your actual scoped AI request records; mode is shown in the AI workspace.');
   }
   if (page === 'tasks') {
-    const ai = false;
-    const labels: [string,string,string,string] = ai ? ['AI mode','Pending examples','Assigned to you','Completed examples'] : ['Open tasks','Overdue tasks','Unassigned','Completed tasks'];
+
+    const labels: [string,string,string,string] = ['Open tasks','Overdue tasks','Unassigned','Completed tasks'];
     if (!leasing) return restricted(page,labels,'Requires authorized lead-management access.');
-    const filter = ai ? " AND t.origin='ai_simulation'" : '';
+    const filter = '';
     const row = await read(`SELECT
       count(*) FILTER(WHERE ${relevantTask})::int AS open,
       count(*) FILTER(WHERE ${relevantTask} AND t.due_at<now())::int AS overdue,
@@ -132,7 +133,6 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
       count(*) FILTER(WHERE ${relevantTask} AND t.owner_membership_id=$3)::int AS mine,
       count(*) FILTER(WHERE t.status='completed')::int AS completed
       FROM tasks t ${taskJoins} WHERE ${linkedScope('t')}${filter}`);
-    if (ai) return result([metric('mode','AI mode','Simulation','sparkles','Live AI is not configured.'),metric('pending','Pending examples',count(row,'open'),'document','Open tasks explicitly recorded as AI simulations.'),metric('mine','Assigned to you',count(row,'mine'),'users','Open simulated tasks assigned to your membership.'),metric('completed','Completed examples',count(row,'completed'),'check')], 'Scripted AI examples in your accessible task records');
     return result([metric('open','Open tasks',count(row,'open'),'document','Currently actionable; closed leads and cancelled tours excluded.'),metric('overdue','Overdue tasks',count(row,'overdue'),'clock'),metric('unassigned','Unassigned',count(row,'unassigned'),'users'),metric('completed','Completed tasks',count(row,'completed'),'check')], 'All accessible task records');
   }
   if (page === 'calendar') {

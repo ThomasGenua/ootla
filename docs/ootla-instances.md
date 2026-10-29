@@ -5,7 +5,7 @@ The user authorized this split on 2026-10-28. Both branches contain the same app
 | Instance | Branch | Checkout | Local website | API | Database / role |
 | --- | --- | --- | --- | --- | --- |
 | Live app configuration | ootla-v1-branch | C:/Users/user/Documents/software/Ootla | http://localhost:7674 | http://127.0.0.1:3101 | ootla_live / ootla_live |
-| Interactive demo | ootla-v1-demo | C:/Users/user/Documents/software/Ootla-demo | http://127.0.0.1:7673 | http://127.0.0.1:3100 | retained ootla_demo / ootla |
+| ootlademo | ootla-v1-demo | C:/Users/user/Documents/software/ootlademo | http://127.0.0.1:7673 | http://127.0.0.1:3100 | retained ootla_demo / ootla |
 
 These are local review instances. https://ootla.ai is the intended public customer domain; this change does not publish or modify that server. No public preview hostname was invented.
 
@@ -28,7 +28,7 @@ npm run dev
 Then in the demo checkout:
 
 ~~~powershell
-cd C:\Users\user\Documents\software\Ootla-demo
+cd C:\Users\user\Documents\software\ootlademo
 npm run dev
 ~~~
 
@@ -69,3 +69,9 @@ The required production build/client+server types passed with the existing large
 The user separately authorized representative demo preloading and pushing both matching branches. Use the [showcase guide](ootla-demo-showcase.md) for records, accounts and deliberate action walkthroughs. The retained main workspace now has seven properties and fourteen distinct units, fifteen leads, five applications, twelve tasks and two lease-workflow examples, including synthetic connector records; counts can change through normal review actions. The standalone workspace has four reconciled real CSV batches creating two properties, two units, two contacts and two leads, with one intentional invalid contact row for error review.
 
 From the demo checkout only, `npm run demo:prepare` adds missing examples once and preserves staff edits on repeats. Keep the existing PostgreSQL database: native sessions, migrations, SQL services and durable job/concurrent booking controls use it. SQLite was considered optional; no second incompatible database implementation was introduced. A Git push publishes source and the deliberate preparation command, not `.env`, databases, private invitation links or backups. New servers must select the isolated demo environment, install/migrate and run preparation explicitly. Live retains Sign in only, no demo accounts/data, and no approved live communications.
+
+## Separate local project folders - 2026-10-28
+
+The demo project is now named ootlademo and its preserved linked worktree lives in C:/Users/user/Documents/software/ootlademo on ootla-v1-demo. The live product remains C:/Users/user/Documents/software/Ootla on ootla-v1-branch. These share one Git repository/origin while keeping separate working folders, private environments, databases and session scopes. The old Ootla-demo path was moved with git worktree move, not recreated or reseeded. Only the demo process restarted; live and the shared PostgreSQL cluster stayed running. No feature implementation, database migration or external communication is part of this folder organization.
+
+Optional editor workspace files beside the folders are C:/Users/user/Documents/software/ootlademo.code-workspace and C:/Users/user/Documents/software/Ootla-live.code-workspace. Open the corresponding workspace when making corrections so the target folder/branch is clear. The workspaces are local editor files and contain no credentials.

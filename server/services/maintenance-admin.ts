@@ -10,6 +10,7 @@ import {staffOrganizationAccess} from './application-access.js';
 import {staffResidentRelationshipAccess} from './resident-staff-access.js';
 import {residentCanonicalJoin,residentCanonicalContact} from './resident-access.js';
 import {residentDigest,residentInvitationToken} from './resident-portal.js';
+import {renewalOwnership} from './renewal-ownership.js';
 export const maintenanceHash=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const like=(s:string)=>s?'%'+s.replace(/[\\%_]/g,c=>'\\'+c)+'%':'';
 export class MaintenanceAdministration{
@@ -56,13 +57,14 @@ export class MaintenanceAdministration{
  });}
  async renewal(u:AuthUser,digest:string,i:z.infer<typeof residentRenewalSchema>):Promise<{relationshipId:string}>{return this.db.transaction(async c=>{
   await this.lock(c,u.organization.id);const{actor:a,relationship:rr}=await staffResidentRelationshipAccess(c,this.config,u,digest,i.relationshipId);
-  const mode=(await c.query('SELECT mode FROM organization_data_settings WHERE organization_id=$1',[a.organization.id])).rows[0]?.mode;
-  if(i.source==='provider_verified'||rr.lease_source_system==='yardi'||mode==='yardi_connected')throw new ApiError(501,'RENEWAL_PROVIDER_UNSUPPORTED','Verified provider renewal terms require documented licensed read capability. Staff cannot label their own text as provider verified or overwrite Yardi authority.');
+  if(rr.lease_status!=='active')throw new ApiError(409,'RESIDENT_LEASE_NOT_ACTIVE','Approved renewal information requires the canonical active lease.');
+  const ownership=await renewalOwnership(c,a.organization.id,rr.lease_id);
+  if(i.source==='provider_verified'||ownership.blocked)throw new ApiError(501,'RENEWAL_PROVIDER_UNSUPPORTED',ownership.reason??'Verified provider renewal terms require documented licensed read capability. Staff cannot label their own text as provider verified.');
   if(i.validUntil&&Date.parse(i.validUntil)<=Date.now())throw new ApiError(400,'RENEWAL_EXPIRED','Approved renewal terms must still be valid.');
   await this.receipt(c,a.organization.id,a.id,i.requestKey,'renewal',i,async()=>{await c.query('UPDATE resident_renewal_offers SET active=false WHERE organization_id=$1 AND relationship_id=$2 AND active',[a.organization.id,i.relationshipId]);await c.query('INSERT INTO resident_renewal_offers(organization_id,relationship_id,terms,source,evidence,approved_by_user_id,valid_until) VALUES($1,$2,$3,$4,$5,$6,$7)',[a.organization.id,i.relationshipId,i.terms,'staff_approved',i.evidence,a.id,i.validUntil]);await this.audit(c,a,'renewal_approved',{relationshipId:i.relationshipId});return{relationshipId:i.relationshipId};});return{relationshipId:i.relationshipId};
  });}
- async setGrant(u:AuthUser,digest:string,id:string,active:boolean):Promise<{id:string;active:boolean}>{return this.db.transaction(async c=>{
-  await this.lock(c,u.organization.id);const row=(await c.query('SELECT * FROM resident_access_grants WHERE id=$1 AND organization_id=$2 FOR UPDATE',[id,u.organization.id])).rows[0];if(!row)throw new ApiError(404,'RESIDENT_GRANT_UNAVAILABLE','This resident grant is unavailable.');const{actor:a}=await staffResidentRelationshipAccess(c,this.config,u,digest,row.relationship_id);
+ async setGrant(u:AuthUser,digest:string,id:string,active:boolean,relationshipId?:string):Promise<{id:string;active:boolean}>{return this.db.transaction(async c=>{
+  await this.lock(c,u.organization.id);const row=(await c.query('SELECT * FROM resident_access_grants WHERE id=$1 AND organization_id=$2 AND ($3::uuid IS NULL OR relationship_id=$3) FOR UPDATE',[id,u.organization.id,relationshipId??null])).rows[0];if(!row)throw new ApiError(404,'RESIDENT_GRANT_UNAVAILABLE','This resident grant is unavailable.');const{actor:a,relationship:rr}=await staffResidentRelationshipAccess(c,this.config,u,digest,row.relationship_id);if(active&&rr.lease_status!=='active')throw new ApiError(409,'RESIDENT_LEASE_NOT_ACTIVE','Reactivating resident access requires the canonical active lease.');
   await c.query('UPDATE resident_access_grants SET active=$2,revoked_at=CASE WHEN $2 THEN NULL ELSE clock_timestamp() END WHERE id=$1',[id,active]);await this.audit(c,a,'resident_grant_changed',{grantId:id,active});return{id,active};
  });}
 }

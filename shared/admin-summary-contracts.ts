@@ -4,7 +4,7 @@ import { dashboardPeriodSchema, type DashboardPeriod } from './contracts.js';
 /** Page-wide snapshots: directory filters/pagination do not change these counts. */
 export const adminSummaryPageSchema = z.enum([
   'leads', 'properties', 'contacts', 'applications', 'calendar', 'tasks',
-  'voice', 'organization', 'integration-health', 'audit', 'maintenance', 'reports', 'automations', 'conversations', 'imports', 'integrations', 'analytics', 'ai', 'profile', 'settings',
+  'renewals', 'resident-access', 'voice', 'organization', 'integration-health', 'audit', 'maintenance', 'reports', 'automations', 'conversations', 'imports', 'integrations', 'analytics', 'ai', 'profile', 'settings',
 ]);
 export type AdminSummaryPage = z.infer<typeof adminSummaryPageSchema>;
 export const adminSummaryQuerySchema = z.object({
@@ -14,7 +14,7 @@ export const adminSummaryQuerySchema = z.object({
 export interface AdminSummaryMetric {
   key: string;
   label: string;
-  value: number | string | null;
+  value: number | null;
   icon: 'users' | 'home' | 'calendar' | 'document' | 'key' | 'check' | 'clock' | 'link' | 'sparkles' | 'settings';
   note?: string;
 }

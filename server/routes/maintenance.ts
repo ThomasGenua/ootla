@@ -1,3 +1,5 @@
+import {maintenanceConversationQuerySchema,maintenanceConversationDraftSchema,maintenanceConversationReplySchema} from '../../shared/maintenance-conversation-contracts.js';
+import {MaintenanceConversations} from '../services/maintenance-conversations.js';
 import {Router,raw,type Request,type Response,type RequestHandler} from 'express';
 import {z} from 'zod';
 import type {AuthUser} from '../../shared/contracts.js';
@@ -17,6 +19,10 @@ export function createMaintenanceRouter(config:ServerConfig,db:Database,requireU
  r.post('/resident-invitations',async(q,s)=>s.json(await service.invitation(u(s),digest(q),body(q,residentInvitationSchema))));
  r.put('/renewals',async(q,s)=>s.json(await service.renewal(u(s),digest(q),body(q,residentRenewalSchema))));
  r.put('/resident-grants/:id',async(q,s)=>s.json(await service.setGrant(u(s),digest(q),id(q.params.id),body(q,z.object({active:z.boolean()}).strict()).active)));
+ const conversations=new MaintenanceConversations(db,config);
+ r.get('/:id/conversation',async(q,s)=>s.json(await conversations.workspace(u(s),digest(q),id(q.params.id),parse(maintenanceConversationQuerySchema,q.query))));
+ r.put('/:id/conversation/draft',async(q,s)=>s.json(await conversations.saveDraft(u(s),digest(q),id(q.params.id),body(q,maintenanceConversationDraftSchema))));
+ r.post('/:id/conversation/replies',async(q,s)=>s.json(await conversations.reply(u(s),digest(q),id(q.params.id),body(q,maintenanceConversationReplySchema))));
  r.get('/:id',async(q,s)=>s.json(await service.detail(u(s),digest(q),id(q.params.id),parse(residentPageSchema,q.query))));
  r.post('/:id/messages',async(q,s)=>s.json(await service.message(u(s),digest(q),id(q.params.id),body(q,maintenanceMessageSchema))));
  r.put('/:id/assignment',async(q,s)=>s.json(await service.assignment(u(s),digest(q),id(q.params.id),body(q,maintenanceAssignmentSchema))));

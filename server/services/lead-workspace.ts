@@ -1,3 +1,5 @@
+import type {ServerConfig} from '../config/env.js';
+import {isIsolatedDemo} from './demo-environment.js';
 import {assertPrivateFileRetained} from './operational-retention.js';
 import {operationalAudit} from './operational-access.js';
 import { createHash } from 'node:crypto';
@@ -49,7 +51,7 @@ function translate(error: unknown): never {
 }
 /** Staff-only persistent lead context. No model, email, telephony, provider write or applicant decision. */
 export class LeadWorkspaces {
-    constructor(private readonly database: Database) { }
+    constructor(private readonly database: Database,private readonly config?:ServerConfig) { }
     async assertLeadAccess(u: AuthUser, id: string, q: Queryable = this.database, lock = false): Promise<Row> {
         const r = (await q.query(`SELECT l.*,EXISTS(SELECT 1 FROM lead_property_interests i WHERE i.organization_id=l.organization_id AND i.lead_id=l.id AND $2<>'organization_admin' AND NOT EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=i.organization_id AND pa.property_id=i.property_id AND pa.membership_id=$3)) AS hidden_interests FROM leads l WHERE l.organization_id=$1 AND l.id=$4 AND ($2='organization_admin' OR EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=l.organization_id AND pa.property_id=l.property_id AND pa.membership_id=$3)) ${lock ? 'FOR UPDATE OF l' : ''}`, [...params(u), id])).rows[0];
         if (!r)
@@ -89,6 +91,19 @@ export class LeadWorkspaces {
         return { id: `workspace:${r.id}`, kind: kind as TimelineEvent['kind'], title: eventTitles[kind] ?? kind, summary, occurredAt: iso(r.occurred_at), actor: { id: u.id, name: u.name }, simulated: false, provenance: 'staff', metadata };
     }
     async note(u: AuthUser, id: string, i: z.infer<typeof workspaceNoteSchema>): Promise<TimelineEvent> { return this.write(u, id, (c, a, l) => this.event(c, a, l, 'note', i.body, {})); }
+    async saveEmailDraft(u:AuthUser,id:string,version:number):Promise<{id:string;subject:string;body:string;url:string}>{
+      return this.write(u,id,async(c,a,l)=>{
+        if(l.version!==version)throw new ApiError(409,'LEAD_VERSION_CONFLICT','This lead changed. Refresh before preparing another draft.');
+        const contact=(await c.query('SELECT display_name,email FROM contacts WHERE organization_id=$1 AND id=$2 FOR SHARE',[a.organization.id,l.contact_id])).rows[0];
+        if(!contact?.email)throw new ApiError(409,'CONTACT_EMAIL_REQUIRED','Add an email before preparing a draft.');
+        const property=(await c.query('SELECT name FROM properties WHERE organization_id=$1 AND id=$2',[a.organization.id,l.property_id])).rows[0];
+        const subject='Your interest in '+property.name;
+        const body='Hello '+contact.display_name+',\n\nThank you for your interest in '+property.name+'. '+(l.next_action?'Our next step is to '+String(l.next_action).replace(/^./,(v:string)=>v.toLowerCase())+'. ':'')+'Please let us know your preferred time to speak and any questions about the property.\n\n'+(a.name==='Demo Administrator'?'Administrator':a.name);
+        const event=await this.event(c,a,l,'note','Email draft prepared for '+contact.display_name,{emailDraft:{to:contact.email,subject,body,status:'draft'},deliveryState:'not_sent'});
+        await c.query('UPDATE leads SET version=version+1,updated_at=now() WHERE organization_id=$1 AND id=$2',[a.organization.id,id]);
+        return {id:event.id,subject,body,url:'/admin/leads?lead='+id+'&leadTab=activity#lead08-timeline'};
+      });
+    }
     async call(u: AuthUser, id: string, i: z.infer<typeof workspaceCallSchema>): Promise<TimelineEvent> { return this.write(u, id, (c, a, l) => this.event(c, a, l, 'call', i.summary, { outcome: i.outcome, direction: i.direction, durationMinutes: i.durationMinutes, communicationState: 'staff_logged_only', outboundSent: false })); }
     async decision(u: AuthUser, id: string, i: z.infer<typeof workspaceDecisionSchema>): Promise<TimelineEvent> {
         return this.write(u, id, async (c, a, l) => {
@@ -172,11 +187,12 @@ export class LeadWorkspaces {
             criteriaUsed.push('Stated bedrooms');
         if (prefs.moveInOn)
             criteriaUsed.push('Requested move-in date: requires staff confirmation');
-        const notice = 'Property matches use stated housing preferences and recently verified current availability only. No eligibility or protected-characteristic scoring. Move-in-date availability is not confirmed; staff must confirm it separately. Free-text requirements are not interpreted by this simulation.';
+        const notice = 'Property matches use stated housing preferences and recently verified current availability only. No eligibility or protected-characteristic scoring. Move-in-date availability is not confirmed; staff must confirm it separately. Free-text requirements require staff review.';
         if (l.intent === 'sales')
             return { ...page<PropertySuggestion>([], 0, p), notice: 'Sales opportunity: rental availability suggestions do not apply. Sales inventory and price evidence await configuration.', criteriaUsed: [], verifiedWithinDays: 7, requestedMoveInOn: prefs.moveInOn };
+        const demoAvailability=this.config ? await isIsolatedDemo(this.config,this.database) : false;
         const values = [...params(u), prefs.bedrooms, prefs.budgetMin, prefs.budgetMax, prefs.locations];
-        const where = `${propertyScope('p')} AND un.status='available' AND un.availability_source IN ('staff_reported','import','yardi') AND un.availability_verified_at IS NOT NULL AND un.availability_verified_at>=now()-interval '7 days' AND un.availability_verified_at<=now() AND ($4::int IS NULL OR un.bedrooms=$4) AND ($5::numeric IS NULL OR un.monthly_rent>=$5) AND ($6::numeric IS NULL OR un.monthly_rent<=$6) AND (cardinality($7::text[])=0 OR EXISTS(SELECT 1 FROM unnest($7::text[]) loc WHERE strpos(lower(p.city||' '||p.address),lower(loc))>0))`;
+        const where = `${propertyScope('p')} AND un.status='available' AND (un.availability_source IN ('staff_reported','import','yardi') ${demoAvailability ? "OR un.availability_source='demo'" : ''}) AND un.availability_verified_at IS NOT NULL AND un.availability_verified_at>=now()-interval '7 days' AND un.availability_verified_at<=now() AND ($4::int IS NULL OR un.bedrooms=$4) AND ($5::numeric IS NULL OR un.monthly_rent>=$5) AND ($6::numeric IS NULL OR un.monthly_rent<=$6) AND (cardinality($7::text[])=0 OR EXISTS(SELECT 1 FROM unnest($7::text[]) loc WHERE strpos(lower(p.city||' '||p.address),lower(loc))>0))`;
         const total = Number((await this.database.query(`SELECT count(*) AS total FROM units un JOIN properties p ON p.id=un.property_id AND p.organization_id=un.organization_id WHERE ${where}`, values)).rows[0]?.total ?? 0);
         const rows = (await this.database.query(`SELECT un.id,un.label,un.bedrooms,un.monthly_rent,un.availability_source,un.availability_verified_at,p.id AS property_id,p.name,p.city,p.address FROM units un JOIN properties p ON p.id=un.property_id AND p.organization_id=un.organization_id WHERE ${where} ORDER BY un.availability_verified_at DESC,lower(p.name),p.id,lower(un.label),un.id LIMIT $8 OFFSET $9`, [...values, p.pageSize, (p.page - 1) * p.pageSize])).rows;
         const items: PropertySuggestion[] = rows.map(r => ({ propertyId: r.property_id, propertyName: r.name, unitId: r.id, unitLabel: r.label, city: r.city, bedrooms: r.bedrooms, monthlyRent: Number(r.monthly_rent), availabilitySource: r.availability_source, lastVerifiedAt: iso(r.availability_verified_at), reasons: [...(prefs.bedrooms !== null ? [`Matches the stated ${prefs.bedrooms}-bedroom preference.`] : []), ...(prefs.budgetMin !== null || prefs.budgetMax !== null ? [`Monthly rent ${Number(r.monthly_rent).toLocaleString('en-US')} is within the stated budget.`] : []), ...(prefs.locations.length ? [`Address or city matches a stated location: ${prefs.locations.filter(loc => `${r.city} ${r.address}`.toLowerCase().includes(loc.toLowerCase())).join(', ') || 'matching address'}.`] : []), 'Currently reported available with verification in the last seven days.'], cautions: [...(prefs.moveInOn ? [`Requested move-in ${prefs.moveInOn}; future-date availability evidence is not configured, so this date is unconfirmed.`] : ['A move-in date has not been stated; confirm the required date with the prospect.']), 'Availability may change; confirm again before offering a viewing or lease.'], moveInDateConfirmed: false }));

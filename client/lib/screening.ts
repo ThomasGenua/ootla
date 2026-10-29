@@ -3,7 +3,7 @@ import { api, errorMessage } from './api';
 export type ScreeningNavigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 function errorIn(form:HTMLElement,issue:unknown):void {
  const output=form.querySelector<HTMLElement>('[data-screening-error]')??document.querySelector<HTMLElement>('[data-screening-global-error]');
- if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}
+ if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}
 }
 /** Stable per-attempt keys survive network errors; navigation reloads the committed state. */
 export function initializeScreeningWorkspace(signal:AbortSignal,navigate:ScreeningNavigate):void {

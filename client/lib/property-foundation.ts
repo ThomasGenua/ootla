@@ -14,7 +14,7 @@ export async function loadPropertyWorkspace(path: string, query: URLSearchParams
     const contactId = query.get('contact');
     if (contactId) {
       const detail = await api<ContactDetail>(`${foundationApi}/contacts/${encodeURIComponent(contactId)}`, { signal });
-      if (query.has('historyPage')) detail.history = await api(`${foundationApi}/contacts/${encodeURIComponent(contactId)}/history?${new URLSearchParams({ page: query.get('historyPage')!, pageSize: '25' })}`, { signal });
+      if (query.has('historyPage') || query.has('historyPageSize')) detail.history = await api(`${foundationApi}/contacts/${encodeURIComponent(contactId)}/history?${new URLSearchParams({ page: query.get('historyPage') ?? '1', pageSize: query.get('historyPageSize') ?? '25' })}`, { signal });
       return { kind: 'contact', detail };
     }
     const [directory, properties] = await Promise.all([
@@ -29,8 +29,8 @@ export async function loadPropertyWorkspace(path: string, query: URLSearchParams
       api<PropertyDetail>(`${foundationApi}/properties/${encodeURIComponent(propertyId)}`, { signal }),
       api<{ items: PropertyGroup[] }>(`${foundationApi}/groups`, { signal }),
     ]);
-    if (query.has('unitsPage')) detail.units = await api(`${foundationApi}/properties/${encodeURIComponent(propertyId)}/units?${new URLSearchParams({ page: query.get('unitsPage')!, pageSize: '25' })}`, { signal });
-    if (query.has('leadsPage')) detail.leads = await api(`${foundationApi}/properties/${encodeURIComponent(propertyId)}/leads?${new URLSearchParams({ page: query.get('leadsPage')!, pageSize: '25' })}`, { signal });
+    if (query.has('unitsPage') || query.has('unitsPageSize')) detail.units = await api(`${foundationApi}/properties/${encodeURIComponent(propertyId)}/units?${new URLSearchParams({ page: query.get('unitsPage') ?? '1', pageSize: query.get('unitsPageSize') ?? '25' })}`, { signal });
+    if (query.has('leadsPage') || query.has('leadsPageSize')) detail.leads = await api(`${foundationApi}/properties/${encodeURIComponent(propertyId)}/leads?${new URLSearchParams({ page: query.get('leadsPage') ?? '1', pageSize: query.get('leadsPageSize') ?? '25' })}`, { signal });
     return { kind: 'property', detail, groups: groups.items };
   }
   const [directory, groups] = await Promise.all([
@@ -45,7 +45,7 @@ export function initializePropertyWorkspace(signal: AbortSignal, navigate: (path
   if (!workspace) return;
   workspace.addEventListener('submit', async event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
+    if (!(form instanceof HTMLFormElement) || (!form.hasAttribute('data-foundation-filter') && !form.hasAttribute('data-foundation-form'))) return;
     event.preventDefault();
     const data = new FormData(form);
     if (form.hasAttribute('data-foundation-filter')) {

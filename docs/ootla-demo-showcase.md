@@ -1,6 +1,6 @@
 # OotlaAI prepared demo
 
-The local review demo is [http://127.0.0.1:7673/](http://127.0.0.1:7673/), on branch **ootla-v1-demo** in **C:/Users/user/Documents/software/Ootla-demo**. The live configuration remains separate at [http://localhost:7674/](http://localhost:7674/) on **ootla-v1-branch**. These are local addresses, not evidence of a public deployment.
+The local review demo is [http://127.0.0.1:7673/](http://127.0.0.1:7673/), on branch **ootla-v1-demo** in **C:/Users/user/Documents/software/ootlademo**. The live configuration remains separate at [http://localhost:7674/](http://localhost:7674/) on **ootla-v1-branch**. These are local addresses, not evidence of a public deployment.
 
 The retained demo has been deliberately prepared. Its properties, separate units, contacts, leads, applications, tasks, viewings, documents, lease/resident relationships and maintenance requests are actual persistent PostgreSQL records. Staff can edit them through the normal application. Refreshing or restarting does not reset them.
 
@@ -14,14 +14,14 @@ For an ordinary restart, use the [instance startup instructions](ootla-instances
 cd C:\Users\user\Documents\software\Ootla
 npm run db:local
 
-cd C:\Users\user\Documents\software\Ootla-demo
+cd C:\Users\user\Documents\software\ootlademo
 npm run dev
 ~~~
 
 For a newly configured isolated demo, install its existing dependencies and apply additive migrations, then explicitly prepare the examples:
 
 ~~~powershell
-cd C:\Users\user\Documents\software\Ootla-demo
+cd C:\Users\user\Documents\software\ootlademo
 npm ci
 npm run db:migrate
 npm run demo:prepare
@@ -120,9 +120,9 @@ As the main administrator, open [Integrations](http://127.0.0.1:7673/admin/integ
 
 These provider records use actual durable connector jobs, cursors, mappings and conflict handling. They are not a live Yardi connection or evidence of certification, accounting access or universal write permission. Native Cedar House/Grove Lofts records remain separate from the connector's simulator-owned property.
 
-## Voice, AI and reminders
+## AI and reminders; Voice hidden for now
 
-[Voice](http://127.0.0.1:7673/admin/voice) has a completed synthetic session and local conversation practice enabled in the main workspace. Start conversation practice with the published Harbor View property, choose a scenario and enter a sample customer message. Try an unavailable slot, failure or staff handoff; no telephone call, audio recording, phone-number purchase or live transfer occurs. Viewing confirmation uses the normal native slot/booking workflow. Private applicant guidance requires an actual authorized applicant session for that property; a caller name or staff checkbox is not proof of identity. Transcript retention is seven days by the initial demo policy and can be changed by the authorized owner.
+Voice is hidden from ordinary navigation for now. Its protected legacy simulator retains the completed synthetic session and local conversation practice for later review. Start conversation practice with the published Harbor View property, choose a scenario and enter a sample customer message. Try an unavailable slot, failure or staff handoff; no telephone call, audio recording, phone-number purchase or live transfer occurs. Viewing confirmation uses the normal native slot/booking workflow. Private applicant guidance requires an actual authorized applicant session for that property; a caller name or staff checkbox is not proof of identity. Transcript retention is seven days by the initial demo policy and can be changed by the authorized owner.
 
 AI inference is scripted in this isolated deployment. Native priorities, property facts, document/checklist state and reporting still read authorized saved records. Missing facts lead to a useful staff handoff, not invented availability, approval or payment success. Proposed follow-up tasks require explicit confirmation and a successful save before the application claims creation. No live OpenAI request or paid inference is enabled.
 
@@ -133,3 +133,25 @@ The prepared automation rules use staff in-app work and require explicit approva
 A Git push transfers application code, migrations and safe example CSV files. It does **not** transfer the private PostgreSQL database, environment files, sessions or uploaded document bytes. A newly deployed isolated demo needs its own private configuration, additive migrations and an explicit npm run demo:prepare before it has these examples. Starting the web service alone never seeds or resets data.
 
 To preserve the exact review state instead of creating initial examples, use the documented private backup/restore procedure into a verified isolated demo database. Keep customer and demo databases, roles, cookies and origins separate. Hosted startup and Apache details are in the [instance guide](ootla-instances.md) and [Apache guide](ootla-apache-demo.md). No real emails to Oodler/live users or external provider activation is authorized by demo preparation or Git publishing.
+
+## Reviewed Leads layout - 2026-10-28
+
+Open [Leads](http://127.0.0.1:7673/admin/leads). Use the single search for contact details, property, owner, unit or stage. Filters stay behind the Filters button; selected criteria appear as removable chips. List/Board, sorting and page size remain available, and all search/pagination runs against authorized saved records rather than a live provider query.
+
+Open a lead for one contact/property/stage/owner/next-action summary. Activity is the initial view; Tasks, Documents and Details are separate tabs. Add note, Log call and Schedule viewing are direct actions. Edit details opens the contact and opportunity forms in place, with explicit separate saves; existing source-owned fields stay read-only. The underlying contact identity and history are unchanged. AI suggestions opens the example-only AI/property-matching panel and closes with Escape, returning focus to its button. No repeated unified-contact page is required for routine lead editing.
+
+For review, search Demo Administrator or Cedar, apply and remove a stage filter, switch List/Board, then open a lead. Use arrow keys across the four tabs, test AI open/Escape, edit a next action and refresh, or save a private note. Saved review changes are normal persistent demo edits; preparation never resets them. The cleanup needs no migration, new dependency or configuration change. The separate live project has not been changed.
+
+## Simplified navigation - 2026-10-28
+
+The real sidebar now contains Tasks, Reports, Maintenance, AI assistant, Conversations and Settings. Leads remains once in the top navigation alongside Overview, Properties, Applications and Calendar. Voice has no ordinary menu or owner-preview shortcut; its protected legacy URL and data remain intact.
+
+Open [Settings](http://127.0.0.1:7673/admin/settings) to switch between Personal, Organization, Integrations and Automations. Sections follow existing role permissions: Organization/Integrations are organization-admin only; Automations requires existing leasing-management permission. Settings is highlighted on its related pages, including imports, audit and integration health. Existing URLs and saved forms still work. Open [Reports](http://127.0.0.1:7673/admin/reports) to switch between CRM reports and Website analytics, with source distinctions preserved.
+
+Review those tabs on desktop/mobile and use browser Back, then open a lead to confirm its previously approved simple layout remains. No migration, data reset or new dependency is required. The live checkout has not received this review change.
+
+## Client presentation review - 2026-10-29
+
+Open /admin/leads for one search/Filters and three Lead tabs. AI suggestions proposes record-aware next steps and asks for confirmation; Book a viewing continues into the actual Calendar booking form. Edit details keeps household/preferences/milestones out of the main timeline. Open /admin/tasks?view=team for search, compact filters, descriptions and row controls; open a task for its saved description/history and suggested actions. Complete/Cancel/Reopen and reassignment prompt before saving. Suggested completion requires a comment; manual completion accepts an optional comment. Email actions create private drafts for review and never send.
+
+Known fixture display names/history labels use ordinary business wording. Raw source provenance, account login emails, private file contents and protected diagnostics remain unchanged; these are not evidence of live external services. Optional deliberate task-description preparation is npm run demo:polish-tasks; it changes only exact unchanged shipped descriptions and is not a startup hook. Normal npm run dev continues using the isolated PostgreSQL demo. No new migration is needed.

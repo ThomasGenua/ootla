@@ -8,7 +8,7 @@ import {residentLabel} from '../pages/resident';
 import {escapeHtml as e} from './ui';
 type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 const base='/api/resident';
-const showError=(scope:HTMLElement,issue:unknown)=>{const output=scope.querySelector<HTMLElement>('[data-resident-error]')??document.querySelector<HTMLElement>('[data-resident-global-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus();}};
+const showError=(scope:HTMLElement,issue:unknown)=>{const output=scope.querySelector<HTMLElement>('[data-resident-error]')??document.querySelector<HTMLElement>('[data-resident-global-error]');if(output){output.textContent=customerError(issue);output.tabIndex=-1;output.focus({preventScroll:true});}};
 export function takeResidentInvitation():string|null{const fragment=location.hash;history.replaceState(history.state,'',location.pathname+location.search);return /^#token=[a-f0-9]{64}$/.test(fragment)?fragment.slice(7):null;}
 export async function initializeResidentAuthentication(signal:AbortSignal,navigate:Navigate,invitationToken:string|null=null):Promise<void>{
  const form=document.querySelector<HTMLFormElement>('[data-resident-auth]'),setup=document.querySelector<HTMLElement>('[data-resident-setup]');if(!form)return;let token=invitationToken,enabled=false,pending=false;signal.addEventListener('abort',()=>{token=null;},{once:true});

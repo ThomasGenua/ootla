@@ -1,3 +1,5 @@
+import {RecordSuggestions} from '../services/record-suggestions.js';
+import {suggestionConfirmSchema} from '../../shared/task-suggestion-contracts.js';
 import { Router, raw, type Request, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
@@ -15,9 +17,11 @@ function body<T>(r: Request, schema: z.ZodType<T>): T { if (!r.is('application/j
     throw new ApiError(415, 'JSON_REQUIRED', 'Send this request as application/json.'); return parse(schema, r.body); }
 /** Staff-private endpoints. Ordinary authenticated staff permissions and all property interests apply. */
 export function createLeadWorkspaceRouter(config: ServerConfig, database: Database, requireUser: RequestHandler): Router {
-    const router = Router(), service = new LeadWorkspaces(database);
+    const router = Router(), service = new LeadWorkspaces(database,config);
     router.use(requireUser, (request, response, next) => { response.setHeader('Cache-Control', 'no-store'); if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method))
         return protectOrigin(config)(request, response, next); next(); });
+    router.get('/:leadId/assistance',async(req,res)=>res.json(await new RecordSuggestions(database,config).lead(actor(res),id(req.params.leadId))));
+    router.post('/:leadId/assistance/confirm',async(req,res)=>res.json(await new RecordSuggestions(database,config).confirmLead(actor(res),id(req.params.leadId),body(req,suggestionConfirmSchema))));
     router.get('/:leadId', async (request, response) => { response.json(await service.detail(actor(response), id(request.params.leadId), parse(workspaceQuerySchema, request.query))); });
     router.get('/:leadId/timeline', async (request, response) => { response.json(await service.timeline(actor(response), id(request.params.leadId), parse(workspacePageSchema, request.query))); });
     router.get('/:leadId/tasks', async (request, response) => { response.json(await service.tasks(actor(response), id(request.params.leadId), parse(workspacePageSchema, request.query))); });

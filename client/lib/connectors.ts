@@ -60,7 +60,7 @@ export function initializeConnectorWorkspace(signal: AbortSignal, navigate: (pat
    form.dataset.requestInput = inputKey;
    await api(endpoint, { method: 'POST', body: JSON.stringify(body), signal });
    if (!signal.aborted) navigate('/admin/integrations?' + new URLSearchParams({ view: destination, saved }), true, '[data-connector-results]');
-  } catch (issue) { if (!signal.aborted && error) { error.textContent = errorMessage(issue); error.tabIndex = -1; error.focus(); } }
+  } catch (issue) { if (!signal.aborted && error) { error.textContent = errorMessage(issue); error.tabIndex = -1; error.focus({preventScroll:true}); } }
   finally { if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); } }
  }, { signal });
 }
@@ -98,7 +98,7 @@ function initializeYardiDraft(workspace: HTMLElement, signal: AbortSignal): void
    const list = result.querySelector<HTMLUListElement>('[data-yardi-validation-issues]');
    if (list) list.replaceChildren(...checked.issues.map(issue => { const item = document.createElement('li'); item.textContent = issue.message; return item; }));
    result.hidden = false; result.focus();
-  } catch (issue) { if (!signal.aborted && error) { error.textContent = errorMessage(issue); error.tabIndex = -1; error.focus(); } }
+  } catch (issue) { if (!signal.aborted && error) { error.textContent = errorMessage(issue); error.tabIndex = -1; error.focus({preventScroll:true}); } }
   finally { if (!signal.aborted && submit) { submit.disabled = false; submit.removeAttribute('aria-busy'); } }
  }, { signal });
 }

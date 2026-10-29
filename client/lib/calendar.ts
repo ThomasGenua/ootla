@@ -1,11 +1,13 @@
 import {loadGoogleCalendar,initializeGoogleCalendar,type GoogleCalendarWorkspace} from './google-calendar';
-import type {GoogleViewingSync} from '../../shared/google-calendar-contracts';
+import type {GoogleCalendarBusy,GoogleViewingSync} from '../../shared/google-calendar-contracts';
 import { api, ApiError} from './api';
 import {productError,productNotice,businessStatus} from './product-copy';
 import { calendarDay } from './calendar-time';
+import {resolveUserTimeZone} from './user-time';
+import {initializeDayCalendar} from './calendar-interaction';
 import type { CalendarDirectory, CalendarOptions, CalendarSlots, CalendarViewing, CalendarEvent, CalendarInvitation, CalendarIssuedInvitation } from '../../shared/calendar-contracts';
 import type { Paginated } from '../../shared/property-contracts';
-export type CalendarWorkspacePayload = {kind:'google';google:GoogleCalendarWorkspace}|{kind:'restricted';message:string}|{kind:'directory';directory:CalendarDirectory;options:CalendarOptions}|{kind:'settings';options:CalendarOptions}|{kind:'book';options:CalendarOptions;slots:CalendarSlots|null;slotError:string|null;invitations:Paginated<CalendarInvitation>|null}|{kind:'detail';detail:{viewing:CalendarViewing;events:Paginated<CalendarEvent>};options:CalendarOptions;slots:CalendarSlots|null;slotError:string|null;invitations:Paginated<CalendarInvitation>|null};
+export type CalendarWorkspacePayload = {kind:'google';google:GoogleCalendarWorkspace}|{kind:'restricted';message:string}|{kind:'directory';directory:CalendarDirectory;options:CalendarOptions;googleBusy:GoogleCalendarBusy|null;googleBusyError:string|null}|{kind:'settings';options:CalendarOptions}|{kind:'book';options:CalendarOptions;slots:CalendarSlots|null;slotError:string|null;invitations:Paginated<CalendarInvitation>|null}|{kind:'detail';detail:{viewing:CalendarViewing;events:Paginated<CalendarEvent>};options:CalendarOptions;slots:CalendarSlots|null;slotError:string|null;invitations:Paginated<CalendarInvitation>|null};
 const optionsQuery=(query:URLSearchParams):URLSearchParams=>new URLSearchParams(['propertyId','propertySearch','leadSearch','ownerSearch'].filter(key=>query.get(key)).map(key=>[key,query.get(key)!]));
 async function loadSlots(options:CalendarOptions,query:URLSearchParams,signal:AbortSignal,viewing?:CalendarViewing):Promise<{slots:CalendarSlots|null;slotError:string|null}>{
  const leadId=viewing?.lead.id??query.get('lead'),ownerMembershipId=query.get('ownerMembershipId')??viewing?.owner?.membershipId,propertyId=options.selectedProperty?.id;
@@ -21,18 +23,24 @@ export async function loadCalendarWorkspace(query:URLSearchParams,signal:AbortSi
  const params=optionsQuery(query);if(query.get('lead'))params.set('leadId',query.get('lead')!);
  try{
   const viewingId=query.get('viewing');
-  if(viewingId){const detail=await api<{viewing:CalendarViewing;events:Paginated<CalendarEvent>}>('/api/calendar/viewings/'+encodeURIComponent(viewingId),{signal});params.set('propertyId',detail.viewing.property.id);params.set('leadId',detail.viewing.lead.id);const options=await api<CalendarOptions>('/api/calendar/options?'+params,{signal});const availability=detail.viewing.canManage&&detail.viewing.managed&&detail.viewing.status==='scheduled'?await loadSlots(options,query,signal,detail.viewing):{slots:null,slotError:null};const invitations=options.access.canManage?await api<Paginated<CalendarInvitation>>('/api/calendar/invitations?'+new URLSearchParams({leadId:detail.viewing.lead.id,propertyId:detail.viewing.property.id,page:query.get('invitationsPage')??'1',pageSize:'25'}),{signal}):null;return{kind:'detail',detail,options,...availability,invitations};}
+  if(viewingId){const detail=await api<{viewing:CalendarViewing;events:Paginated<CalendarEvent>}>('/api/calendar/viewings/'+encodeURIComponent(viewingId)+'?'+new URLSearchParams({page:query.get('historyPage')??'1',pageSize:query.get('historyPageSize')??'25'}),{signal});params.set('propertyId',detail.viewing.property.id);params.set('leadId',detail.viewing.lead.id);const options=await api<CalendarOptions>('/api/calendar/options?'+params,{signal});const availability=detail.viewing.canManage&&detail.viewing.managed&&detail.viewing.status==='scheduled'?await loadSlots(options,query,signal,detail.viewing):{slots:null,slotError:null};const invitations=options.access.canManage?await api<Paginated<CalendarInvitation>>('/api/calendar/invitations?'+new URLSearchParams({leadId:detail.viewing.lead.id,propertyId:detail.viewing.property.id,page:query.get('invitationsPage')??'1',pageSize:query.get('invitationsPageSize')??'25'}),{signal}):null;return{kind:'detail',detail,options,...availability,invitations};}
   const options=await api<CalendarOptions>('/api/calendar/options?'+params,{signal});
   if(query.get('view')==='settings')return{kind:'settings',options};
-  if(query.get('view')==='book'){const availability=await loadSlots(options,query,signal);const invitations=options.access.canManage&&query.get('lead')&&options.selectedProperty?await api<Paginated<CalendarInvitation>>('/api/calendar/invitations?'+new URLSearchParams({leadId:query.get('lead')!,propertyId:options.selectedProperty.id,page:query.get('invitationsPage')??'1',pageSize:'25'}),{signal}):null;return{kind:'book',options,...availability,invitations};}
-  const directoryQuery=new URLSearchParams();for(const key of ['date','timeZone','propertyId','ownerMembershipId','status','page','pageSize'])if(query.get(key))directoryQuery.set(key,query.get(key)!);directoryQuery.set('view',['day','agenda'].includes(query.get('view')??'')?query.get('view')!:'week');
-  if(!directoryQuery.has('timeZone')&&options.settings)directoryQuery.set('timeZone',options.settings.timeZone);
-  return{kind:'directory',directory:await api<CalendarDirectory>('/api/calendar?'+directoryQuery,{signal}),options};
+  if(query.get('view')==='book'){const availability=await loadSlots(options,query,signal);const invitations=options.access.canManage&&query.get('lead')&&options.selectedProperty?await api<Paginated<CalendarInvitation>>('/api/calendar/invitations?'+new URLSearchParams({leadId:query.get('lead')!,propertyId:options.selectedProperty.id,page:query.get('invitationsPage')??'1',pageSize:query.get('invitationsPageSize')??'25'}),{signal}):null;return{kind:'book',options,...availability,invitations};}
+  const directoryQuery=new URLSearchParams();for(const key of ['date','propertyId','ownerMembershipId','status','page','pageSize'])if(query.get(key))directoryQuery.set(key,query.get(key)!);directoryQuery.set('view',['day','week','agenda'].includes(query.get('view')??'')?query.get('view')!:'month');
+  directoryQuery.set('timeZone',resolveUserTimeZone());directoryQuery.set('page','1');directoryQuery.set('pageSize','100');
+  const directory=await api<CalendarDirectory>('/api/calendar?'+directoryQuery,{signal});
+  // Keep each period bounded. A selected-day dialog independently pages all records for its day.
+  for(let page=2;page<=Math.min(directory.totalPages,10);page++){directoryQuery.set('page',String(page));const next=await api<CalendarDirectory>('/api/calendar?'+directoryQuery,{signal});directory.items.push(...next.items);}
+  let googleBusy:GoogleCalendarBusy|null=null,googleBusyError:string|null=null;
+  try{const from=Date.parse(directory.range.from),until=Date.parse(directory.range.until),chunks:Array<GoogleCalendarBusy>=[];for(let start=from;start<until;start+=21*86400000){chunks.push(await api<GoogleCalendarBusy>('/api/google-calendar/busy?'+new URLSearchParams({from:new Date(start).toISOString(),until:new Date(Math.min(until,start+21*86400000)).toISOString()}),{signal}));}const unique=new Map(chunks.flatMap(chunk=>chunk.items).map(item=>[item.id,item]));googleBusy=chunks[0]?{...chunks[0],items:[...unique.values()]}:null;}catch(issue){if(signal.aborted)throw issue;googleBusyError='Google Calendar busy times could not be loaded. Local viewings remain available.';}
+  return{kind:'directory',directory,options,googleBusy,googleBusyError};
  }catch(error){if(error instanceof ApiError&&error.status===403)return{kind:'restricted',message:'Your current membership does not allow this calendar record or property. Ask an organization administrator to review access.'};throw error;}
 }
 const value=(data:FormData,key:string):string=>String(data.get(key)??'').trim();
 export function initializeCalendarWorkspace(signal:AbortSignal,navigate:(path:string,replace?:boolean,focusSelector?:string)=>void):void{
  initializeGoogleCalendar(signal,navigate);
+ initializeDayCalendar(signal,navigate);
  const workspace=document.querySelector<HTMLElement>('[data-calendar-workspace]');if(!workspace)return;
  const viewingId=new URLSearchParams(location.search).get('viewing');const status=workspace.querySelector<HTMLElement>('[data-google-viewing-status]');if(viewingId&&status)void api<GoogleViewingSync>('/api/google-calendar/viewings/'+encodeURIComponent(viewingId),{signal}).then(result=>{if(!signal.aborted)status.textContent='Viewing saved. Google Calendar: '+businessStatus(result.googleStatus)+'. '+productNotice(result.message,'Open Google Calendar settings to review updates.');}).catch(issue=>{if(!signal.aborted)status.textContent='Your viewing remains saved. Google Calendar could not be checked. '+productError(issue);});
  workspace.addEventListener('click',async event=>{
@@ -61,7 +69,7 @@ export function initializeCalendarWorkspace(signal:AbortSignal,navigate:(path:st
    if(action==='revoke'){const issued=workspace.querySelector<HTMLElement>('[data-calendar-issued]');if(issued&&issued.dataset.invitationId===form.dataset.invitationId){const input=issued.querySelector<HTMLInputElement>('input');if(input)input.value='';issued.remove();}}
    const query=new URLSearchParams(location.search);query.set('saved',action??'calendar');if(result.viewing){query.delete('view');query.set('viewing',result.viewing.id);query.delete('date');query.delete('slotsPage');}
    navigate('/admin/calendar?'+query,true,'[data-calendar-results]');
-  }catch(issue){if(!signal.aborted&&error){error.textContent=productError(issue);error.tabIndex=-1;error.focus();const reload=form.querySelector<HTMLElement>('[data-calendar-reload]');if(reload&&issue instanceof ApiError&&issue.status===409)reload.hidden=false;}}
+  }catch(issue){if(!signal.aborted&&error){error.textContent=productError(issue);error.tabIndex=-1;error.focus({preventScroll:true});const reload=form.querySelector<HTMLElement>('[data-calendar-reload]');if(reload&&issue instanceof ApiError&&issue.status===409)reload.hidden=false;}}
   finally{if(!signal.aborted&&submit){submit.disabled=false;submit.removeAttribute('aria-busy');}}
  },{signal});
 }

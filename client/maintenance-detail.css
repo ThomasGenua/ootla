@@ -1,0 +1,73 @@
+/* Request-specific Maintenance workspace; queue controls and the shared shell are unchanged. */
+.maintenance-detail{min-width:0;color:#20352a;font-size:14px;line-height:1.5}
+.maintenance-detail *{box-sizing:border-box}
+.maintenance-detail :is(h2,h3,h4,p,dl,dd){margin:0}
+.maintenance-detail :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #297b50;outline-offset:3px}
+.maintenance-detail :is(h2,h3,h4,p,dd,strong,span){overflow-wrap:anywhere}
+.maintenance-detail .mdt-panel{min-width:0;padding:21px;border:1px solid #dce6df;border-radius:13px;background:#fff}
+.maintenance-detail .mdt-summary{margin-bottom:17px}
+.maintenance-detail .mdt-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:21px}
+.maintenance-detail .mdt-heading h2{font-size:26px;line-height:1.25;letter-spacing:-.5px;font-weight:550}
+.maintenance-detail .mdt-state{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.maintenance-detail .mdt-priority{display:inline-flex;align-items:center;min-height:29px;padding:4px 10px;border-radius:30px;background:#f5f1e8;color:#755b26;font-size:12px;line-height:1.4}
+.maintenance-detail .mdt-definition{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px 24px}
+.maintenance-detail .mdt-definition dt{margin:0 0 5px;font-size:12px;color:#66776d;font-weight:400}
+.maintenance-detail .mdt-definition dd{font-size:14px;color:#253e2f}
+.maintenance-detail .mdt-reference dd{font-size:12px;line-height:1.8}
+.maintenance-detail .mdt-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:17px;align-items:start}
+.maintenance-detail .mdt-main,.maintenance-detail .mdt-workflow{display:grid;gap:17px;min-width:0}
+.maintenance-detail h3{font-size:17px;line-height:1.35;letter-spacing:-.2px;font-weight:550;margin-bottom:16px}
+.maintenance-detail h4{font-size:13px;line-height:1.5;font-weight:550}
+.maintenance-detail .mdt-description{font-size:15px;line-height:1.65;white-space:pre-wrap}
+.maintenance-detail .mdt-access{margin-top:20px;padding-top:17px;border-top:1px solid #e2eae5}
+.maintenance-detail .mdt-access h4{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.maintenance-detail .mdt-access h4>span{padding:2px 7px;border-radius:6px;background:#fff3dc;color:#805f20;font-size:11px;font-weight:400}
+.maintenance-detail .mdt-access p{color:#4b6455;white-space:pre-wrap;font-size:13px}
+.maintenance-detail .mdt-contact{margin-top:13px;font-size:12px;color:#607466}
+.maintenance-detail .mdt-contact strong{margin-right:7px;font-weight:500;color:#3e5948}
+.maintenance-detail .mdt-attachments{margin-top:22px;padding-top:17px;border-top:1px solid #e2eae5}
+.maintenance-detail .mdt-attachments h4{margin-bottom:10px}
+.maintenance-detail .mdt-attachments .ap-file-list{margin:0}
+.maintenance-detail .mdt-attachments>.ap-muted{font-size:13px}
+.maintenance-detail .mdt-correspondence{min-height:87px}
+.maintenance-detail .mdt-correspondence h3{margin:0}
+.maintenance-detail .mdt-workflow form{display:grid;gap:13px}
+.maintenance-detail .mdt-workflow label,.maintenance-detail .mdt-note-form>label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:550;color:#3e5948}
+.maintenance-detail :is(.mdt-workflow,.mdt-note-form) :is(input:not([type=checkbox]),select,textarea){min-height:42px;max-width:100%;width:100%;min-width:0;padding:9px 10px;border:1px solid #bdcdc2;border-radius:9px;background:#fff;color:#243e2d;font:inherit;font-size:13px;line-height:1.4}
+.maintenance-detail :is(.mdt-workflow,.mdt-note-form) textarea{resize:vertical;min-height:78px}
+.maintenance-detail .mdt-workflow :is(input,select,textarea):disabled{background:#f2f5f3;color:#6a7a70}
+.maintenance-detail .mdt-workflow small{font-size:11px;color:#6a7b70;font-weight:400}
+.maintenance-detail .mdt-form-grid{display:grid;gap:13px;min-width:0}
+.maintenance-detail .mdt-workflow .cv-button{min-height:40px;justify-self:start;font-size:13px}
+.maintenance-detail .mdt-confirmed-appointment{margin-top:19px;padding-top:17px;border-top:1px solid #e2eae5}
+.maintenance-detail .mdt-confirmed-appointment h4{margin-bottom:8px}
+.maintenance-detail .mdt-confirmed-appointment p+p{margin-top:7px}
+.maintenance-detail .mdt-muted{font-size:12px;color:#607466}
+.maintenance-detail .mdt-appointment-form{display:grid;gap:12px;padding:13px;border:1px solid #dce6df;border-radius:9px;background:#f7faf8}
+.maintenance-detail .mdt-workflow .mdt-check{display:flex;flex-direction:row;align-items:flex-start;gap:8px;font-weight:400;line-height:1.5}
+.maintenance-detail .mdt-check input{width:17px;height:17px;min-width:17px;margin:1px 0 0;accent-color:#286c48}
+.maintenance-detail .mdt-fold{padding:0;overflow:hidden}
+.maintenance-detail .mdt-fold>summary{display:flex;align-items:center;gap:9px;list-style:none;padding:17px 20px;min-height:52px;font-weight:500;font-size:14px;color:#344f3f;cursor:pointer}
+.maintenance-detail .mdt-fold>summary::-webkit-details-marker{display:none}
+.maintenance-detail .mdt-fold>summary:before{content:'';width:7px;height:7px;flex:none;margin-right:3px;border-right:1.5px solid #718578;border-bottom:1.5px solid #718578;transform:rotate(-45deg)}
+.maintenance-detail .mdt-fold[open]>summary:before{transform:rotate(45deg)}
+.maintenance-detail .mdt-fold>summary>span{margin-left:auto;text-align:right;font-weight:400;color:#76877b;font-size:11px}
+.maintenance-detail .mdt-fold[open]>summary{border-bottom:1px solid #e2eae5}
+.maintenance-detail .mdt-fold>.mdt-muted{padding:16px 20px}
+.maintenance-detail .mdt-note-form{display:grid;gap:12px;margin:0 20px 20px;padding-top:15px;border-top:1px solid #e2eae5}
+.maintenance-detail .mdt-note-form .cv-button{justify-self:start;font-size:13px;min-height:40px}
+.maintenance-detail :is(.mdt-messages,.mdt-history){list-style:none;margin:0;padding:16px 20px}
+.maintenance-detail :is(.mdt-messages,.mdt-history)>li+li{margin-top:15px;padding-top:15px;border-top:1px solid #e4ebe6}
+.maintenance-detail .mdt-messages li>div{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.maintenance-detail :is(.mdt-messages,.mdt-history) strong{font-weight:500;font-size:12px}
+.maintenance-detail :is(.mdt-messages,.mdt-history) time{font-size:11px;color:#738579}
+.maintenance-detail :is(.mdt-messages,.mdt-history) p{margin-top:7px;color:#506b59;font-size:13px;white-space:pre-wrap}
+.maintenance-detail .mdt-history li>time{display:block;margin-top:4px}
+.maintenance-detail .mdt-message-pages{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 20px 18px}
+.maintenance-detail .mdt-message-pages .cv-button{font-size:11px;min-height:35px;padding:7px 10px}
+.maintenance-detail .mdt-saved{margin:0 0 16px}
+.maintenance-detail [hidden]{display:none!important}
+@media(max-width:1199px){.maintenance-detail .mdt-layout{grid-template-columns:minmax(0,1fr) 290px}.maintenance-detail .mdt-definition{grid-template-columns:repeat(2,minmax(0,1fr))}.maintenance-detail .mdt-heading{flex-wrap:wrap}.maintenance-detail .mdt-state{justify-content:flex-start}}
+@media(max-width:900px){.maintenance-detail .mdt-layout{grid-template-columns:1fr}.maintenance-detail .mdt-workflow{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.maintenance-detail .mdt-panel{padding:19px}.maintenance-detail .mdt-fold{padding:0}}
+@media(max-width:600px){.maintenance-detail .mdt-heading h2{font-size:23px}.maintenance-detail .mdt-definition{grid-template-columns:1fr;gap:15px}.maintenance-detail .mdt-workflow{grid-template-columns:1fr}.maintenance-detail .mdt-panel{padding:18px 16px}.maintenance-detail .mdt-fold{padding:0}.maintenance-detail .mdt-fold>summary{padding:16px;flex-wrap:wrap}.maintenance-detail .mdt-fold>summary>span{margin-left:19px;text-align:left;width:100%}.maintenance-detail :is(.mdt-messages,.mdt-history){padding:15px 16px}.maintenance-detail .mdt-note-form{margin:0 16px 16px}.maintenance-detail .mdt-message-pages{margin-inline:16px}.maintenance-detail .mdt-message-pages .cv-button{flex:1}}
+@media(prefers-reduced-motion:reduce){.maintenance-detail *{scroll-behavior:auto;animation:none!important;transition:none!important}}
