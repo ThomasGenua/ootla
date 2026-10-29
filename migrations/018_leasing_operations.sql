@@ -69,14 +69,14 @@ CREATE TABLE followup_rules (
  name text NOT NULL, trigger text NOT NULL CHECK(trigger IN ('unanswered_inquiry','upcoming_tour','incomplete_application')),
  delay_minutes integer NOT NULL CHECK(delay_minutes BETWEEN 5 AND 43200), enabled boolean NOT NULL DEFAULT false,
  task_title text NOT NULL, draft_body text NOT NULL DEFAULT '', channel text NOT NULL DEFAULT 'email' CHECK(channel IN ('email','sms')),
- created_by uuid NOT NULL REFERENCES users(id), membership_id uuid NOT NULL, version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), last_checked_at timestamptz,
+ created_by uuid NOT NULL REFERENCES users(id), membership_id uuid NOT NULL, version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(id,organization_id), FOREIGN KEY(property_id,organization_id) REFERENCES properties(id,organization_id),
  FOREIGN KEY(membership_id,organization_id) REFERENCES organization_memberships(id,organization_id)
 );
 CREATE TABLE followup_runs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid NOT NULL, rule_id uuid NOT NULL, lead_id uuid NOT NULL,
  trigger_key text NOT NULL, task_id uuid, message_id uuid, status text NOT NULL CHECK(status IN ('created','stopped')),
- reason text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), last_checked_at timestamptz,
+ reason text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(rule_id,trigger_key), FOREIGN KEY(rule_id,organization_id) REFERENCES followup_rules(id,organization_id),
  FOREIGN KEY(lead_id,organization_id) REFERENCES leads(id,organization_id), FOREIGN KEY(task_id,organization_id) REFERENCES tasks(id,organization_id)
 );

@@ -89,8 +89,7 @@ export function createApp(config: ServerConfig, database: Database, options: { c
   // Demo callbacks verify their own exact raw bytes before the general JSON parser.
   app.use('/api/screening', createScreeningDemoCallbackRouter(config, database));
   app.use('/api/communications',createCommunicationWebhooks(config,database,options.communicationFetch));
-  app.use(['/api/operations','/api/public/intake','/api/resident'],express.json({ limit: '64kb', strict: true }));
-  app.use(express.json({ limit: '16kb', strict: true }));
+  app.use(express.json({ limit: '64kb', strict: true }));
 
   app.get('/api/live', (_request, response) => response.json({ status: 'ok' }));
   app.get('/api/ready', async (_request, response) => {

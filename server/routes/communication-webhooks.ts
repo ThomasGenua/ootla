@@ -14,7 +14,7 @@ export function createCommunicationWebhooks(config:ServerConfig,database:Databas
  router.post('/resend',raw({type:'application/json',limit:'256kb',inflate:false}),async(r,s)=>{
   enabled();if(!settings.resendWebhookSecret||!Buffer.isBuffer(r.body))throw new ApiError(400,'INVALID_CALLBACK','Invalid provider callback.');
   const payload=r.body.toString('utf8'),eventId=r.get('svix-id');let event:Record<string,any>;
-  try{new Webhook(settings.resendWebhookSecret).verify(payload,{'svix-id':eventId??'','svix-timestamp':r.get('svix-timestamp')??'','svix-signature':r.get('svix-signature')??''});event=JSON.parse(payload);if(!event||typeof event!=='object')throw new Error('Invalid event');}catch{throw new ApiError(403,'INVALID_SIGNATURE','Invalid provider signature.');}
+  try{event=new Webhook(settings.resendWebhookSecret).verify(payload,{'svix-id':eventId??'','svix-timestamp':r.get('svix-timestamp')??'','svix-signature':r.get('svix-signature')??''}) as unknown as Record<string,any>;if(!event||typeof event!=='object')throw new Error('Invalid event');}catch{throw new ApiError(403,'INVALID_SIGNATURE','Invalid provider signature.');}
   if(!eventId||eventId.length>200)throw new ApiError(400,'INVALID_CALLBACK','Invalid callback identifier.');
   if((await database.query("SELECT 1 FROM communication_receipts WHERE provider='resend' AND event_id=$1",[eventId])).rowCount){s.json({received:true});return;}
   const emailId=z.uuid().safeParse(event.data?.email_id);if(!emailId.success){s.json({ignored:true});return;}
