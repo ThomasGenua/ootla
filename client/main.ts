@@ -49,9 +49,10 @@ import { notFoundPage, publicPage } from './pages/public';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const publicRoutes = new Set(['/', '/platform', '/ai-workflows', '/workflows/leasing', '/workflows/resident-support', '/integrations', '/contact', '/privacy']);
 const applicantRoutes = new Set(['/applicant', '/applicant/login', '/applicant/invite']);
-const operationsRoutes=new Set(['/admin/maintenance','/admin/renewals','/admin/vacancies','/admin/duplicates','/admin/response-targets','/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports']);
+const operationsRoutes=new Set(['/admin/vendor-work','/admin/inspections','/admin/notifications','/admin/resident-documents','/admin/property-insights','/admin/maintenance','/admin/renewals','/admin/vacancies','/admin/duplicates','/admin/response-targets','/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports']);
 const adminRoutes = new Set([...operationsRoutes,'/admin/team', '/admin/onboarding','/admin', '/admin/contacts', '/admin/leads', '/admin/properties', '/admin/applications', '/admin/calendar', '/admin/tasks', '/admin/imports', '/admin/profile', '/admin/settings', '/admin/analytics', '/admin/ai', '/admin/integrations']);
 const titles: Record<string, string> = {
+  '/admin/vendor-work':'Vendor collaboration — Ootla','/admin/inspections':'Property inspections — Ootla','/admin/notifications':'Notification centre — Ootla','/admin/resident-documents':'Resident documents — Ootla','/admin/property-insights':'Property operations dashboard — Ootla',
   '/admin/maintenance':'Maintenance dispatch — Ootla','/admin/renewals':'Renewals and move-outs — Ootla','/admin/vacancies':'Vacancies and waitlists — Ootla','/admin/duplicates':'Duplicate resolution — Ootla','/admin/response-targets':'Response targets — Ootla',
   '/admin/attention':'Needs attention — Ootla','/admin/intake':'Inquiry forms — Ootla','/admin/inbox':'Shared inbox — Ootla','/admin/automations':'Follow-up rules — Ootla','/admin/residents':'Resident requests — Ootla','/admin/workspace':'Search & saved work — Ootla','/admin/knowledge':'Property knowledge — Ootla','/admin/reports':'Operations reports — Ootla',
   '/admin/team':'Team & access — Ootla', '/admin/onboarding':'Getting started — Ootla', '/staff/access':'Staff access — Ootla',
@@ -81,6 +82,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
   const generation = ++routeGeneration;
   const path = location.pathname.replace(/\/$/, '') || '/';
   const query = new URLSearchParams(location.search);
+  if(path==='/vendor'){const module=await import('./lib/property-collaboration');const token=new URLSearchParams(location.hash.slice(1)).get('token');history.replaceState({},'', '/vendor');document.title='Vendor job — Ootla';document.body.className='applicant-body';applyRouteSeo(path);try{const page=await module.vendorPage(token,signal);if(signal.aborted||generation!==routeGeneration)return;app.innerHTML='<main class="ops-public">'+page+'</main>';module.initializeCollaboration(signal,navigate);}catch{if(!signal.aborted)app.innerHTML='<main class="ops-public"><h1>Vendor access unavailable</h1><p>Ask the property team for a current job link.</p></main>';}return;}
   if (path === '/staff/access') {
     const {staffAccessPage,initializeStaffAccess}=await import('./lib/pilot');
     document.title = 'Staff access — Ootla';
@@ -186,6 +188,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
       const connectors = path === '/admin/integrations' ? await loadConnectorWorkspace!(query, signal) : undefined;
       const canManageTasks = user.permissions.includes('leasing.manage');
       const tasks = path === '/admin/tasks' && canManageTasks ? await loadTasksWorkspace!(query, signal) : undefined;
+      const notifications=canManageTasks?await api<import('./pages/admin').HeaderNotifications>('/api/property-collaboration/notifications?view=unread',{signal}):undefined;
       const reminders = canManageTasks ? await api<Paginated<TaskReminder>>('/api/tasks/reminders?pageSize=5', { signal }) : undefined;
       const followupQuery = new URLSearchParams();
       for (const key of ['q', 'stages']) if (query.has(key)) followupQuery.set(key, query.get(key)!);
@@ -194,7 +197,7 @@ async function render(moveFocus = false, focusSelector?: string): Promise<void> 
         ? await api<DemoData>('/api/demo/data', { signal })
         : undefined;
       if (signal.aborted || generation !== routeGeneration) return;
-      app.innerHTML = adminShell(path, user, overview, false, demo, query, operations ?? pilot ?? (applications ? applicationsWorkspacePage!(applications, user, query) : calendar ? calendarWorkspacePage!(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage!(connectors, user, query) : imports ? importWorkspacePage!(imports, user, query) : foundation ? propertyWorkspacePage!(foundation, user, query) : leads ? leadWorkspacePage!(leads, user, query) : tasks ? taskWorkspacePage!(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined), reminders, pageSummary, headerCollapsed);
+      app.innerHTML = adminShell(path, user, overview, false, demo, query, operations ?? pilot ?? (applications ? applicationsWorkspacePage!(applications, user, query) : calendar ? calendarWorkspacePage!(calendar,user,query) : accountPage ? accountWorkspacePage(accountPage, user, query) : connectors ? connectorWorkspacePage!(connectors, user, query) : imports ? importWorkspacePage!(imports, user, query) : foundation ? propertyWorkspacePage!(foundation, user, query) : leads ? leadWorkspacePage!(leads, user, query) : tasks ? taskWorkspacePage!(tasks, user, query) : path === '/admin/tasks' ? '<section class="card module-empty"><h2>Tasks are restricted to authorized staff</h2><p>Your current role does not grant access to private task details. Ask an organization administrator to review your permissions.</p></section>' : followups ? persistentDashboardOverview(followups.items, Boolean(overview.demoEnabled)) : undefined), reminders, pageSummary, headerCollapsed, notifications);
       if (operations) operationsModule!.initializeOperations(signal,navigate);
       if (pilot) initializePilot!(signal, navigate, user);
       if (applications) initializeApplicationsWorkspace!(signal,navigate,user);

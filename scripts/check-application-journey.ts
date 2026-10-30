@@ -136,7 +136,7 @@ async function main(){
   const records=await checkOperations({...context,config,database,orgs,properties,memberships,leadIds});
   if(process.env.OOTLA_JOURNEY_BROWSER==='operations'){
    const {checkOperationsBrowser}=await import('./operations-browser-check.js');
-   await checkOperationsBrowser({...records,base:api.base,cookie:admin,applicant,config,propertyId:properties[0]!});
+   await checkOperationsBrowser({...records,base:api.base,cookie:admin,analyst,applicant,config,propertyId:properties[0]!});
   }
  } else if(stage>=19)await checkAi(context);
  if(process.env.OOTLA_CHECK_BACKUP==='true'){

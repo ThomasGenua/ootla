@@ -46,9 +46,9 @@ jobs:
         run: npm run check:lease-browser
       - name: Assistant, team, onboarding and analytics browser journeys
         run: npm run check:pilot-browser
-      - name: Leasing, property operations, resident and provider contract checks
+      - name: Leasing, property collaboration, resident and provider contract checks
         run: npm run check:operations
-      - name: Connected leasing and property operations browser journeys
+      - name: Connected leasing, vendor, inspection, document and notification browser journeys
         run: npm run check:operations-browser
       - name: Stop the owned test cluster
         if: always()

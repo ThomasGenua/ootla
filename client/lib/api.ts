@@ -6,7 +6,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(path, { credentials: 'same-origin', ...options, headers: { ...options.headers, ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
+    response = await fetch(path, { credentials: 'same-origin', ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new ApiError(0, 'We could not reach Ootla. Check your connection and try again.');

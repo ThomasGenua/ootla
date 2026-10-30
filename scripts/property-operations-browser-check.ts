@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {expect,type Page} from '@playwright/test';
 import path from 'node:path';
-export interface PropertyBrowserRecords{orderId:string;unitId:string;planId:string;vendorId:string;firstContactId:string;secondContactId:string}
+export interface PropertyBrowserRecords{collaborationRecords:import('./property-collaboration-check.js').CollaborationRecords;orderId:string;unitId:string;planId:string;vendorId:string;firstContactId:string;secondContactId:string}
 export async function checkPropertyOperationsBrowser(page:Page,base:string,r:PropertyBrowserRecords){
  const form=(action:string)=>page.locator('[data-po-action='+action+']');
  const changed=async(action:string,button:string)=>{const f=form(action),before=await f.getAttribute('data-version');await f.getByRole('button',{name:button,exact:true}).click();await expect(f).not.toHaveAttribute('data-version',before??'');await expect(page.locator('[data-ops-error]')).toBeEmpty();};

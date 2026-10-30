@@ -1,3 +1,4 @@
+import {collaborationPaths,collaborationPage,initializeCollaboration,residentDocumentCards} from './property-collaboration';
 import {propertyOperationPaths,loadPropertyOperations,initializePropertyOperations,residentWorkflowCards} from './property-operations';
 import {attentionPage,inboxConnections,initializeConnected} from './connected';
 import { api,ApiError,errorMessage,type AuthUser } from './api';
@@ -7,7 +8,7 @@ import type { LeadDirectory,LeadDetail } from '../../shared/lead-contracts';
 import type { TaskOptions } from '../../shared/task-contracts';
 type Navigate=(path:string,replace?:boolean)=>void;
 const base='/api/operations';
-export const operationsPaths=[...propertyOperationPaths,'/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports'];
+export const operationsPaths=[...collaborationPaths,...propertyOperationPaths,'/admin/attention','/admin/intake','/admin/inbox','/admin/automations','/admin/residents','/admin/workspace','/admin/knowledge','/admin/reports'];
 const esc=(v:unknown)=>e(String(v??''));
 const human=(v:unknown)=>esc(String(v??'').replaceAll('_',' '));
 const date=(v:unknown)=>v?esc(new Date(String(v)).toLocaleString()):'—';
@@ -101,7 +102,8 @@ async function reportsPage(q:URLSearchParams,signal:AbortSignal){const data=awai
  return wrap('Operations reports',data.notice,form('report-filter',select('days','Lead creation period',[30,90,180,365,730].map(n=>[String(n),'Last '+n+' days']),String(data.days))+button('Apply'))+'<div class="pilot-metrics">'+metrics.map(([label,value])=>card(label,'<strong>'+esc(value)+'</strong>')).join('')+'</div>'+card('Tour outcomes','<p>'+data.tours.attended+' attended · '+data.tours.no_show+' no-shows · '+data.tours.cancelled+' cancelled</p><p>Attendance = attended ÷ (attended + no-shows). Cancelled and scheduled tours are excluded.</p>')+card('Time in stage',table(['Stage','Observed intervals','Mean hours'],data.stages.map((r:Row)=>[human(r.stage),esc(r.observations),esc(r.mean_hours)])))+card('Property comparison',table(['Property','Leads','Attended tours','No-shows','Lease milestones'],data.properties.map((r:Row)=>[esc(r.name),esc(r.leads),esc(r.attended),esc(r.no_show),esc(r.leased)])))+card('Inquiry campaigns',table(['Campaign','Inquiries','Duplicate flags'],data.campaign.map((r:Row)=>[esc(r.campaign),esc(r.leads),esc(r.duplicate_flags)]))));}
 export async function loadOperationsPage(path:string,q:URLSearchParams,user:AuthUser,signal:AbortSignal){
  if(!operationsPaths.includes(path))return undefined;
- if(!user.permissions.includes(path==='/admin/reports'?'analytics.read':'leasing.manage')||['/admin/intake','/admin/automations'].includes(path)&&user.organization.role!=='organization_admin')return wrap('Access restricted','Your current role does not grant access to this workspace.','');
+ if(!user.permissions.includes(['/admin/reports','/admin/property-insights'].includes(path)?'analytics.read':'leasing.manage')||['/admin/intake','/admin/automations'].includes(path)&&user.organization.role!=='organization_admin')return wrap('Access restricted','Your current role does not grant access to this workspace.','');
+ if(collaborationPaths.includes(path))return collaborationPage(path,q,user,signal);
  if(propertyOperationPaths.includes(path))return loadPropertyOperations(path,q,user,signal);
  if(path==='/admin/attention')return attentionPage(q,signal);
  if(path==='/admin/intake')return configuration(path,q,user,signal,'forms');if(path==='/admin/automations')return configuration(path,q,user,signal,'rules');if(path==='/admin/knowledge')return configuration(path,q,user,signal,'knowledge');
@@ -115,12 +117,12 @@ export async function loadPublicOperations(path:string,q:URLSearchParams,signal:
  }
  const data=await api<Row>('/api/resident',{signal});
  if(q.get('request')){const detail=await api<Row>('/api/resident/requests/'+encodeURIComponent(q.get('request')!),{signal}),r=detail.request;return wrap(esc(r.title),'Your property team can see the information and attachments you share.',link('/resident','Back to my requests','ap-button')+card('Request','<p>'+human(r.status)+' · '+human(r.priority)+'</p><p class="ops-text">'+esc(r.description)+'</p>')+requestHistory(detail)+(r.status!=='closed'?card('Add an update',form('resident-reply',area('body','Your update','',3000)+button('Post update'),r.id))+card('Add an attachment',form('resident-upload',field('file','PDF, PNG, JPEG or text; up to 2 MB','','required accept="application/pdf,image/png,image/jpeg,text/plain"','file')+button('Upload attachment'),r.id)):''));}
- return wrap('My resident workspace','Send maintenance requests and follow updates from your property team. This portal is not monitored for emergencies.',link('/applicant','My applications','ap-button')+await residentWorkflowCards(signal)+card('My requests',(data.requests as Row[]).map(r=>'<p>'+link('/resident?request='+r.id,esc(r.title))+' · '+human(r.status)+' · '+esc(r.property_name)+'</p>').join('')||empty('No requests yet.'))+(data.residents.length?card('New service request',form('resident-create',select('residentId','My home',data.residents.map((r:Row)=>[r.id,r.property_name+(r.unit_label?' · '+r.unit_label:'')]))+field('title','Short description','','required maxlength="200"')+select('category','Category',['plumbing','electrical','appliance','access','other'].map(s=>[s,s]))+select('priority','Priority',[['normal','Normal'],['urgent','Urgent — also contact your property team']])+area('description','What needs attention?','',5000)+button('Submit request'))):empty('Your resident access begins when your property team completes your move-in. Contact them if you need access.')));
+ return wrap('My resident workspace','Send maintenance requests and follow updates from your property team. This portal is not monitored for emergencies.',link('/applicant','My applications','ap-button')+await residentWorkflowCards(signal)+await residentDocumentCards(signal)+card('My requests',(data.requests as Row[]).map(r=>'<p>'+link('/resident?request='+r.id,esc(r.title))+' · '+human(r.status)+' · '+esc(r.property_name)+'</p>').join('')||empty('No requests yet.'))+(data.residents.length?card('New service request',form('resident-create',select('residentId','My home',data.residents.map((r:Row)=>[r.id,r.property_name+(r.unit_label?' · '+r.unit_label:'')]))+field('title','Short description','','required maxlength="200"')+select('category','Category',['plumbing','electrical','appliance','access','other'].map(s=>[s,s]))+select('priority','Priority',[['normal','Normal'],['urgent','Urgent — also contact your property team']])+area('description','What needs attention?','',5000)+button('Submit request'))):empty('Your resident access begins when your property team completes your move-in. Contact them if you need access.')));
 }
 export function operationsError(error:unknown){return wrap('Unable to open this workspace',errorMessage(error),error instanceof ApiError&&error.status===401?link('/applicant/login','Sign in to the applicant / resident portal','ap-button'):link(location.pathname+location.search,'Try again','ap-button'));}
 export function initializeOperations(signal:AbortSignal,navigate:Navigate){
  initializeConnected(signal,navigate);
- initializePropertyOperations(signal,navigate);
+ initializePropertyOperations(signal,navigate);initializeCollaboration(signal,navigate);
  const root=document.querySelector<HTMLElement>('[data-operations]');if(!root)return;
  const error=root.querySelector<HTMLElement>('[data-ops-error]')!,notice=root.querySelector<HTMLElement>('[data-ops-notice]')!;
  const showError=(issue:unknown)=>{if(!signal.aborted){error.textContent=errorMessage(issue);error.focus();}};
