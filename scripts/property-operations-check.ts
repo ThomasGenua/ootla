@@ -97,12 +97,13 @@ export async function checkPropertyOperations(f:OperationsFixture,records:{leadI
  await call(b+'/tenancies/'+plan.id+'/move-out',{requestKey:key(),version:plan.version,action:'notice',moveOutOn:date(7),note:'Resident supplied a notice.',confirmed:true});plan=(await call(b+'/tenancies/'+plan.id)).plan;
  await call(b+'/tenancies/'+plan.id+'/move-out',{requestKey:key(),version:plan.version,action:'complete',moveOutOn:null,note:'Premature completion denied.',confirmed:true},admin,'POST',409);
  await call(b+'/tenancies/'+plan.id+'/move-out',{requestKey:key(),version:plan.version,action:'cancel_notice',moveOutOn:null,note:'Notice cancelled by resident.',confirmed:true});
+ const {checkPropertyCollaboration}=await import('./property-collaboration-check.js');const collaborationRecords=await checkPropertyCollaboration(f,{orderId:order.id,unitId:unit.id,residentId:resident.id});
  // The browser fixture needs this same resident active until its journey completes.
  if(process.env.OOTLA_JOURNEY_BROWSER!=='operations'){
   plan=(await call(b+'/tenancies/'+plan.id)).plan;await call(b+'/tenancies/'+plan.id+'/move-out',{requestKey:key(),version:plan.version,action:'notice',moveOutOn:date(0),note:'Completed notice fixture.',confirmed:true});plan=(await call(b+'/tenancies/'+plan.id)).plan;
   const finish={requestKey:key(),version:plan.version,action:'complete',moveOutOn:null,note:'Keys returned; staff inspected departure.',confirmed:true};await call(b+'/tenancies/'+plan.id+'/move-out',finish);await call(b+'/tenancies/'+plan.id+'/move-out',finish);
-  assert.equal((await call('/api/resident',undefined,applicant)).residents.length,0);assert.equal((await call(b+'/vacancies/'+unit.id)).turnover.status,'inspection');assert.equal((await db.query('SELECT status FROM units WHERE id=$1',[unit.id])).rows[0].status,'available');
+  assert.equal((await call('/api/resident',undefined,applicant)).residents.length,0);assert.equal((await call('/api/resident-documents',undefined,applicant)).items.length,0);await call('/api/resident-documents/'+collaborationRecords.documentId+'/files/2',undefined,applicant,'GET',404);assert.equal((await call(b+'/vacancies/'+unit.id)).turnover.status,'inspection');assert.equal((await db.query('SELECT status FROM units WHERE id=$1',[unit.id])).rows[0].status,'available');
  }
  console.log('PASS property operations: reviewed move-out notice/cancellation and dated completion preserve source inventory and create a turnover handoff');
- return{orderId:order.id,unitId:unit.id,planId:plan.id,vendorId:vendor.id,firstContactId:pair.first_id,secondContactId:pair.second_id};
+ return{collaborationRecords,orderId:order.id,unitId:unit.id,planId:plan.id,vendorId:vendor.id,firstContactId:pair.first_id,secondContactId:pair.second_id};
 }

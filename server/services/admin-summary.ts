@@ -41,7 +41,26 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
   const read = async (sql: string, parameters = args) => (await database.query(sql,parameters)).rows[0]!;
   const count = (row: Record<string,unknown>, key: string) => Number(row[key] ?? 0);
 
-  if (['maintenance','renewals','vacancies','duplicates','response-targets','attention','intake','inbox','automations','residents','workspace','knowledge','reports'].includes(page)) {
+  if(['maintenance','vendor-work','renewals','vacancies','inspections','resident-documents','property-insights','notifications'].includes(page)){
+    if(!(page==='property-insights'?user.permissions.includes('analytics.read'):leasing))return restricted(page,['Work orders','Turnovers','Tenancies','Inspections'],'Requires access to this workspace.');
+    const work=`SELECT count(*) FROM maintenance_work_orders w WHERE ${linkedScope('w')}`;
+    const turn=`SELECT count(*) FROM unit_turnovers t WHERE ${propertyScope('t')}`;
+    const plans=`SELECT count(*) FROM tenancy_plans t WHERE ${linkedScope('t')}`;
+    const inspections=`SELECT count(*) FROM unit_inspections i WHERE ${propertyScope('i')}`;
+    const documents=`SELECT count(*) FROM resident_documents doc WHERE ${linkedScope('doc')}`;
+    let metrics:[string,string][];
+    if(page==='maintenance'||page==='vendor-work')metrics=[['Open work orders',work+" AND w.status NOT IN ('completed','cancelled')"],['Scheduled visits',work+" AND w.status='scheduled'"],['Pending vendor quotes',`SELECT count(*) FROM maintenance_quotes q JOIN maintenance_work_orders w ON w.id=q.work_order_id WHERE ${linkedScope('w')} AND q.vendor_id=w.vendor_id AND q.status='pending' AND w.status NOT IN ('completed','cancelled')`],['Awaiting resident confirmation',work+" AND w.status='completed' AND w.resident_confirmed_at IS NULL"]];
+    else if(page==='renewals')metrics=[['Active tracked terms',plans+" AND t.status='active'"],['Due follow-ups',plans+" AND t.status<>'moved_out' AND t.next_action_on<=CURRENT_DATE"],['Move-out notices',plans+" AND t.status='notice_received'"],['Open renewal proposals',`SELECT count(*) FROM renewal_offers o JOIN tenancy_plans t ON t.id=o.plan_id WHERE ${linkedScope('t')} AND o.status='offered'`]];
+    else if(page==='vacancies')metrics=[['Reported available units',`SELECT count(*) FROM units un WHERE ${propertyScope('un')} AND un.status='available'`],['Open turnovers',turn+" AND t.status<>'ready'"],['Overdue turnovers',turn+" AND t.status<>'ready' AND t.expected_ready_on<CURRENT_DATE"],['Waiting prospects',`SELECT count(*) FROM unit_waitlist w WHERE ${linkedScope('w')} AND w.status='waiting'`]];
+    else if(page==='inspections')metrics=[['Draft inspections',inspections+" AND i.status='draft'"],['Due inspections',inspections+" AND i.status='draft' AND i.due_on<=CURRENT_DATE"],['Completed inspections',inspections+" AND i.status='completed'"],['Open repair tasks',`SELECT count(*) FROM inspection_repairs r JOIN unit_inspections i ON i.id=r.inspection_id JOIN tasks t ON t.id=r.task_id WHERE ${propertyScope('i')} AND t.status='open'`]];
+    else if(page==='resident-documents')metrics=[['Published documents',documents+" AND doc.status='published'"],['Document drafts',documents+" AND doc.status='draft'"],['Pending acknowledgements',documents+" AND doc.status='published' AND doc.acknowledgement_required AND NOT EXISTS(SELECT 1 FROM resident_document_acknowledgements ack WHERE ack.document_id=doc.id AND ack.document_version=doc.published_version)"],['Expiring within 30 days',documents+" AND doc.status='published' AND doc.expires_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30"]];
+    else if(page==='notifications')metrics=[['My open tasks',`SELECT count(*) FROM tasks t WHERE ${linkedScope('t')} AND t.owner_membership_id=$3 AND t.status='open'`],['My work orders',work+" AND w.owner_membership_id=$3 AND w.status NOT IN ('completed','cancelled')"],['My inspections',inspections+" AND i.owner_membership_id=$3 AND i.status='draft'"],['Unread mentions',`SELECT count(*) FROM conversation_mentions m JOIN conversation_notes n ON n.id=m.note_id JOIN conversations co ON co.id=n.conversation_id WHERE ${linkedScope('co')} AND m.membership_id=$3 AND m.read_at IS NULL`]];
+    else metrics=[['Open work orders',work+" AND w.status NOT IN ('completed','cancelled')"],['Open turnovers',turn+" AND t.status<>'ready'"],['Due tenancy follow-ups',plans+" AND t.status<>'moved_out' AND t.next_action_on<=CURRENT_DATE"],['Due inspections',inspections+" AND i.status='draft' AND i.due_on<=CURRENT_DATE"]];
+    const row=await read('SELECT '+metrics.map(([,sql],index)=>'('+sql+')::int AS m'+index).join(','));
+    return result(metrics.map(([label],index)=>metric('operations_'+index,label,Number(row['m'+index]),'clock')) as Four);
+  }
+
+  if (['duplicates','response-targets','attention','intake','inbox','automations','residents','workspace','knowledge','reports'].includes(page)) {
     if (!leasing && !(page==='reports'&&user.permissions.includes('analytics.read'))) return restricted(page,['Conversations','Drafts','Requests','Knowledge'],'Requires workspace access.');
     const row=await read(`SELECT
       (SELECT count(*) FROM conversations c WHERE ${linkedScope('c')} AND c.status='open')::int AS conversations,

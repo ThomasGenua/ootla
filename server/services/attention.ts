@@ -7,10 +7,7 @@ import {inquiryDeadline,inquiryEscalation} from './response-policies.js';
 import {verifiedUnit} from './vacancies.js';
 import {scope as taskScope,relevant as taskRelevant} from './tasks.js';
 
-export class Attention extends Operations {
- async queue(user:AuthUser,digest:string,input:z.infer<typeof attentionQuery>){return this.staff(user,digest,async(c,a)=>{
-  // Each source uses the same related-property restrictions as its destination.
-  const sql=`WITH candidates AS (
+export const attentionSql=`WITH candidates AS (
    SELECT co.id,'inquiry'::text AS kind,'Reply to '||ct.display_name AS title,co.property_id,
     CASE WHEN escalation.at<=now() AND manager.id IS NOT NULL THEN manager.id ELSE co.owner_membership_id END AS owner_membership_id,
     ${inquiryDeadline} AS due_at,CASE WHEN escalation.at<=now() THEN 0 ELSE 1 END AS urgency,
@@ -66,6 +63,11 @@ export class Attention extends Operations {
   ), filtered AS(SELECT x.*,p.name AS property_name,u.display_name AS owner_name FROM candidates x JOIN properties p ON p.id=x.property_id
    LEFT JOIN organization_memberships om ON om.id=x.owner_membership_id LEFT JOIN users u ON u.id=om.user_id
    WHERE ($4='all' OR $4='mine' AND x.owner_membership_id=$3 OR $4='unassigned' AND x.owner_membership_id IS NULL) AND ($5='all' OR x.kind=$5))`;
+
+export class Attention extends Operations {
+ async queue(user:AuthUser,digest:string,input:z.infer<typeof attentionQuery>){return this.staff(user,digest,async(c,a)=>{
+  // Each source uses the same related-property restrictions as its destination.
+  const sql=attentionSql;
   const args=[...scopeArgs(a),input.owner,input.kind];
   const total=Number((await c.query(sql+' SELECT count(*) AS n FROM filtered',args)).rows[0].n);
   const items=(await c.query(sql+' SELECT *,due_at<=now() AS overdue FROM filtered ORDER BY urgency,(due_at>now()),due_at,kind,id LIMIT 25 OFFSET $6',[...args,(input.page-1)*25])).rows;

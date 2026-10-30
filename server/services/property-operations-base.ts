@@ -9,12 +9,12 @@ import {ApiError} from '../http/errors.js';
 export type Actor=AuthUser;
 export type Client=PoolClient;
 export class PropertyOperations extends Operations {
- async scoped(c:Client,a:Actor,table:'maintenance_work_orders'|'tenancy_plans'|'resident_requests'|'resident_relationships'|'unit_waitlist',id:string){
+ async scoped(c:Client,a:Actor,table:'maintenance_work_orders'|'tenancy_plans'|'resident_requests'|'resident_relationships'|'unit_waitlist'|'resident_documents',id:string){
   const sql=`SELECT r.* FROM ${table} r WHERE r.id=$4 AND ${leadScope('r')}`,args=[...scopeArgs(a),id];
   const raw=(await c.query(sql,args)).rows[0];if(!raw)throw missing();
   if(raw.lead_id)await new LeadWorkspaces(this.database).assertLeadAccess(a,raw.lead_id,c,true);
   await propertyAccess(c,a,raw.property_id);
-  if(table==='tenancy_plans')await c.query('SELECT id FROM resident_relationships WHERE id=$1 FOR UPDATE',[raw.resident_id]);
+  if(table==='tenancy_plans'||table==='resident_documents')await c.query('SELECT id FROM resident_relationships WHERE id=$1 FOR UPDATE',[raw.resident_id]);
   const row=(await c.query(sql+' FOR UPDATE OF r',args)).rows[0];if(!row)throw missing();return row;
  }
  async unit(c:Client,a:Actor,id:string){const u=(await c.query('SELECT * FROM units WHERE id=$1 AND organization_id=$2',[id,a.organization.id])).rows[0];if(!u)throw missing();await propertyAccess(c,a,u.property_id);return u;}

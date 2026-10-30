@@ -4,7 +4,7 @@ import {mkdir} from 'node:fs/promises';
 import {createServer} from 'vite';
 import {chromium,expect} from '@playwright/test';
 import type {ServerConfig} from '../server/config/env.js';
-export async function checkOperationsBrowser(input:{base:string;cookie:string;applicant:string;config:ServerConfig;propertyId:string;formId:string;leadId:string;conversationId:string;requestId:string;propertyRecords:import('./property-operations-browser-check.js').PropertyBrowserRecords}){
+export async function checkOperationsBrowser(input:{base:string;cookie:string;analyst:string;applicant:string;config:ServerConfig;propertyId:string;formId:string;leadId:string;conversationId:string;requestId:string;propertyRecords:import('./property-operations-browser-check.js').PropertyBrowserRecords}){
  const root=path.resolve(import.meta.dirname,'..'),web=await createServer({configFile:false,root:path.join(root,'client'),publicDir:path.join(root,'public'),server:{host:'127.0.0.1',port:0,proxy:{'/api':input.base}},logLevel:'error'});
  await web.listen();const address=web.httpServer!.address();assert(address&&typeof address!=='string');const base='http://127.0.0.1:'+address.port,previous=input.config.appUrl;(input.config as {appUrl:string}).appUrl=base;
  const browser=await chromium.launch({channel:process.env.OOTLA_BROWSER_CHANNEL||'chrome',headless:true});
@@ -42,7 +42,9 @@ export async function checkOperationsBrowser(input:{base:string;cookie:string;ap
    if((width===390||width===1586)&&['/admin/attention','/admin/reports','/admin/inbox?conversation='+input.conversationId,'/resident'].includes(route))await page.screenshot({path:path.join(root,'.local/screenshots/operations-'+route.split('?')[0].split('/').at(-1)+'-'+width+'.png'),fullPage:true});
   }
   const {checkPropertyOperationsBrowser}=await import('./property-operations-browser-check.js');await checkPropertyOperationsBrowser(page,base,input.propertyRecords);
+  const {checkCollaborationBrowser}=await import('./property-collaboration-browser-check.js');await checkCollaborationBrowser(page,base,input.propertyRecords.collaborationRecords);
+  await context.addCookies([{name:'ootla.sid',value:input.analyst.split('=')[1]!,url:base,httpOnly:true,sameSite:'Lax'}]);await page.goto(base+'/admin/property-insights');await expect(page.locator('[data-operations]')).toContainText('Maintenance costs');await expect(page.locator('[data-ops-error]')).toBeEmpty();await expect(page.getByLabel('Property',{exact:true})).toBeVisible();console.log('PASS collaboration browser: read-only analyst dashboard loads without private workflow endpoints');
   assert.deepEqual(errors,[]);console.log('PASS browser operations: nine workspaces at four widths, no page errors or external network requests');
- }catch(error){console.error('Operations browser failure: '+(error instanceof Error?error.message:'Unknown failure'));console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('operations-browser-check.ts')).join('\n'):'');const page=browser.contexts()[0]?.pages()[0];if(page){console.error((await page.locator('body').innerText()).slice(0,2000));await mkdir(path.join(root,'.local/screenshots'),{recursive:true});await page.screenshot({path:path.join(root,'.local/screenshots/operations-failure.png'),fullPage:true});}throw error;}
+ }catch(error){console.error('Operations browser failure: '+(error instanceof Error?error.message:'Unknown failure'));console.error(error instanceof Error?error.stack?.split('\n').filter(l=>l.includes('operations-browser-check.ts')).join('\n'):'');const page=browser.contexts()[0]?.pages().at(-1);if(page){console.error((await page.locator('body').innerText()).slice(0,2000));await mkdir(path.join(root,'.local/screenshots'),{recursive:true});await page.screenshot({path:path.join(root,'.local/screenshots/operations-failure.png'),fullPage:true});}throw error;}
  finally{await browser.close();await web.close();(input.config as {appUrl:string}).appUrl=previous;}
 }
