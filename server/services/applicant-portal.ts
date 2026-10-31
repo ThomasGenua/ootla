@@ -517,15 +517,8 @@ export class ApplicantPortal {
                 throw new ApiError(409, 'CONTACT_EMAIL_MISMATCH', 'Confirm and save this contact email in Contacts before issuing applicant access.');
             if ((await c.query('SELECT id FROM application_participants WHERE application_id=$1 AND organization_id=$2 AND (contact_id=$3 OR active AND invited_email=$4)', [a.id, a.organization_id, contactId, email])).rowCount)
                 throw new ApiError(409, 'DUPLICATE_PARTICIPANT', 'Choose a separate explicitly identified applicant and email. No contacts were merged.');
-            let householdId = a.household_id;
-            if (!householdId) {
-                householdId = (await c.query('INSERT INTO households(organization_id,name) VALUES($1,$2) RETURNING id', [a.organization_id, 'Application household'])).rows[0]!.id;
-                await c.query('INSERT INTO household_property_links(organization_id,household_id,property_id) VALUES($1,$2,$3)', [a.organization_id, householdId, a.property_id]);
-                await c.query("INSERT INTO household_members(organization_id,household_id,contact_id,relationship) VALUES($1,$2,$3,'primary applicant')", [a.organization_id, householdId, a.contact_id]);
-            }
-            await c.query("INSERT INTO household_members(organization_id,household_id,contact_id,relationship) VALUES($1,$2,$3,'co-applicant') ON CONFLICT DO NOTHING", [a.organization_id, householdId, person.id]);
             await c.query("INSERT INTO application_participants(organization_id,application_id,contact_id,role,invited_email,details) VALUES($1,$2,$3,'co_applicant',$4,$5)", [a.organization_id, a.id, person.id, email, JSON.stringify({ displayName: person.display_name, phone: person.phone, currentAddress: '', moveInDate: '' })]);
-            await c.query('UPDATE applications SET household_id=$2,portal_version=portal_version+1,updated_at=now() WHERE id=$1', [a.id, householdId]);
+            await c.query('UPDATE applications SET portal_version=portal_version+1,updated_at=now() WHERE id=$1', [a.id]);
             await c.query('UPDATE application_participants SET ready_at=NULL,version=version+1 WHERE application_id=$1 AND organization_id=$2 AND active', [a.id, a.organization_id]);
             await this.event(c, a, u.id, 'staff', 'participant_added', 'Authorized staff configured a separately identified co-applicant. Each applicant has private details and documents.');
         });

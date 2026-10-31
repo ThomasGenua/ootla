@@ -11,7 +11,7 @@ import { createApp } from '../server/app.js';
 import { loadConfig, type ServerConfig } from '../server/config/env.js';
 import { Database } from '../server/db/pool.js';
 import { hashPassword } from '../server/services/passwords.js';
-import type { ApplicationRecord, ContactDetail, ContactRecord, ExternalMapping, HouseholdRecord, LeaseRecord, Paginated, PropertyDetail, PropertyGroup, PropertySummary, UnitRecord } from '../shared/property-contracts.js';
+import type { ApplicationRecord, ContactDetail, ContactRecord, ExternalMapping, LeaseRecord, Paginated, PropertyDetail, PropertyGroup, PropertySummary, UnitRecord } from '../shared/property-contracts.js';
 
 // Every write below targets a newly-created, uniquely owned scratch database.
 // The retained demo is never seeded, reset or modified, and credentials stay in memory.
@@ -322,11 +322,11 @@ async function main() {
   const privateContact = (await json<{ contact: ContactRecord }>(api, `${prefix}/contacts`, admin!, 'POST', {
     displayName: 'Private Household Member', email: 'private-member@example.test', propertyIds: [legacyProperties[1]],
   }, 201)).contact;
-  const household = (await json<{ household: HouseholdRecord }>(api, `${prefix}/households`, admin!, 'POST', {
-    name: 'Example household', propertyIds: [legacyProperties[0], legacyProperties[1]],
-    members: [{ contactId: contact.id, relationship: 'primary' }, { contactId: privateContact.id, relationship: 'member' }],
-  }, 201)).household;
-  assert.equal(household.members.length, 2);
+  // Historical-only rows verify retained archival constraints; active APIs no longer create households.
+  const household = {id:randomUUID()};
+  await database.query("INSERT INTO households(id,organization_id,name) VALUES($1,$2,'Archived fixture')",[household.id,organizations[0]]);
+  await database.query('INSERT INTO household_property_links(organization_id,household_id,property_id) VALUES($1,$2,$3),($1,$2,$4)',[organizations[0],household.id,legacyProperties[0],legacyProperties[1]]);
+  await database.query('INSERT INTO household_members(organization_id,household_id,contact_id) VALUES($1,$2,$3),($1,$2,$4)',[organizations[0],household.id,contact.id,privateContact.id]);
   const canonicalLeadIds = [randomUUID(), randomUUID()];
   await database.transaction(async client => {
     for (const [index, id] of canonicalLeadIds.entries()) {
@@ -337,14 +337,14 @@ async function main() {
     }
   });
   const application = (await json<{ application: ApplicationRecord }>(api, `${prefix}/applications`, agent!, 'POST', {
-    contactId: contact.id, householdId: household.id, propertyId: legacyProperties[0], unitId: legacyUnits[0], leadId: canonicalLeadIds[0], status: 'staff_review',
+    contactId: contact.id, propertyId: legacyProperties[0], unitId: legacyUnits[0], leadId: canonicalLeadIds[0], status: 'staff_review',
   }, 201)).application;
   const lease = (await json<{ lease: LeaseRecord }>(api, `${prefix}/leases`, admin!, 'POST', {
-    contactId: contact.id, householdId: household.id, propertyId: legacyProperties[0], unitId: legacyUnits[0], applicationId: application.id,
+    contactId: contact.id, propertyId: legacyProperties[0], unitId: legacyUnits[0], applicationId: application.id,
     leadId: canonicalLeadIds[0], status: 'draft', startsOn: '2027-01-01', endsOn: '2027-12-31',
   }, 201)).lease;
   await json<{ application: ApplicationRecord }>(api, `${prefix}/applications`, admin!, 'POST', {
-    contactId: contact.id, householdId: household.id, propertyId: legacyProperties[1], unitId: legacyUnits[1], leadId: canonicalLeadIds[1],
+    contactId: contact.id, propertyId: legacyProperties[1], unitId: legacyUnits[1], leadId: canonicalLeadIds[1],
   }, 201);
   assert.equal(lease.startsOn, '2027-01-01', 'Lease calendar dates must remain date-only values without timezone conversion.');
   assert.equal(lease.endsOn, '2027-12-31');
@@ -365,7 +365,7 @@ async function main() {
   const scopedHistory = await json<ContactDetail>(api, `${prefix}/contacts/${contact.id}?pageSize=100`, agent!);
   assert(scopedHistory.history.items.every(item => item.propertyId === legacyProperties[0]), 'Canonical history must not leak records from unassigned properties.');
   assert.deepEqual(scopedHistory.contact.propertyIds, [legacyProperties[0]]);
-  assert(scopedHistory.households.every(item => item.propertyIds.every(id => id === legacyProperties[0])));
+  assert(!('households' in scopedHistory));
   assert(!JSON.stringify(scopedHistory).includes('Private Household Member'), 'Households must not disclose contacts limited to an unassigned property.');
   assert(!JSON.stringify(scopedHistory).includes('Private property inquiry history'));
   await deny(api, `${prefix}/contacts/${privateContact.id}`, agent!);
@@ -387,7 +387,7 @@ async function main() {
   assert.equal(propertyDetail.leads.items.length, 1, 'Related leads must also be paginated.');
   assert.equal(propertyDetail.leads.total, 2);
   assert(propertyDetail.staff.some(staff => staff.membershipId === membershipIds[1]), 'Detail must show persisted property staff assignments.');
-  pass('one contact identity connects household, leads, applications, leases and retained history with paginated, property-scoped detail');
+  pass('one contact identity connects leads, applications, leases and retained history with paginated, property-scoped detail');
 
   phase = 'database tenant and relationship constraints';
   const otherContact = (await database.query<{ contact_id: string }>('SELECT contact_id FROM leads WHERE id=$1', [legacyLeads[2]])).rows[0]!.contact_id;

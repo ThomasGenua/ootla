@@ -1,3 +1,4 @@
+import {initializeTaskFollowups}from'./task-followups';
 import { api, ApiError} from './api';
 import {productError} from './product-copy';
 import type { LeadWorkspace, PropertySuggestions } from '../../shared/lead-workspace-contracts';
@@ -42,6 +43,7 @@ export function initializeLeadWorkspace08(signal: AbortSignal, navigate: (path: 
   const workspace = document.querySelector<HTMLElement>('[data-lead-workspace08]');
   const leadId = workspace?.dataset.workspaceLead;
   if (!workspace || !leadId) return;
+  initializeTaskFollowups(workspace,signal,navigate);
   workspace.addEventListener('submit', async event => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-workspace-form')) return;

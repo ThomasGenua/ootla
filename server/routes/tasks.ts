@@ -1,3 +1,6 @@
+import {readSessionDigest} from '../services/sessions.js';
+import {TaskFollowups} from '../services/task-followups.js';
+import {followupDraftSchema,followupSendSchema,followupCommentSchema}from'../../shared/task-followup-contracts.js';
 import {RecordSuggestions} from '../services/record-suggestions.js';
 import {suggestionConfirmSchema} from '../../shared/task-suggestion-contracts.js';
 import { Router, type Request, type Response, type RequestHandler } from 'express';
@@ -28,6 +31,11 @@ export function createTaskRouter(config: ServerConfig, database: Database, requi
     router.post('/teams', async (req, res) => res.status(201).json({ team: await tasks.team(actor(res), body(req, taskTeamSchema)) }));
     router.put('/teams/:teamId', async (req, res) => res.json({ team: await tasks.team(actor(res), body(req, taskTeamSchema), id(req.params.teamId)) }));
     router.post('/routing-rules', async (req, res) => res.json({ rule: await tasks.routing(actor(res), body(req, taskRoutingSchema)) }));
+    const sessionDigest=(req:Request,_config:ServerConfig)=>{const digest=readSessionDigest(req,config);if(!digest)throw new ApiError(401,'AUTH_REQUIRED','Sign in to continue.');return digest;};
+    router.get('/:taskId/follow-up/draft',async(req,res)=>res.json(await new TaskFollowups(database,config).savedDraft(actor(res),id(req.params.taskId))));
+    router.post('/:taskId/follow-up/draft',async(req,res)=>res.json(await new TaskFollowups(database,config).prepare(actor(res),sessionDigest(req,config),id(req.params.taskId),body(req,followupDraftSchema))));
+    router.post('/:taskId/follow-up/send',async(req,res)=>res.json(await new TaskFollowups(database,config).send(actor(res),id(req.params.taskId),body(req,followupSendSchema))));
+    router.post('/:taskId/follow-up/comment',async(req,res)=>res.json(await new TaskFollowups(database,config).comment(actor(res),id(req.params.taskId),body(req,followupCommentSchema))));
     router.get('/:taskId/suggestions',async(req,res)=>res.json(await new RecordSuggestions(database,config).task(actor(res),id(req.params.taskId))));
     router.post('/:taskId/suggestions/confirm',async(req,res)=>res.json(await new RecordSuggestions(database,config).confirmTask(actor(res),id(req.params.taskId),body(req,suggestionConfirmSchema))));
     router.get('/:taskId', async (req, res) => res.json(await tasks.detail(actor(res), id(req.params.taskId), parse(taskPageSchema, req.query))));

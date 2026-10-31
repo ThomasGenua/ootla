@@ -88,16 +88,6 @@ export interface ContactRecord {
     createdAt: string;
     updatedAt: string;
 }
-export interface HouseholdRecord {
-    id: string;
-    name: string;
-    propertyIds: string[];
-    members: {
-        contactId: string;
-        displayName: string;
-        relationship: string;
-    }[];
-}
 export interface ContactHistory {
     id: string;
     kind: 'lead' | 'application' | 'lease' | 'activity';
@@ -108,7 +98,6 @@ export interface ContactHistory {
 }
 export interface ContactDetail {
     contact: ContactRecord;
-    households: HouseholdRecord[];
     history: Paginated<ContactHistory>;
     externalMappings: ExternalMapping[];
     access: FoundationAccess;
@@ -116,7 +105,6 @@ export interface ContactDetail {
 export interface ApplicationRecord {
     id: string;
     contactId: string;
-    householdId: string | null;
     propertyId: string;
     unitId: string | null;
     leadId: string | null;
@@ -126,7 +114,6 @@ export interface ApplicationRecord {
 export interface LeaseRecord {
     id: string;
     contactId: string;
-    householdId: string | null;
     propertyId: string;
     unitId: string | null;
     applicationId: string | null;
@@ -151,8 +138,6 @@ export const groupCreateSchema = z.object({ name }).strict();
 export const contactCreateSchema = z.object({ displayName: name, email: z.union([z.email().max(254), z.literal('')]).default(''), phone: text(100).default(''), propertyIds: z.array(identifier).min(1).max(100) }).strict();
 export const contactUpdateSchema = z.object({ displayName: name.optional(), email: z.union([z.email().max(254), z.literal('')]).optional(), phone: text(100).optional() }).strict().refine(value => Object.keys(value).length > 0);
 export const contactDirectorySchema = foundationPageSchema.extend({ q: text(200).default(''), propertyId: z.union([identifier, z.literal('')]).default('') }).strict();
-export const householdCreateSchema = z.object({ name, propertyIds: z.array(identifier).min(1).max(100), members: z.array(z.object({ contactId: identifier, relationship: text(100).min(1).default('member') }).strict()).max(100).default([]) }).strict();
-export const householdMemberSchema = z.object({ contactId: identifier, relationship: text(100).min(1).default('member') }).strict();
-export const applicationCreateSchema = z.object({ contactId: identifier, householdId: identifier.nullable().default(null), propertyId: identifier, unitId: identifier.nullable().default(null), leadId: identifier.nullable().default(null), status: z.enum(['draft', 'submitted', 'staff_review']).default('draft') }).strict();
-export const leaseCreateSchema = z.object({ contactId: identifier, householdId: identifier.nullable().default(null), propertyId: identifier, unitId: identifier.nullable().default(null), applicationId: identifier.nullable().default(null), leadId: identifier.nullable().default(null), status: z.enum(['draft', 'active', 'ended']).default('draft'), startsOn: z.iso.date().nullable().default(null), endsOn: z.iso.date().nullable().default(null) }).strict().refine(value => !value.startsOn || !value.endsOn || value.endsOn >= value.startsOn);
+export const applicationCreateSchema = z.object({ contactId: identifier, propertyId: identifier, unitId: identifier.nullable().default(null), leadId: identifier.nullable().default(null), status: z.enum(['draft', 'submitted', 'staff_review']).default('draft') }).strict();
+export const leaseCreateSchema = z.object({ contactId: identifier, propertyId: identifier, unitId: identifier.nullable().default(null), applicationId: identifier.nullable().default(null), leadId: identifier.nullable().default(null), status: z.enum(['draft', 'active', 'ended']).default('draft'), startsOn: z.iso.date().nullable().default(null), endsOn: z.iso.date().nullable().default(null) }).strict().refine(value => !value.startsOn || !value.endsOn || value.endsOn >= value.startsOn);
 export const externalMappingSchema = z.object({ entityType: z.enum(['property', 'unit', 'contact', 'application', 'lease']), entityId: identifier, provider: text(100).min(1).regex(/^[a-z][a-z0-9_-]*$/), externalId: text(200).min(1) }).strict();

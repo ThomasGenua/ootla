@@ -50,8 +50,6 @@ export function presentRecordText(value: string): string {
   if (known !== undefined) return known;
   const administrator=/^(Owner: |Assign to |Recorded by |Updated by )Demo Administrator$/.exec(value);
   if(administrator)return administrator[1]+'Administrator';
-  const household=/^(Avery Brooks|Noah Patel|Leila Morgan|Ethan Lewis|Sofia Ahmed|Ben Carter|Alex Taylor|Riley Williams) - illustrative household$/.exec(value);
-  if(household)return household[1]+' household';
   if(value==='A quiet home with good transport access. Illustrative preferences supplied by the customer.')return 'A quiet home with good transport access.';
   if(value==='Identity document - example only')return 'Identity document';
   if(value==='Supporting document - example only')return 'Supporting document';
@@ -66,4 +64,9 @@ export function presentRecordText(value: string): string {
   if(prefixed){const inner=presentRecordText(prefixed[2]);return prefixed[1]+inner;}
   if(value.includes(' · '))return value.split(' · ').map(part=>presentRecordText(part)).join(' · ');
   return value;
+}
+
+/** Summary figures are counts; missing or non-numeric status values render as zero. */
+export function presentMetricValue(value:unknown):number{
+ return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
 }

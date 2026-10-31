@@ -302,23 +302,18 @@ async function main() {
         lead: LeadRecord;
     }>(api, prefix, admin, 'POST', { propertyId: properties[0], unitId: units[0], newContact: { displayName: 'Stage 08 canonical prospect', email: 'stage08-person@example.test', phone: '+234 555 0808' }, ownerMembershipId: membershipIds[2], source: 'referral', preferences: { bedrooms: 2, budgetMin: 1000, budgetMax: 1500, moveInOn: '2027-05-01', locations: ['Lagos'], requirements: 'A quiet workspace and bicycle storage' }, nextAction: 'Review stated preferences', nextActionAt: '2027-03-01T10:00:00Z' }, 201)).lead;
     const contactId = lead.contactId;
-    const household = (await json<{
-        household: {
-            id: string;
-        };
-    }>(api, `${foundation}/households`, admin, 'POST', { name: 'Stage 08 household', propertyIds: [properties[0]], members: [{ contactId, relationship: 'primary' }] }, 201)).household;
     const get = (token = admin) => json<LeadWorkspace>(api, `${workspace}/${lead.id}`, token);
     const initial = await get();
     assert.equal(initial.leadDetail.lead.contactId, contactId);
     assert.equal(initial.contact.contact.id, contactId);
-    assert(initial.contact.households.some(h => h.id === household.id));
+    assert(!('households' in initial.contact));
     assert.equal(initial.leadDetail.lead.owner?.membershipId, membershipIds[2]);
     assert.deepEqual(initial.leadDetail.lead.preferences, lead.preferences);
     assert.equal(initial.leadDetail.lead.stage, 'new_inquiry');
     assert.equal(initial.leadDetail.lead.nextAction, 'Review stated preferences');
     assert(initial.access.canManage);
     assert.equal((await get(agent)).contact.contact.id, contactId);
-    pass('normal hashed-password sessions load scoped canonical contact/household, property interests, preferences, owner and next action; analyst/portal/other organization/property access is denied');
+    pass('normal hashed-password sessions load scoped canonical contact, property interests, preferences, owner and next action; analyst/portal/other organization/property access is denied');
     phase = 'persistent staff notes and call logs';
     const noteResponse = await api.request(`${workspace}/${lead.id}/notes`, agent, 'POST', { body: privateNote + '\nStaff review only.' });
     assert.equal(noteResponse.status, 201);
@@ -428,7 +423,7 @@ async function main() {
     phase = 'staff decision notes without eligibility or applicant decisions';
     const application = (await json<{
         application: ApplicationRecord;
-    }>(api, `${foundation}/applications`, admin, 'POST', { contactId, householdId: household.id, propertyId: properties[0], unitId: units[0], leadId: lead.id, status: 'draft' }, 201)).application;
+    }>(api, `${foundation}/applications`, admin, 'POST', { contactId, propertyId: properties[0], unitId: units[0], leadId: lead.id, status: 'draft' }, 201)).application;
     await json(api, `${workspace}/${lead.id}/decisions`, agent, 'POST', { summary: 'Staff will request the remaining example document.', context: 'application_review', applicationId: application.id }, 201);
     await deny(api, `${workspace}/${lead.id}/decisions`, agent, 'POST', { summary: 'Wrong linked application', context: 'application_review', applicationId: (await database.query<{
             id: string;
@@ -441,7 +436,7 @@ async function main() {
     phase = 'verified provider timeline and linked conversion';
     const lease = (await json<{
         lease: LeaseRecord;
-    }>(api, `${foundation}/leases`, admin, 'POST', { contactId, householdId: household.id, propertyId: properties[0], unitId: units[0], leadId: lead.id, applicationId: application.id, status: 'active', startsOn: '2027-05-01' }, 201)).lease;
+    }>(api, `${foundation}/leases`, admin, 'POST', { contactId, propertyId: properties[0], unitId: units[0], leadId: lead.id, applicationId: application.id, status: 'active', startsOn: '2027-05-01' }, 201)).lease;
     await json(api, `${foundation}/applications/${application.id}`, admin, 'PATCH', { status: 'submitted' });
     const mappingId = randomUUID();
     const providerId = randomUUID();
@@ -456,7 +451,7 @@ async function main() {
     assert.equal(current.contact.contact.id, contactId);
     assert(current.contact.history.items.some(e => e.kind === 'application' && e.id === application.id));
     assert(current.contact.history.items.some(e => e.kind === 'lease' && e.id === lease.id));
-    assert(current.contact.households.some(h => h.id === household.id));
+    assert(!('households' in current.contact));
     assert.equal(current.leadDetail.lead.applicationSummary?.status, 'submitted');
     const verified = (await json<Paginated<TimelineEvent>>(api, `${workspace}/${lead.id}/timeline?pageSize=100`, agent)).items.find(e => e.kind === 'provider_update');
     assert(verified);
@@ -464,7 +459,7 @@ async function main() {
     assert.equal(verified.simulated, false);
     assert.equal(verified.actor, null);
     assert.equal(verified.metadata.provider, 'yardi');
-    pass('application and lease conversion preserves one contact/household and history; timeline exposes trusted verified provider updates while browser ingestion and applicant approval stay unavailable');
+    pass('application and lease conversion preserves one contact and history; timeline exposes trusted verified provider updates while browser ingestion and applicant approval stay unavailable');
     phase = 'combined timeline ordering and independent server pagination';
     const history = await json<LeadWorkspace>(api, `${workspace}/${legacyLeads[0]}?pageSize=100`, agent);
     assert(history.timeline.items.some(e => e.kind === 'tour' && e.summary));

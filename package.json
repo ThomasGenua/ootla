@@ -123,7 +123,12 @@
     "check:client-review:pagination": "tsx scripts/check-client-review-pagination.ts",
     "check:client-review:retained": "node scripts/check-client-review-retained.mjs",
     "demo:renewals": "tsx scripts/prepare-renewals-pilot.ts",
-    "demo:current-pipeline": "tsx scripts/prepare-demo-current-pipeline.ts"
+    "demo:current-pipeline": "tsx scripts/prepare-demo-current-pipeline.ts",
+    "demo:followup-agents": "tsx scripts/prepare-demo-followup-agents.ts",
+    "check:lead-followups": "tsx scripts/check-lead-followups.ts",
+    "check:lead-followups-browser": "tsx scripts/check-lead-followup-browser.ts",
+    "check:lead-refinement": "tsx scripts/check-lead-refinement.ts",
+    "check:lead-refinement-browser": "tsx scripts/check-lead-refinement-browser.ts"
   },
   "dependencies": {
     "argon2": "0.45.1",

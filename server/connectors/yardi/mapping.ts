@@ -50,12 +50,12 @@ function at(root:unknown,path:readonly(string|number)[]):unknown{
  return value;
 }
 function canonicalValue(entity:YardiRecordKind,field:string,value:unknown):string|number|null|undefined{
- if(value===null)return ['lastVerifiedAt','householdId','unitId','leadId','applicationId','startsOn','endsOn'].includes(field)?null:undefined;
+ if(value===null)return ['lastVerifiedAt','unitId','leadId','applicationId','startsOn','endsOn'].includes(field)?null:undefined;
  if(field==='bedrooms')return typeof value==='number'&&Number.isInteger(value)&&value>=0&&value<=100?value:undefined;
  if(field==='monthlyRent')return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=9999999999.99?value:undefined;
  if(typeof value!=='string'||/[\u0000-\u001f\u007f]/.test(value))return undefined;
  const trimmed=value.trim();
- if(['contactId','householdId','propertyId','unitId','leadId','applicationId'].includes(field))return z.uuid().safeParse(trimmed).success?trimmed:undefined;
+ if(['contactId','propertyId','unitId','leadId','applicationId'].includes(field))return z.uuid().safeParse(trimmed).success?trimmed:undefined;
  if(field==='email')return trimmed===''||z.email().max(254).safeParse(trimmed).success?trimmed.toLowerCase():undefined;
  if(field==='status'){
   const allowed=entity==='unit'?['available','reserved','occupied']:entity==='application'?['draft','submitted','staff_review']:entity==='lease'?['draft','active','ended']:[];

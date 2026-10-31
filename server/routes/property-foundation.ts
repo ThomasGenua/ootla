@@ -1,7 +1,7 @@
 import { Router, type Request, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
 import type { AuthUser } from '../../shared/contracts.js';
-import { applicationCreateSchema, contactCreateSchema, contactDirectorySchema, contactUpdateSchema, externalMappingSchema, foundationPageSchema, groupCreateSchema, householdCreateSchema, householdMemberSchema, leaseCreateSchema, propertyCreateSchema, propertyDirectorySchema, propertyUpdateSchema, unitCreateSchema, unitUpdateSchema } from '../../shared/property-contracts.js';
+import { applicationCreateSchema, contactCreateSchema, contactDirectorySchema, contactUpdateSchema, externalMappingSchema, foundationPageSchema, groupCreateSchema, leaseCreateSchema, propertyCreateSchema, propertyDirectorySchema, propertyUpdateSchema, unitCreateSchema, unitUpdateSchema } from '../../shared/property-contracts.js';
 import type { ServerConfig } from '../config/env.js';
 import type { Database } from '../db/pool.js';
 import { ApiError } from '../http/errors.js';
@@ -16,7 +16,7 @@ const id = (value: unknown): string => parse(z.uuid(), value);
 const pageSchema = foundationPageSchema.strict();
 const relatedQuery = foundationPageSchema.extend({ propertyId: z.uuid().optional() }).strict();
 const mappingQuery = foundationPageSchema.extend({ entityType: z.enum(['property', 'unit', 'contact', 'application', 'lease']).optional(), entityId: z.uuid().optional() }).strict().refine(value => Boolean(value.entityType) === Boolean(value.entityId));
-const relatedFields = { contactId: z.uuid().optional(), householdId: z.uuid().nullable().optional(), propertyId: z.uuid().optional(), unitId: z.uuid().nullable().optional(), leadId: z.uuid().nullable().optional() };
+const relatedFields = { contactId: z.uuid().optional(), propertyId: z.uuid().optional(), unitId: z.uuid().nullable().optional(), leadId: z.uuid().nullable().optional() };
 const applicationUpdate = z.object({ ...relatedFields, status: z.enum(['draft', 'submitted', 'staff_review']).optional() }).strict().refine(value => Object.keys(value).length > 0);
 const leaseUpdate = z.object({ ...relatedFields, applicationId: z.uuid().nullable().optional(), status: z.enum(['draft', 'active', 'ended']).optional(), startsOn: z.iso.date().nullable().optional(), endsOn: z.iso.date().nullable().optional() }).strict().refine(value => Object.keys(value).length > 0);
 /** Bounded Stage 06 data foundation. No provider calls, outbound actions or portal sessions. */
@@ -41,9 +41,6 @@ export function createPropertyFoundationRouter(config: ServerConfig, database: D
     router.patch('/contacts/:contactId', async (request, response) => { response.json({ contact: await service.updateContact(actor(response), id(request.params.contactId), body(request, contactUpdateSchema)) }); });
     router.post('/contacts/:contactId/properties', async (request, response) => { const input = body(request, z.object({ propertyId: z.uuid() }).strict()); response.json({ contact: await service.linkContactProperty(actor(response), id(request.params.contactId), input.propertyId) }); });
     router.get('/contacts/:contactId/history', async (request, response) => { response.json(await service.contactHistory(actor(response), id(request.params.contactId), parse(pageSchema, request.query))); });
-    router.get('/households', async (request, response) => { response.json(await service.households(actor(response), parse(pageSchema, request.query))); });
-    router.post('/households', async (request, response) => { response.status(201).json({ household: await service.createHousehold(actor(response), body(request, householdCreateSchema)) }); });
-    router.post('/households/:householdId/members', async (request, response) => { response.json({ household: await service.addHouseholdMember(actor(response), id(request.params.householdId), body(request, householdMemberSchema)) }); });
     router.get('/applications', async (request, response) => { const input = parse(relatedQuery, request.query); response.json(await service.relatedRecords(actor(response), 'application', input, input.propertyId)); });
     router.post('/applications', async (request, response) => { response.status(201).json({ application: await service.createApplication(actor(response), body(request, applicationCreateSchema)) }); });
     router.patch('/applications/:applicationId', async (request, response) => { response.json({ application: await service.updateRelated(actor(response), 'application', id(request.params.applicationId), body(request, applicationUpdate)) }); });

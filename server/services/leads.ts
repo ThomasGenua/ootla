@@ -188,6 +188,7 @@ export class Leads {
     async createLinked(c:PoolClient,a:AuthUser,i:z.infer<typeof leadCreateSchema>):Promise<LeadRecord>{
         i=leadCreateSchema.parse(i);
         a=await authorize(c,a);
+        if(i.source==='demo'&&!(await c.query("SELECT 1 FROM organizations WHERE id=$1 AND environment='demo'",[a.organization.id])).rowCount)throw new ApiError(403,'SOURCE_NOT_ALLOWED','Choose a supported record source.');
             const interests = [...new Set([i.propertyId, ...i.interestPropertyIds])];
             if (interests.length > 20)
                 throw new ApiError(400, 'INVALID_INPUT', 'Use at most 20 property interests, including the primary property.');
@@ -215,6 +216,7 @@ export class Leads {
     async update(u: AuthUser, id: string, i: z.infer<typeof leadUpdateSchema>): Promise<LeadRecord> {
         return this.write(u, async (c, a) => {
             const r = await this.lock(c, a, id);
+        if(i.source==='demo'&&!(await c.query("SELECT 1 FROM organizations WHERE id=$1 AND environment='demo'",[a.organization.id])).rowCount)throw new ApiError(403,'SOURCE_NOT_ALLOWED','Choose a supported record source.');
             version(r, i.version);
             const interests = i.interestPropertyIds === undefined ? await currentInterests(c, a, id) : [...new Set([r.property_id, ...i.interestPropertyIds])];
             if (interests.length > 20)

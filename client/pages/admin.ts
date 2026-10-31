@@ -1,4 +1,4 @@
-import {presentRecordName,presentRecordText} from '../lib/presentation';
+import {presentRecordName,presentRecordText,presentMetricValue} from '../lib/presentation';
 import {productNotice} from '../lib/product-copy';
 import type { AdminPageSummary, AdminSummaryMetric } from '../../shared/admin-summary-contracts';
 import type { TaskReminder } from '../../shared/task-contracts';
@@ -35,7 +35,7 @@ const pageTitles: Record<string, string> = {
   '/admin/renewals': 'Property renewals', '/admin/resident-access': 'Resident access',
   '/admin/integration-health': 'Integration health', '/admin/audit': 'Audit history',
   '/admin/profile': 'My profile', '/admin/settings': 'Settings',
-  '/admin/imports': 'Customer-data import', '/admin/contacts': 'Contacts & households',
+  '/admin/imports': 'Customer-data import', '/admin/contacts': 'Contacts',
   '/admin/automations': 'Automations', '/admin/analytics': 'Analytics', '/admin/voice': 'Voice',
   '/admin/integrations': 'Integrations', '/admin/organization': 'Organization',
 };
@@ -52,11 +52,12 @@ const summaryIcons: Record<AdminSummaryMetric['icon'], IconName> = {
   check: 'check', clock: 'clock', link: 'link', sparkles: 'sparkles', settings: 'grid',
 };
 function summaryMetric(metric: { key: string; label: string; value: number | null; icon: IconName; note?: string }): string {
-  const unavailable = metric.value == null;
-  const value = (unavailable ? 0 : metric.value!).toLocaleString();
+  const unavailable = typeof metric.value !== 'number' || !Number.isFinite(metric.value) || metric.value < 0;
+  const numericValue = presentMetricValue(metric.value);
+  const value = numericValue.toLocaleString();
   const note = metric.note ? productNotice(metric.note,'Unavailable') : (unavailable ? 'Unavailable' : undefined);
-  const longNumber = typeof metric.value === 'number' && metric.value.toLocaleString().length > 4;
-  return `<div class="summary-metric  ${longNumber ? 'metric-long-number' : ''}" data-metric-key="${escapeHtml(metric.key)}"><span class="metric-label">${escapeHtml(metric.label)}</span><strong aria-label="${escapeHtml(metric.label + ': ' + (unavailable ? note : metric.value))}">${value}</strong><span class="metric-icon">${icon(metric.icon)}</span>${note ? note.length > 32 ? `<details class="metric-note"><summary>About this figure</summary><span>${escapeHtml(note)}</span></details>` : `<span class="metric-note">${escapeHtml(note)}</span>` : ''}</div>`;
+  const longNumber = value.length > 4;
+  return `<div class="summary-metric  ${longNumber ? 'metric-long-number' : ''}" data-metric-key="${escapeHtml(metric.key)}"><span class="metric-label">${escapeHtml(metric.label)}</span><strong aria-label="${escapeHtml(metric.label + ': ' + value)}">${value}</strong><span class="metric-icon">${icon(metric.icon)}</span>${note ? note.length > 32 ? `<details class="metric-note"><summary>About this figure</summary><span>${escapeHtml(note)}</span></details>` : `<span class="metric-note">${escapeHtml(note)}</span>` : ''}</div>`;
 }
 export function adminShell(path: string, user?: AuthUser, overview?: Overview, preview = false, demo?: DemoData, query = new URLSearchParams(), contentOverride?: string, reminders?: Paginated<TaskReminder>, pageSummary?: AdminPageSummary, headerCollapsed = false): string {
   const org = presentRecordName(user?.organization.name ?? 'Your organization');
@@ -92,7 +93,6 @@ export function adminShell(path: string, user?: AuthUser, overview?: Overview, p
         <nav class="admin-top-nav" aria-label="Workspace navigation">${primaryNavigation.map(item => topLink(item.path,item.name)).join('')}</nav>
         <div class="admin-header-actions">
           ${preview ? `<span class="header-icon-button">${icon('search')}</span><span class="header-icon-button">${icon('bell')}</span><span class="profile-avatar">JD</span>` : `
-          <button type="button" class="ask-header-entry" data-ask-ootla aria-label="Ask Ootla" aria-haspopup="dialog" aria-expanded="false" aria-controls="ask-ootla-dialog" title="Ask Ootla">${icon('sparkles')}<span>Ask Ootla</span></button>
           <button type="button" class="header-icon-button" data-action="lead-search" aria-label="Search leads" aria-expanded="false" aria-controls="lead-search-panel">${icon('search')}</button>
           <button type="button" class="header-icon-button" data-action="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="notifications-panel">${icon('bell')}</button>
           <button type="button" class="header-icon-button header-summary-toggle" data-action="header-summary" aria-label="${collapsed ? 'Expand page summary' : 'Collapse page summary'}" aria-expanded="${!collapsed}" aria-controls="admin-header-summary" title="${collapsed ? 'Expand page summary' : 'Collapse page summary'}">${icon('chevron-down')}</button>

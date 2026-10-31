@@ -22,6 +22,7 @@ const network=installLocalFixtureNetworkGuard(),originalSimulation=SimulatedAiAd
 let phase='owned customer fixture',groups=0,simulationCalls=0;
 const pass=(text:string)=>{groups++;console.log('PASS '+text);};
 SimulatedAiAdapter.prototype.infer=async()=>{simulationCalls++;throw Error('Production must never invoke scripted preview inference.');};
+const nativeOnly=(r:AiResponse)=>{assert.equal(r.mode,'not_configured');assert(r.response.startsWith('Record-based answer (no language model).'));assert(!r.actions.length);assert(r.trace.tools.some(t=>t.name==='model_inference'&&t.status==='skipped'));assert.equal(r.trace.usage.costMicros,0);};
 const businessFailure=(r:AiResponse)=>{assert.notEqual(r.mode,'simulated');assert(['handoff','failed','refused'].includes(r.executionStatus));assert(!r.actions.some(a=>a.status==='completed'));assert(!r.response.includes('Simulated AI:'));assert(!r.response.includes('payment was paid'));assert(!r.response.includes('application approved'));};
 try{
  await withCustomerRuntimeFixture(async f=>{
@@ -31,7 +32,7 @@ try{
   const digest=createHmac('sha256',f.config.sessionSecret).update(cookie.split('=')[1]!).digest('hex');
   const countTasks=async()=>Number((await f.database.query('SELECT count(*) AS n FROM tasks WHERE organization_id=$1',[s.organizationId])).rows[0].n);
   const initialTasks=await countTasks();
-  const lead=(await f.database.query("INSERT INTO leads(organization_id,property_id,display_name,email,status,intent,pipeline_stage,source,notes) VALUES($1,$2,'Synthetic AI prospect','ai-prospect@example.test','new','leasing','new_inquiry','website','Staff-private fixture note') RETURNING id,contact_id",[s.organizationId,s.propertyId])).rows[0];
+  const leadCreated=await send('/api/leads',cookie,'POST',{propertyId:s.propertyId,newContact:{displayName:'Synthetic AI prospect',email:'ai-prospect@example.test',phone:''},source:'website',notes:'Staff-private fixture note'});assert.equal(leadCreated.status,201);const leadRecord=(await leadCreated.json() as any).lead,lead={id:leadRecord.id,contact_id:leadRecord.contactId};
   if(askOnly){phase='production Ask draft inference and handoff';await checkProductionAskDrafts(f,actor,digest,lead.id);pass('Ask draft disabled/missing-key/failure never uses a generic preview reply; configured inference runs once, unsent review and native summaries preserve truth without creating tasks');return;}
   const native=await send('/api/properties/'+s.propertyId,cookie);assert.equal(native.status,200);
   pass('fresh production-mode customer role authenticates normally and reads its persistent native CRM while model inference is disabled');
@@ -41,10 +42,10 @@ try{
   const disabled=new AiOrchestrationService(f.database,f.config,never);
   const knowledge=await disabled.createKnowledge(actor,digest,{requestKey:randomUUID(),propertyId:s.propertyId,title:'Approved office hours',body:'The office opens at 09:00 and closes at 17:00.',status:'approved',publicEnabled:false});
   const input=()=>({requestKey:randomUUID(),message:'What are the office hours?',propertyId:s.propertyId});
-  const unavailable=await disabled.request(actor,digest,input());businessFailure(unavailable);assert.equal(unavailable.mode,'not_configured');assert.equal(disabledCalls,0);assert(!unavailable.response.includes('09:00'));assert.equal(await countTasks(),initialTasks);
+  const unavailable=await disabled.request(actor,digest,input());nativeOnly(unavailable);assert.equal(unavailable.mode,'not_configured');assert.equal(disabledCalls,0);assert(unavailable.sources.some(source=>source.id==='knowledge:'+knowledge.knowledge.id&&!source.simulated));assert.equal(await countTasks(),initialTasks);
   const incomplete={...f.config,ai:{...f.config.ai,provider:'openai' as const,model:'synthetic-controlled-model',apiKey:''}};
-  const noKey=await new AiOrchestrationService(f.database,incomplete,never).request(actor,digest,input());businessFailure(noKey);assert.equal(noKey.mode,'not_configured');assert.equal(disabledCalls,0);
-  pass('disabled or missing-key production AI returns an honest handoff without invoking an adapter, using scripted property answers or creating tasks');
+  const noKey=await new AiOrchestrationService(f.database,incomplete,never).request(actor,digest,input());nativeOnly(noKey);assert.equal(noKey.mode,'not_configured');assert.equal(disabledCalls,0);
+  pass('disabled or missing-key production AI uses explicitly labeled authorized native facts without model calls, fabricated answers or business actions');
 
   const live={...f.config,ai:{...f.config.ai,provider:'openai' as const,apiKey:'synthetic-code-only-provider-key',model:'synthetic-controlled-model',timeoutMs:100,maxRequestsPerMinute:1000,dailyTokenBudget:1000000,dailyCostBudgetMicros:1000000,inputCostMicrosPerMillion:1000,outputCostMicrosPerMillion:1000}};
   phase='provider failures and refusal';
@@ -62,14 +63,14 @@ try{
 
   phase='configured grounded response and retry';let successCalls=0;
   const grounded:AiAdapter={async infer(i){successCalls++;return{result:{response:'Use the approved saved office hours.',internalSummary:'Bounded property answer',sourceIds:i.sources.filter(v=>v.kind==='knowledge').map(v=>v.id),proposedActions:[],handoffReason:null},usage:{inputTokens:100,outputTokens:100}};}};
-  const service=new AiOrchestrationService(f.database,live,grounded),stable=input(),answer=await service.request(actor,digest,stable);assert.equal(answer.mode,'live');assert.equal(answer.executionStatus,'completed');assert(answer.response.includes('09:00'));assert(answer.sources.some(source=>source.id==='knowledge:'+knowledge.knowledge.id&&!source.simulated));assert.equal(await countTasks(),initialTasks);
+  const service=new AiOrchestrationService(f.database,live,grounded),stable=input(),answer=await service.request(actor,digest,stable);assert.equal(answer.mode,'live');assert.equal(answer.executionStatus,'completed');assert.equal(answer.response,'Use the approved saved office hours.');assert(answer.sources.some(source=>source.id==='knowledge:'+knowledge.knowledge.id&&!source.simulated));assert.equal(await countTasks(),initialTasks);
   assert.equal((await service.request(actor,digest,stable)).id,answer.id);assert.equal(successCalls,1);
   await assert.rejects(()=>service.request(actor,digest,{...stable,message:'A different question'}),(issue:unknown)=>issue instanceof ApiError&&issue.status===409);
   assert.equal((await f.database.query('SELECT mode,result FROM ai_requests WHERE id=$1',[answer.id])).rows[0].mode,'live');
   pass('a configured code-only live adapter produces grounded current-source facts and one durable result on stable retry, with conflicting retries refused');
 
   phase='actual HTTP confirmed native task';let taskCalls=0;
-  const taskAdapter:AiAdapter={async infer(i:AiProviderInput){taskCalls++;assert(i.allowedActions.includes('create_staff_task'));const task=i.context.requestedTask;assert(task);return{result:{response:'A task is proposed for server verification.',internalSummary:'Explicit follow-up proposal',sourceIds:[],proposedActions:[{name:'create_staff_task',arguments:task}],handoffReason:null},usage:{inputTokens:100,outputTokens:100}};}};
+  const taskAdapter:AiAdapter={async infer(i:AiProviderInput){taskCalls++;assert(i.allowedActions.includes('create_staff_task'));const task=i.context.requestedTask;assert(task);return{result:{response:'A task is proposed for server verification.',internalSummary:'Explicit follow-up proposal',sourceIds:i.sources.map(source=>source.id),proposedActions:[{name:'create_staff_task',arguments:task}],handoffReason:null},usage:{inputTokens:100,outputTokens:100}};}};
   const app=express(),sessions=new SessionService(f.database,live);app.use(express.json({limit:'16kb'}));
   app.use('/api/ai',createAiRouter(live,f.database,async(req,res,next)=>{const user=await sessions.currentUser(req);if(!user)throw new ApiError(401,'AUTH_REQUIRED','Sign in.');res.locals.user=user;next();},taskAdapter));
   app.use(((issue:unknown,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{res.status(issue instanceof ApiError?issue.status:500).json({error:{code:'CONTROLLED_TEST_ERROR',message:'The isolated request could not be completed.'}});}) as express.ErrorRequestHandler);
@@ -92,7 +93,7 @@ try{
   try{await assert.rejects(()=>service.request(actor,digest,input()),(issue:unknown)=>issue instanceof ApiError&&[403,404].includes(issue.status));}finally{await f.database.query("UPDATE organization_memberships SET role='organization_admin' WHERE id=$1",[s.staffMembershipId]);}
   assert.equal(successCalls,callsBefore);assert.equal(simulationCalls,0);
   pass('cross-organization properties and current-role/property revocation are denied before inference; no scripted adapter was invoked anywhere in the customer runtime');
-  phase='production Ask draft inference and handoff';await checkProductionAskDrafts(f,actor,digest,lead.id);pass('Ask draft requires configured inference or an honest handoff; native summaries remain authoritative and no generic preview reply is used');
+  phase='production Ask draft inference and handoff';await checkProductionAskDrafts(f,actor,digest,lead.id);pass('Ask draft uses configured inference or explicitly labeled native facts/help; no fabricated preview reply or unconfirmed action is used');
  },{onLoopbackOrigin:network.allow});
  await writeFile(path.resolve(askOnly?'.local/production-ai-ask-observations.json':'.local/production-ai-observations.json'),JSON.stringify({verifiedAt:new Date().toISOString(),passed:true,groups,productionMode:true,restrictedFreshRole:true,normalAuthentication:true,simulatedAdapterCalls:simulationCalls,realProviderCalls:0,explicitNativeTasksVerified:askOnly?0:1,stableRetriesVerified:true,scopeDenialsVerified:!askOnly,ownedDatabaseAndRoleCleaned:true,retainedDataChanged:false,limitations:['Model success/failure/refusal/timeout used controlled code-only adapters, not a live provider credential or paid request.','The ephemeral API uses HTTP only inside a guarded loopback test; it does not prove remote HTTPS or deployment.']},null,2)+'\n');
  console.log('Production AI verification passed ('+groups+' focused groups).');

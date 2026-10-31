@@ -155,3 +155,19 @@ Review those tabs on desktop/mobile and use browser Back, then open a lead to co
 Open /admin/leads for one search/Filters and three Lead tabs. AI suggestions proposes record-aware next steps and asks for confirmation; Book a viewing continues into the actual Calendar booking form. Edit details keeps household/preferences/milestones out of the main timeline. Open /admin/tasks?view=team for search, compact filters, descriptions and row controls; open a task for its saved description/history and suggested actions. Complete/Cancel/Reopen and reassignment prompt before saving. Suggested completion requires a comment; manual completion accepts an optional comment. Email actions create private drafts for review and never send.
 
 Known fixture display names/history labels use ordinary business wording. Raw source provenance, account login emails, private file contents and protected diagnostics remain unchanged; these are not evidence of live external services. Optional deliberate task-description preparation is npm run demo:polish-tasks; it changes only exact unchanged shipped descriptions and is not a startup hook. Normal npm run dev continues using the isolated PostgreSQL demo. No new migration is needed.
+
+## Current pipeline and real summary counts - 2026-10-29
+
+The user's latest correction replaces the earlier forced-zero pilot presentation. The retained demo now uses PREVIEW_ZERO_SUMMARY_CARDS=false; page cards read the actual authorized records. Keep genuine empty statuses at zero and preserve the different documented Overview/Reports definitions. No customer/provider success is invented to fill a card.
+
+The existing showcase is supplemented by demo.current-pipeline.v1: Nina Mensah, Oliver Grant and Camila Reed, each with a canonical contact, property interest, stated preferences, assigned owner and descriptive follow-up task. Oliver and Camila have actual future internal viewing bookings created through the existing Calendar availability/conflict/timeline path. They reuse Cedar House and Grove Lofts. Inspect them in /admin/leads, /admin/tasks and /admin/calendar. The saved preparation receipt contains their exact canonical links.
+
+From the isolated ootlademo checkout, npm run demo:current-pipeline deliberately prepares these records once. It is not run on startup, does not reset or redate existing work, and returns zero changes after successful preparation even if staff later edit or complete its records. First-preparation dates use the actual clock; this retained preparation booked both viewings on 2026-10-30. Do not repeatedly move old appointments to make a demo look current. Existing base/renewal/standalone-import examples remain separate and unchanged. Simulation/isolation guards prevent this command from acting on a production or mixed customer database; no email, SMS, phone call or Google invitation is sent.
+
+## Contextual lead-task follow-ups - 2026-10-30
+
+Amara Okafor, Lucas Bennett and Elena Rivera are now real leasing agents in this isolated organization's normal assignment fields. Open Maya Chen's Tasks tab and Open task for contextual email/Calendar actions, editable saved drafts, private comments and confirmed completion. Email processing is confined to the existing local preview transport; it makes no external delivery claim. See [Lead follow-ups](ootla-lead-followups.md) for the exact route, preparation command and verification.
+
+## Lead editor and Calendar handoff - 2026-10-30
+
+All Leads defaults to10rows, with adjustable Rows per page. Edit details now shows preference-based property matches and stops at staff notes. Schedule viewing opens the real calendar grid for that lead; select a date, eligible staff/time and Yes/No for email. Current email is isolated preview processing only. See [Lead editing and Calendar](ootla-lead-editing-calendar.md). The preceding task follow-up and three-agent feature remains available.

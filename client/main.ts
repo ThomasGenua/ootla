@@ -39,6 +39,7 @@ import { settingsNavigation, reportsNavigation } from './pages/workspace-navigat
 import './applicant.css';
 import './ai-assistant.css';
 import './conversations.css';
+import './ask-ootla.css';
 import './automations.css';
 import './google-analytics.css';
 import './portfolio-reports.css';
@@ -132,19 +133,27 @@ const titles: Record<string, string> = {
   '/admin/profile': 'My profile \u2014 Ootla',
   '/admin/settings': 'Settings \u2014 Ootla',
   '/admin/imports': 'Customer-data import \u2014 Ootla',
-  '/admin/contacts': 'Contacts & households \u2014 Ootla',
+  '/admin/contacts': 'Contacts \u2014 Ootla',
   '/admin': 'Overview — Ootla', '/admin/leads': 'Leads — Ootla', '/admin/properties': 'Properties — Ootla', '/admin/applications': 'Applications — Ootla', '/admin/calendar': 'Calendar — Ootla', '/admin/tasks': 'Tasks — Ootla', '/admin/analytics': 'Analytics — Ootla', '/admin/ai': 'AI assistant — Ootla', '/admin/integrations': 'Integrations — Ootla'
 };
 let currentController = new AbortController();
 let routeGeneration = 0;
 let currentBindingsController = new AbortController();
 let currentAssistantController = new AbortController();
-let assistantContextKey = '';
 let assistantHandle:AskOotlaController|undefined;
 let assistantIdentity = '';
 let renderedUrl = location.href;
 let submittedForm:HTMLFormElement|null = null;
 type InPlaceRefresh={previousUrl:string;committedForm:HTMLFormElement|null};
+function disposeStaffAssistant():void{
+ currentAssistantController.abort();assistantHandle=undefined;assistantIdentity='';
+}
+function updateStaffAssistant(user:AuthUser,context:AskContext,label?:string):void{
+ const identity=user.id+':'+user.organization.id;
+ if(assistantHandle&&assistantIdentity===identity&&document.querySelector('#ask-ootla-dialog')){assistantHandle.updateContext(context,label);return;}
+ disposeStaffAssistant();currentAssistantController=new AbortController();assistantIdentity=identity;
+ assistantHandle=initializeAskOotla(currentAssistantController.signal,context,user,label);
+}
 function sameWorkspace(url:URL,previous=new URL(location.href)):boolean{
  if(url.origin!==previous.origin||url.pathname!==previous.pathname||!document.querySelector('#main-content'))return false;
  if(!adminRoutes.has(url.pathname)&&!['/resident','/applicant'].includes(url.pathname))return false;
@@ -172,7 +181,8 @@ export function navigate(path: string, replace = false, focusSelector?: string):
 async function render(moveFocus = false, focusSelector?: string, retainedScroll?:number,refresh?:InPlaceRefresh): Promise<void> {
   reportNavigation = null;
   calendarNavigation = null;
-  if(!refresh){currentBindingsController.abort();currentAssistantController.abort();assistantContextKey='';assistantHandle=undefined;assistantIdentity='';}
+  if(!refresh)currentBindingsController.abort();
+  if(!adminRoutes.has(location.pathname.replace(/\/$/,'')))disposeStaffAssistant();
   currentController.abort();
   currentController = new AbortController();
   const { signal } = currentController;
@@ -260,6 +270,7 @@ async function render(moveFocus = false, focusSelector?: string, retainedScroll?
     if(!refresh) writePage(loading());
     try {
       const { user } = await api<{ user: AuthUser }>('/api/auth/me', { signal });
+      if(assistantIdentity&&assistantIdentity!==user.id+':'+user.organization.id)disposeStaffAssistant();
       const account = await api<AccountSnapshot>('/api/account', { signal });
       if (signal.aborted || generation !== routeGeneration) return;
       document.body.dataset.accountMotion = account.preferences.motion;
@@ -314,28 +325,29 @@ async function render(moveFocus = false, focusSelector?: string, retainedScroll?
       if (maintenance) initializeMaintenanceWorkspace(bindingSignal,navigate,maintenance,summary=>updateSummaryFromShell(adminShell(path,user,overview,false,undefined,new URLSearchParams(location.search),'',reminders,summary,readHeaderCollapsed(user))));
       if (renewals) initializeRenewalWorkspace(bindingSignal,navigate,renewals,summary=>updateSummaryFromShell(adminShell(path,user,overview,false,undefined,new URLSearchParams(location.search),'',reminders,summary,readHeaderCollapsed(user))));
       if (residentAdministration) initializeResidentAdministration(bindingSignal,navigate,residentAdministration);
-      if (portfolio) reportNavigation = createPortfolioNavigation(bindingSignal,navigate,portfolio,user,overview);
+      if (portfolio) reportNavigation = createPortfolioNavigation(bindingSignal,navigate,portfolio,user,overview,(context,label)=>updateStaffAssistant(user,context,label));
       if (analytics) initializeGoogleAnalyticsWorkspace(bindingSignal,navigate);
       if (automations) initializeAutomationWorkspace(bindingSignal,navigate,automations);
-      if (conversations) initializeConversationWorkspace(bindingSignal,navigate);
+      if (conversations) initializeConversationWorkspace(bindingSignal,navigate,conversations);
       const askContext:AskContext={page:path};
       if(!portfolio&&query.get('propertyId'))askContext.propertyId=query.get('propertyId')!;
       if(foundation?.kind==='property')askContext.propertyId=foundation.detail.property.id;
-      if(leads?.kind==='detail'){askContext.propertyId=leads.detail.lead.propertyId;askContext.leadId=leads.detail.lead.id;}
-      if(applications?.kind==='detail'){askContext.propertyId=applications.detail.application.property.id;askContext.applicationId=applications.detail.application.id;if(applications.detail.application.leadId)askContext.leadId=applications.detail.application.leadId;}
-      if(calendar?.kind==='detail'){askContext.propertyId=calendar.detail.viewing.property.id;askContext.leadId=calendar.detail.viewing.lead.id;}
-      if(tasks?.kind==='detail'){askContext.propertyId=tasks.detail.task.propertyId;if(tasks.detail.task.leadId)askContext.leadId=tasks.detail.task.leadId;if(tasks.detail.task.applicationId)askContext.applicationId=tasks.detail.task.applicationId;}
+      if(foundation?.kind==='contact')askContext.contactId=foundation.detail.contact.id;
+      if(leads?.kind==='detail'){askContext.propertyId=leads.detail.lead.propertyId;askContext.leadId=leads.detail.lead.id;askContext.contactId=leads.detail.lead.contactId;if(leads.detail.lead.unitId)askContext.unitId=leads.detail.lead.unitId;}
+      if(applications?.kind==='detail'){askContext.propertyId=applications.detail.application.property.id;askContext.applicationId=applications.detail.application.id;if(applications.detail.application.unit)askContext.unitId=applications.detail.application.unit.id;if(applications.detail.application.leadId)askContext.leadId=applications.detail.application.leadId;}
+      if(calendar?.kind==='detail'){askContext.propertyId=calendar.detail.viewing.property.id;askContext.viewingId=calendar.detail.viewing.id;askContext.leadId=calendar.detail.viewing.lead.id;if(calendar.detail.viewing.unit)askContext.unitId=calendar.detail.viewing.unit.id;}
+      if(tasks?.kind==='detail'){askContext.propertyId=tasks.detail.task.propertyId;askContext.taskId=tasks.detail.task.id;if(tasks.detail.task.contactId)askContext.contactId=tasks.detail.task.contactId;if(tasks.detail.task.leadId)askContext.leadId=tasks.detail.task.leadId;if(tasks.detail.task.applicationId)askContext.applicationId=tasks.detail.task.applicationId;}
       if(ai?.kind==='ready'&&ai.options.selectedProperty){askContext.propertyId=ai.options.selectedProperty.id;if(query.get('leadId'))askContext.leadId=query.get('leadId')!;if(query.get('applicationId'))askContext.applicationId=query.get('applicationId')!;}
       if(conversations?.kind==='ready'&&conversations.detail){askContext.propertyId=conversations.detail.conversation.property.id;askContext.leadId=conversations.detail.conversation.leadId;}
       if(automations?.kind==='ready'&&automations.detail?.rule.propertyId)askContext.propertyId=automations.detail.rule.propertyId;
       if(analytics?.kind==='ready'&&analytics.status.selectedProperty?.crmPropertyId)askContext.propertyId=analytics.status.selectedProperty.crmPropertyId;
       if(portfolio?.kind==='ready'&&portfolio.report){const q=portfolio.report.query;askContext.report={from:q.from,to:q.to,attention:q.attention,q:q.q,...(q.groupId?{groupId:q.groupId}:{}),...(q.region?{region:q.region}:{}),...(q.agentMembershipId?{agentMembershipId:q.agentMembershipId}:{}),...(q.teamId?{teamId:q.teamId}:{})};if(q.propertyId)askContext.propertyId=q.propertyId;}
-      if(maintenance?.kind==='ready'&&maintenance.detail){askContext.propertyId=maintenance.detail.request.property.id;askContext.maintenanceRequestId=maintenance.detail.request.id;}
+      if(maintenance?.kind==='ready'&&maintenance.detail){askContext.propertyId=maintenance.detail.request.property.id;askContext.maintenanceRequestId=maintenance.detail.request.id;if(maintenance.detail.request.unit)askContext.unitId=maintenance.detail.request.unit.id;}
       if(voice?.kind==='ready'&&voice.detail){askContext.propertyId=voice.detail.session.property.id;askContext.leadId=voice.detail.session.leadId;}
-      if (!portfolio && !calendar) {const key=JSON.stringify(askContext),identity=user.id+':'+user.organization.id;if(assistantHandle&&assistantIdentity===identity&&document.querySelector('#ask-ootla-dialog')){assistantHandle.updateContext(askContext);assistantContextKey=key;}else{currentAssistantController.abort();currentAssistantController=new AbortController();assistantIdentity=identity;assistantContextKey=key;assistantHandle=initializeAskOotla(currentAssistantController.signal,askContext,user);}}
-      if (ai) initializeAiAssistant(bindingSignal,navigate);
+      updateStaffAssistant(user,askContext);
+      if (ai) initializeAiAssistant(bindingSignal,navigate,ai);
       if (applications) initializeApplicationsWorkspace(bindingSignal,navigate,user);
-      if (calendar) calendarNavigation = createCalendarNavigation(bindingSignal,navigate,calendar,user,overview);
+      if (calendar) calendarNavigation = createCalendarNavigation(bindingSignal,navigate,calendar,user,overview,(context,label)=>updateStaffAssistant(user,context,label));
       if (accountPage) initializeAccountWorkspace(bindingSignal, navigate);
       if (connectors) initializeConnectorWorkspace(bindingSignal, navigate);
       if (imports) initializeImportsWorkspace(bindingSignal, navigate);

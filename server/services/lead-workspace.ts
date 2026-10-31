@@ -199,13 +199,23 @@ export class LeadWorkspaces {
         return { ...page(items, total, p), notice, criteriaUsed, verifiedWithinDays: 7, requestedMoveInOn: prefs.moveInOn };
     }
     async timeline(u: AuthUser, id: string, p: Page): Promise<Paginated<TimelineEvent>> {
-        await this.assertLeadAccess(u, id);
+        const lead=await this.assertLeadAccess(u, id);
         // During additive rollout, established lead reads remain usable before migration 013.
         const portalReady = (await this.database.query<{ ready: boolean }>("SELECT to_regclass('public.application_portal_events') IS NOT NULL AS ready")).rows[0]?.ready;
         const sql = timelineSql + (portalReady ? portalTimelineSql : '');
         const total = Number((await this.database.query(`WITH entries AS (${sql}) SELECT count(*) AS total FROM entries`, [u.organization.id, id])).rows[0]?.total ?? 0);
         const rows = (await this.database.query(`WITH entries AS (${sql}) SELECT * FROM entries ORDER BY occurred_at DESC,id ASC LIMIT $3 OFFSET $4`, [u.organization.id, id, p.pageSize, (p.page - 1) * p.pageSize])).rows;
-        return page(rows.map(eventDto), total, p);
+        return page(rows.map(row=>{
+          const event=eventDto(row);
+          if(event.kind==='lead_updated'&&event.summary==='Saved lead record change.'){
+            const fields=Array.isArray(event.metadata.fields)?event.metadata.fields:[];
+            event.summary=fields.includes('preferences')&&fields.includes('nextAction')?'Saved '+lead.display_name+'’s preferences and the next follow-up step.':'Updated '+lead.display_name+'’s enquiry details.';
+          }
+          if(event.kind==='task_updated'&&Array.isArray(event.metadata.fields)&&event.metadata.fields.includes('details')&&/^Prepare .+ viewing$/.test(event.summary))event.summary='Clarified the follow-up plan to '+event.summary.replace(/^Prepare /,'prepare ')+'.';
+          if(event.id.startsWith('tour-created:')&&event.simulated){event.title='Viewing request recorded';event.summary='Viewing requested. Confirm an available time and staff member before booking.';}
+          if(event.id.startsWith('activity:')){event.title='Customer enquiry update';event.summary=event.summary.replace(/^Simulated:\s*/,'').replace('No calendar invitation was sent.','A booking has not yet been confirmed.');}
+          return event;
+        }), total, p);
     }
     async detail(u: AuthUser, id: string, i: z.infer<typeof workspaceQuerySchema>): Promise<LeadWorkspace> {
         const l = await this.assertLeadAccess(u, id), leads = new Leads(this.database), foundation = new PropertyFoundation(this.database);

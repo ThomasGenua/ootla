@@ -22,6 +22,7 @@ const root=path.resolve(import.meta.dirname,'../..'),normalize=(value:string)=>p
 export async function withCustomerRuntimeFixture<T>(run:(fixture:CustomerRuntimeFixture)=>Promise<T>,options:{createOrganization?:boolean;onLoopbackOrigin?:(origin:string)=>void}={}):Promise<T>{
  const source=loadConfig(),sourceUrl=new URL(source.databaseUrl);
  assert(source.demoMode&&!source.production&&sourceUrl.hostname==='127.0.0.1'&&sourceUrl.port==='55439'&&sourceUrl.username==='ootla'&&!sourceUrl.search&&!sourceUrl.hash,'Customer checks require the project-owned loopback source configuration.');
+ const git=await promisify(execFile)('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:root,windowsHide:true});const clusterRoot=path.resolve(git.stdout.trim(),'..');
  const suffix=randomUUID().replaceAll('-',''),name='ootla_customer_check_'+suffix,roleName='ootla_check_'+suffix,rolePassword=randomBytes(36).toString('hex');
  assert(/^ootla_customer_check_[a-f0-9]{32}$/.test(name)&&name.length<=63);assert(/^ootla_check_[a-f0-9]{32}$/.test(roleName));
  const ownerUrl=new URL(sourceUrl);ownerUrl.username='ootla_cluster_owner';ownerUrl.pathname='/postgres';
@@ -31,7 +32,7 @@ export async function withCustomerRuntimeFixture<T>(run:(fixture:CustomerRuntime
  let connected=false,ownedRole=false,ownedDatabase=false,roleOid=0;
  try{
   await owner.connect();connected=true;
-  assert.equal(normalize((await owner.query('SHOW data_directory')).rows[0].data_directory),normalize(path.join(root,'.local/postgres/data')),'Refusing an unrelated PostgreSQL cluster.');
+  assert.equal(normalize((await owner.query('SHOW data_directory')).rows[0].data_directory),normalize(path.join(clusterRoot,'.local/postgres/data')),'Refusing an unrelated PostgreSQL cluster.');
   assert.equal((await owner.query('SELECT 1 FROM pg_roles WHERE rolname=$1',[roleName])).rowCount,0);assert.equal((await owner.query('SELECT 1 FROM pg_database WHERE datname=$1',[name])).rowCount,0);
   const quoted=(await owner.query('SELECT quote_ident($1) AS role,quote_literal($2) AS password,quote_ident($3) AS database',[roleName,rolePassword,name])).rows[0];
   await owner.query('CREATE ROLE '+quoted.role+' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '+quoted.password);ownedRole=true;
@@ -65,7 +66,7 @@ export async function withCustomerRuntimeFixture<T>(run:(fixture:CustomerRuntime
  }finally{
   for(const close of servers.reverse())await close();await database.close();
   if(connected&&(ownedDatabase||ownedRole)){
-   assert.equal(normalize((await owner.query('SHOW data_directory')).rows[0].data_directory),normalize(path.join(root,'.local/postgres/data')));
+   assert.equal(normalize((await owner.query('SHOW data_directory')).rows[0].data_directory),normalize(path.join(clusterRoot,'.local/postgres/data')));
    const actual=(await owner.query('SELECT oid,rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname=$1',[roleName])).rows[0];assert(actual&&Number(actual.oid)===roleOid&&!actual.rolsuper&&!actual.rolcreatedb&&!actual.rolcreaterole,'Refusing cleanup after owned role identity changed.');
    if(ownedDatabase){assert(/^ootla_customer_check_[a-f0-9]{32}$/.test(name));assert.equal(Number((await owner.query('SELECT datdba FROM pg_database WHERE datname=$1',[name])).rows[0]?.datdba),roleOid);await owner.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()',[name]);await owner.query('DROP DATABASE '+(await owner.query('SELECT quote_ident($1) AS name',[name])).rows[0].name);}
    if(ownedRole){assert(/^ootla_check_[a-f0-9]{32}$/.test(roleName));await owner.query('DROP ROLE '+(await owner.query('SELECT quote_ident($1) AS name',[roleName])).rows[0].name);}

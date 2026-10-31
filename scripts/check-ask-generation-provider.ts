@@ -1,0 +1,102 @@
+import '../server/config/environment.js';
+import assert from 'node:assert/strict';
+import {createHmac,randomUUID} from 'node:crypto';
+import {writeFile} from 'node:fs/promises';
+import type {AuthUser} from '../shared/contracts.js';
+import type {AskContext,AskMessage,AskThreadDetail} from '../shared/conversation-contracts.js';
+import {askMessageSchema} from '../shared/conversation-contracts.js';
+import {leadCreateSchema} from '../shared/lead-contracts.js';
+import {taskCreateSchema} from '../shared/task-contracts.js';
+import type {AiAdapter,AiProviderInput} from '../server/ai/adapter.js';
+import {createOpenAiAdapter} from '../server/ai/openai.js';
+import {SimulatedAiAdapter} from '../server/ai/simulated.js';
+import {AskOotlaService} from '../server/services/ask-ootla.js';
+import {AiOrchestrationService} from '../server/services/ai-orchestration.js';
+import {ApplicantPortal} from '../server/services/applicant-portal.js';
+import {Leads} from '../server/services/leads.js';
+import {Tasks} from '../server/services/tasks.js';
+import {localDate,localDayBounds} from '../server/services/calendar-time.js';
+import {ApiError} from '../server/http/errors.js';
+import {loadConfig} from '../server/config/env.js';
+import express from 'express';
+import type {Server} from 'node:http';
+import type {AddressInfo} from 'node:net';
+import {SessionService} from '../server/services/sessions.js';
+import {createAskRouter} from '../server/routes/conversations.js';
+import {withAskGenerationFixture} from './lib/ask-generation-fixture.js';
+import {installLocalFixtureNetworkGuard} from './lib/local-network-guard.js';
+
+const network=installLocalFixtureNetworkGuard(),originalSimulated=SimulatedAiAdapter.prototype.infer;
+const groups:string[]=[],captured:AiProviderInput[]=[],transportBodies:Record<string,any>[]=[];let askServer:Server|undefined;let simulationCalls=0,phase='owned production-eligible fixture';
+let scenario:'success'|'unknown_source'|'unrequested_action'|'false_completion'|'malformed'|'failure'|'timeout'='success',reply='';
+const pass=(label:string)=>{groups.push(label);console.log('PASS '+label);};
+SimulatedAiAdapter.prototype.infer=async()=>{simulationCalls++;throw new Error('Production-eligible routing must not call simulation.');};
+try {
+ assert.throws(()=>loadConfig({NODE_ENV:'test',APP_URL:'http://127.0.0.1:5199',SESSION_SECRET:'synthetic-check-secret-more-than-thirty-two-characters',DEMO_MODE:'true',AI_PROVIDER:'openai',AI_MODEL:'controlled-model',AI_API_KEY:'synthetic-only',AI_INPUT_COST_MICROS_PER_MILLION:'1000',AI_OUTPUT_COST_MICROS_PER_MILLION:'1000',AI_DAILY_COST_BUDGET_MICROS:'1000000'}),/Live AI is forbidden in DEMO_MODE/);
+ await withAskGenerationFixture(async f=>{
+  assert(f.setup);const setup=f.setup,{base}=await f.start();
+  const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{Origin:f.config.appUrl,'Content-Type':'application/json'},body:JSON.stringify({email:setup.staffEmail,password:setup.staffPassword})});assert.equal(login.status,200);
+  const cookie=(login.headers.get('set-cookie')??'').split(';')[0];assert(cookie.startsWith('ootla-customer.sid='));const actor=(await login.json() as {user:AuthUser}).user,digest=createHmac('sha256',f.config.sessionSecret).update(cookie.split('=')[1]!).digest('hex');
+  const live={...f.config,ai:{...f.config.ai,provider:'openai' as const,apiKey:'synthetic-code-only-test-key',model:'synthetic-controlled-model',timeoutMs:150,maxRequestsPerMinute:1000,maxTokensPerRequest:16000,dailyTokenBudget:2000000,dailyCostBudgetMicros:1000000,inputCostMicrosPerMillion:1000,outputCostMicrosPerMillion:1000}};
+  assert(!live.demoMode&&live.production);assert.match(f.name,/^ootla_customer_check_[a-f0-9]{32}$/);
+  const approved=await new AiOrchestrationService(f.database,live).createKnowledge(actor,digest,{requestKey:randomUUID(),propertyId:setup.propertyId,title:'Approved office hours',body:'The office is open from 09:00 to 17:00.',status:'approved',publicEnabled:false});assert(approved.knowledge.id);
+  const lead=await new Leads(f.database).create(actor,leadCreateSchema.parse({propertyId:setup.propertyId,unitId:setup.unitId,newContact:{displayName:'Owned Generation Prospect',email:'generation@example.test',phone:''},ownerMembershipId:actor.membershipId,nextAction:'Review the stated move-in preference',preferences:{budgetMax:1700,bedrooms:2,locations:['Test city']}}));
+  const application=await new ApplicantPortal(f.database,live).staffCreate(actor,lead.id),zone='America/New_York',todayBounds=localDayBounds(localDate(new Date(),zone),zone),tasks=new Tasks(f.database);
+  const todayTask=await tasks.create(actor,taskCreateSchema.parse({propertyId:setup.propertyId,leadId:lead.id,title:'TODAY_AUTHORIZED_TASK_MARKER',details:'Review only the linked authorized record before contacting anyone.',dueAt:new Date(todayBounds.until.getTime()-1800000).toISOString(),ownerMembershipId:actor.membershipId,priority:'high'}));
+  const tomorrowTask=await tasks.create(actor,taskCreateSchema.parse({propertyId:setup.propertyId,leadId:lead.id,title:'TOMORROW_EXCLUDED_TASK_MARKER',dueAt:new Date(todayBounds.until.getTime()+1800000).toISOString(),ownerMembershipId:actor.membershipId}));
+  assert(todayTask.id&&tomorrowTask.id);
+  const transport=createOpenAiAdapter(live.ai,(async(url,init)=>{
+   assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(init?.method,'POST');const sent=JSON.parse(String(init?.body));transportBodies.push(sent);assert.equal(sent.model,live.ai.model);assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);
+   if(scenario==='failure')return new Response('{}',{status:503});
+   if(scenario==='timeout')return new Promise<Response>((_resolve,reject)=>init?.signal?.addEventListener('abort',()=>reject(new Error('Controlled timeout')),{once:true}));
+   const last=captured.at(-1)!;let result:unknown={response:reply,internalSummary:'Controlled injected provider synthesis',sourceIds:last.sources.map(source=>source.id),proposedActions:[],handoffReason:null};
+   if(scenario==='unknown_source')result={...(result as object),sourceIds:['foreign:unavailable-record']};
+   if(scenario==='unrequested_action')result={...(result as object),proposedActions:[{name:'create_staff_task',arguments:{title:'UNREQUESTED_PROVIDER_TASK',dueAt:new Date(Date.now()+86400000).toISOString(),priority:'normal'}}]};
+   if(scenario==='false_completion')result={...(result as object),response:'I have booked the viewing and sent the resident an email.'};
+   if(scenario==='malformed')result={response:'Missing required result fields'};
+   return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}],usage:{input_tokens:120,output_tokens:80}}),{status:200,headers:{'Content-Type':'application/json'}});
+  }) as typeof fetch);
+  const adapter:AiAdapter={async infer(input,limits){captured.push(structuredClone(input));return transport.infer(input,limits);}};
+  const service=new AskOotlaService(f.database,live,adapter),countTasks=async()=>Number((await f.database.query('SELECT count(*) AS count FROM tasks')).rows[0].count),initialTasks=await countTasks();
+  const app=express(),sessions=new SessionService(f.database,live);app.use(express.json());app.use('/api/ask',createAskRouter(live,f.database,async(req,res,next)=>{const user=await sessions.currentUser(req);if(!user)throw new ApiError(401,'AUTH_REQUIRED','Sign in.');res.locals.user=user;next();},adapter));app.use(((issue:unknown,_req:express.Request,res:express.Response,_next:express.NextFunction)=>res.status(issue instanceof ApiError?issue.status:500).json({error:{code:issue instanceof ApiError?issue.code:'OWNED_API_FAILURE'}}))as express.ErrorRequestHandler);askServer=await new Promise<Server>((resolve,reject)=>{const server=app.listen(0,'127.0.0.1',()=>resolve(server));server.once('error',reject);});const askBase='http://127.0.0.1:'+(askServer.address()as AddressInfo).port;network.allow(askBase);
+  const post=async(route:string,body:unknown,status=200):Promise<AskThreadDetail>=>{const response=await fetch(askBase+'/api/ask'+route,{method:'POST',headers:{Cookie:cookie,Origin:live.appUrl,'Content-Type':'application/json'},body:JSON.stringify(body)});assert.equal(response.status,status,route);return response.json()as Promise<AskThreadDetail>;};
+  const create=async(context:AskContext)=>post('/threads',{requestKey:randomUUID(),context},201);
+  const ask=async(context:AskContext,message:string,text:string)=>{reply=text;scenario='success';const thread=await create(context),key=randomUUID(),result=await post('/threads/'+thread.thread.id+'/messages',askMessageSchema.parse({requestKey:key,message,timeZone:zone}));const answer=result.messages.items.filter(item=>item.role==='assistant').at(-1);assert(answer);return{thread,result,answer,key};};
+  const assertLive=(answer:AskMessage,text:string)=>{assert.equal(answer.mode,'live',answer.body);assert.equal(answer.status,'completed',answer.body);assert.equal(answer.body,text);assert(!answer.action);assert(answer.sources.every(source=>!source.simulated));};
+  phase='provider synthesis of authorized native priorities';
+  const priorities=await ask({page:'/admin/tasks'},'What needs my attention today?','Start with the high-priority task linked below. Review its record before deciding the next action.');assertLive(priorities.answer,reply);assert(priorities.answer.sources.some(source=>source.id.includes(todayTask.id)));assert(!priorities.answer.sources.some(source=>source.id.includes(tomorrowTask.id)));assert(JSON.stringify(captured.at(-1)!.context).includes('TODAY_AUTHORIZED_TASK_MARKER'));assert(!JSON.stringify(captured.at(-1)!.context).includes('TOMORROW_EXCLUDED_TASK_MARKER'));assert.deepEqual(captured.at(-1)!.allowedActions,[]);
+  const ledger=(await f.database.query('SELECT property_id,mode,status FROM ai_requests WHERE request_key=$1',[priorities.key])).rows[0];assert(ledger&&ledger.property_id===null&&ledger.mode==='live'&&ledger.status==='completed');
+  pass('Organization-wide priorities use the real configured transport path, authorized viewer-local tasks and durable inference ledger without a fake property');
+  phase='lead and application records through inference';
+  const leadSummary=await ask({page:'/admin/leads',propertyId:setup.propertyId,leadId:lead.id},'Summarize this lead.','Review the prospect’s stated two-bedroom preference and follow up on the saved move-in question.');assertLive(leadSummary.answer,reply);assert(leadSummary.answer.sources.some(source=>source.id.includes(lead.id)));assert(JSON.stringify(captured.at(-1)!.context).includes(lead.name));
+  const checklist=await ask({page:'/admin/applications',propertyId:setup.propertyId,applicationId:application.application.id},'Which checklist items are missing?','Ask the applicant to complete the missing checklist items shown in the linked application. Staff review remains separate.');assertLive(checklist.answer,reply);assert(checklist.answer.sources.some(source=>source.kind==='application_checklist'));assert(JSON.stringify(captured.at(-1)!.context).includes('checklist'));
+  pass('Lead summary and actual application checklist retain permitted sources while saving the provider’s prose instead of replacing it with raw tool summaries');
+  phase='registered reporting capability through inference';
+  const report=await ask({page:'/admin/reports',propertyId:setup.propertyId},'Summarize the portfolio report.','Review the report’s linked figures and compare the current application work with the recorded follow-ups.');assertLive(report.answer,reply);assert(report.answer.sources.some(source=>source.kind==='report'));assert(JSON.stringify(captured.at(-1)!.context).match(/Period counts|report|leads created/i));
+  pass('Existing registered portfolio capability supplies its authorized facts to the same provider and validation path');
+  phase='provider history and stable request replay';
+  reply='Continue with the saved next action and review the linked lead before making changes.';const followKey=randomUUID(),follow=await service.message(actor,digest,leadSummary.thread.thread.id,askMessageSchema.parse({requestKey:followKey,message:'What should happen next?',timeZone:zone}));assertLive(follow.messages.items.filter(item=>item.role==='assistant').at(-1)!,reply);
+  const historyText=JSON.stringify(captured.at(-1)!.context);assert(historyText.includes('Summarize this lead.')&&historyText.includes(leadSummary.answer.body),'Bounded prior conversation missing from model context');assert(/greet|greeting|introduc/i.test(String(transportBodies.at(-1)!.input[0].content)),'No provider instruction about repeated introductions');
+  const beforeReplay=captured.length;const replay=await service.message(actor,digest,leadSummary.thread.thread.id,askMessageSchema.parse({requestKey:followKey,message:'What should happen next?',timeZone:zone}));assert.equal(captured.length,beforeReplay);assert.equal(replay.messages.items.length,follow.messages.items.length);assert.equal(await countTasks(),initialTasks);
+  pass('Bounded prior turns and no-repeated-introduction instructions reach the provider; replay returns the saved result without another inference or mutation');
+  phase='invalid output and transport failures';
+  for(const bad of ['unknown_source','unrequested_action','false_completion','malformed','failure','timeout'] as const) {
+   scenario=bad;reply='This controlled result should not replace a failed validation.';const thread=await create({page:'/admin/leads',propertyId:setup.propertyId,leadId:lead.id}),request={requestKey:randomUUID(),message:'Summarize this lead.',timeZone:zone};const output=await service.message(actor,digest,thread.thread.id,askMessageSchema.parse(request)),answer=output.messages.items.filter(item=>item.role==='assistant').at(-1)!;
+   assert.equal(answer.mode,'live',bad);assert(['failed','handoff'].includes(answer.status),bad+' should fail honestly');assert(!answer.action);assert(!answer.body.includes('I have booked'));assert.notEqual(answer.body,reply);const calls=captured.length;await service.message(actor,digest,thread.thread.id,askMessageSchema.parse(request));assert.equal(captured.length,calls,bad+' silently retried');assert.equal(await countTasks(),initialTasks);
+  }
+  pass('Unknown sources, unrequested actions, false completion, malformed output, HTTP failure and timeout stay unsuccessful without simulation or unconfirmed actions');
+  phase='disabled and missing-key native fallback';
+  const disabled={...f.config,ai:{...f.config.ai,maxRequestsPerMinute:1000}},missingKey={...live,ai:{...live.ai,apiKey:''}};
+  for(const config of [disabled,missingKey]) {const native=new AskOotlaService(f.database,config,adapter),thread=await native.create(actor,digest,{requestKey:randomUUID(),context:{page:'/admin/tasks',propertyId:setup.propertyId}}),before=captured.length,output=await native.message(actor,digest,thread.thread.id,askMessageSchema.parse({requestKey:randomUUID(),message:'What needs my attention today?',timeZone:zone})),answer=output.messages.items.filter(item=>item.role==='assistant').at(-1)!;assert.equal(captured.length,before);assert.equal(answer.mode,'not_configured');assert(/record summary|native|record-based|AI.*not|AI.*unavailable|AI.*configured/i.test(answer.body),'Native fallback must be labeled');assert(!/\d{4}-\d\d-\d\dT\d\d:|Africa\/Lagos|America\/New_York/.test(answer.body));assert(!answer.action);}
+  pass('Disabled/missing credentials never invoke a provider and clearly label human-readable native record summaries without raw ISO or IANA text');
+  phase='dedicated property answer preserves validated provider response';
+  scenario='success';reply='The saved office hours run from nine in the morning to five in the afternoon. Check with the property team about access.';const direct=await new AiOrchestrationService(f.database,live,adapter).request(actor,digest,{requestKey:randomUUID(),message:'What are the office hours?',propertyId:setup.propertyId,timeZone:zone});assert.equal(direct.response,reply);assert.equal(direct.mode,'live');assert.equal(direct.executionStatus,'completed');assert(direct.sources.some(source=>source.kind==='knowledge'));
+  pass('The dedicated property inference path also preserves validated model prose and approved source references');
+  phase='scope denial and explicit native task confirmation';
+  const foreignOrg=randomUUID();await f.database.query("INSERT INTO organizations(id,name,slug,environment)VALUES($1,'Owned foreign scope',$2,'live')",[foreignOrg,'foreign-'+randomUUID()]);const foreignProperty=(await f.database.query("INSERT INTO properties(organization_id,name,source_system)VALUES($1,'FOREIGN_SCOPE_SENTINEL','local')RETURNING id",[foreignOrg])).rows[0].id;const calls=captured.length;await assert.rejects(service.create(actor,digest,{requestKey:randomUUID(),context:{page:'/admin/properties',propertyId:foreignProperty}}),(issue:unknown)=>issue instanceof ApiError&&issue.status===404);assert.equal(captured.length,calls);assert(!JSON.stringify(captured).includes('FOREIGN_SCOPE_SENTINEL'));await f.database.query("UPDATE organization_memberships SET role='leasing_agent' WHERE id=$1",[actor.membershipId]);try{await assert.rejects(service.create(actor,digest,{requestKey:randomUUID(),context:{page:'/admin/properties',propertyId:setup.propertyId}}),(issue:unknown)=>issue instanceof ApiError&&[403,404].includes(issue.status));}finally{await f.database.query("UPDATE organization_memberships SET role='organization_admin' WHERE id=$1",[actor.membershipId]);}assert.equal(captured.length,calls);
+  const thread=await create({page:'/admin/leads',propertyId:setup.propertyId,leadId:lead.id}),key=randomUUID(),task={title:'EXPLICIT_OWNED_CONFIRMED_GENERATION_TASK',dueAt:new Date(Date.now()+86400000).toISOString(),priority:'normal' as const},request=askMessageSchema.parse({requestKey:key,message:'Create a follow-up task.',task,timeZone:zone}),proposed=await service.message(actor,digest,thread.thread.id,request),action=proposed.messages.items.find(item=>item.action)?.action;assert(action);assert.equal(await countTasks(),initialTasks);const confirmed=await service.confirm(actor,digest,thread.thread.id,action.id,randomUUID());assert(confirmed.messages.items.some(item=>item.action?.status==='completed'));await service.confirm(actor,digest,thread.thread.id,action.id,randomUUID());await service.message(actor,digest,thread.thread.id,request);assert.equal(await countTasks(),initialTasks+1);
+  assert.equal(simulationCalls,0);pass('Foreign record scope is denied before inference; an explicit reviewed task proposal still saves once after confirmation and stays duplicate safe');
+ },{onLoopbackOrigin:network.allow});
+ await writeFile('.local/ask-generation-provider-observations.json',JSON.stringify({verifiedAt:new Date().toISOString(),groups,productionEligibleOwnedFixture:true,normalAuthentication:true,requestTokenCeiling:16000,capturedProviderCalls:captured.length,capturedOfficialTransportCalls:transportBodies.length,simulationCalls,actualExternalProviderCalls:0,retainedBusinessWrites:0,ownedDatabaseAndRoleCleaned:true,limitations:['Provider requests were handled by an injected capturing fetcher. No real provider credential, paid inference or live response was verified.','Repeated-greeting coverage proves server instructions and bounded conversation history are forwarded; actual provider style remains unverified.']},null,2)+'\n');console.log('PASS '+groups.length+' focused Ask generation groups; injected transport only, no external requests.');
+} catch(issue) {await writeFile('.local/ask-generation-provider-failure.json',JSON.stringify({verifiedAt:new Date().toISOString(),phase,groups,capturedProviderCalls:captured.length,capturedOfficialTransportCalls:transportBodies.length,simulationCalls,actualExternalProviderCalls:0,retainedBusinessWrites:0},null,2)+'\n');console.error('Ask generation failed during '+phase+'. '+(issue instanceof ApiError?issue.status+' '+issue.code:issue instanceof Error?issue.message.slice(0,1800):String(issue)));process.exitCode=1;}
+finally {if(askServer){askServer.closeAllConnections();await new Promise<void>(resolve=>askServer!.close(()=>resolve()));}SimulatedAiAdapter.prototype.infer=originalSimulated;network.restore();}

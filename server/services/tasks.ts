@@ -63,6 +63,15 @@ export class Tasks {
         if (u.organization.role !== 'organization_admin' && !(await c.query('SELECT property_id FROM property_access_assignments WHERE organization_id=$1 AND membership_id=$2 AND property_id=$3 FOR SHARE', [u.organization.id, u.membershipId, property])).rowCount)
             throw new ApiError(403, 'PROPERTY_ACCESS_DENIED', 'Your assigned property access changed.');
     } }
+    /** Shared internal task action boundary: fresh membership, canonical links and locked version. */
+    async lockForAction(c:PoolClient,u:AuthUser,id:string):Promise<{actor:AuthUser;task:Row}>{
+      const actor=await this.authorize(c,u);
+      const task=(await c.query(`SELECT t.* FROM tasks t WHERE ${scope('t')} AND t.id=$4 FOR UPDATE OF t`,[...parameters(actor),id])).rows[0];if(!task)missing();
+      if(task.maintenance_request_id)await staffMaintenanceRecordAccess(c,actor,task.maintenance_request_id,{lock:true});
+      await this.lockContext(c,actor,task.property_id,task.lead_id);
+      return{actor,task};
+    }
+    async recordAction(c:PoolClient,u:AuthUser,t:Row,metadata:Record<string,unknown>):Promise<string>{return this.event(c,u,t,'updated',metadata);}
     private async fetch(q: Queryable, u: AuthUser, id: string): Promise<TaskRecord> { const r = (await q.query(`SELECT ${select} FROM tasks t ${joins} WHERE ${scope('t')} AND t.id=$4`, [...parameters(u), id])).rows[0]; if (!r)
         missing(); return dto(r); }
     private async event(c: PoolClient, u: AuthUser, t: Row, kind: TaskEvent['kind'], metadata: Record<string, unknown>): Promise<string> { const inserted = await c.query('INSERT INTO task_events(organization_id,task_id,kind,actor_user_id,actor_membership_id,metadata) VALUES($1,$2,$3,$4,$5,$6) RETURNING id', [u.organization.id, t.id, kind, u.id, u.membershipId, JSON.stringify(metadata)]); await c.query('INSERT INTO audit_events(organization_id,actor_user_id,action,metadata) VALUES($1,$2,$3,$4)', [u.organization.id, u.id, `task.${kind}`, JSON.stringify({ taskId: t.id, ...metadata })]); if (t.lead_id)

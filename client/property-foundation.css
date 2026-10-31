@@ -5,3 +5,60 @@
 @media(prefers-reduced-motion:reduce){.property-workspace *{scroll-behavior:auto;transition:none!important;animation:none!important}}
 /* Only the new property/contact routes wrap their longer title at narrow widths. */
 @media(max-width:380px){.admin-app:has([data-property-workspace]) .admin-header-body{flex-wrap:wrap}.admin-app:has([data-property-workspace]) .admin-header-body h1{min-width:0;overflow-wrap:anywhere}}
+
+/* Properties uses the same compact search/Filters and native dialog pattern as Leads. */
+.property-workspace .pw-directory-toolbar{position:relative;display:flex;align-items:center;gap:10px;margin:20px 0 0;min-width:0}
+.property-workspace .pw-directory-search{display:flex;align-items:center;gap:9px;flex:1;min-width:0;padding:6px 6px 6px 14px;border:1px solid #cbd8d0;border-radius:11px;background:#fff}
+.property-workspace .pw-directory-search>.icon{flex:none;color:#667b6e}
+.property-workspace .pw-directory-search>input{min-width:0;flex:1;width:100%;border:0;min-height:34px;padding:5px 0;background:transparent;color:#203929;font:inherit;font-size:14px}
+.property-workspace .pw-directory-search:focus-within{border-color:#297b50;box-shadow:0 0 0 2px #297b501c}
+.property-workspace .pw-directory-search>input:focus-visible{outline:0}
+.property-workspace .pw-directory-search>.pw-button{min-height:35px;padding:6px 12px;border-color:#e2e9e4;background:#f6f9f7;font-size:13px}
+.property-workspace .pw-directory-filters{position:relative;flex:none}
+.property-workspace .pw-directory-filters>summary{list-style:none;min-height:47px;white-space:nowrap}
+.property-workspace .pw-directory-filters>summary::-webkit-details-marker{display:none}
+.property-workspace .pw-directory-filters>summary>.icon{width:17px;height:17px}
+.property-workspace .pw-filter-count{display:inline-flex;justify-content:center;align-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:20px;background:#e3f0e8;color:#1d633e;font-size:11px}
+.property-workspace .pw-filter-popover{position:absolute;top:calc(100% + 9px);right:0;z-index:40;width:560px;max-width:calc(100vw - 54px);max-height:70vh;overflow:auto;overscroll-behavior:contain;padding:20px;border:1px solid #cedcd2;border-radius:13px;background:#fff;box-shadow:0 14px 36px #1837261f}
+.property-workspace .pw-filter-popover .pw-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.property-workspace .pw-filter-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.property-workspace .pw-filter-title h3{font-size:17px}
+.property-workspace .pw-filter-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:13px}
+.property-workspace .pw-filter-chip{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:5px 9px;border:1px solid #cedfd3;border-radius:7px;background:#edf5f0;color:#2b5f3d;font-size:12px;text-decoration:none}
+.property-workspace .pw-filter-chip>.icon{flex:none;width:13px;height:13px}
+.property-workspace .pw-filter-chips>.pw-button{border:0;min-height:30px;padding:4px 7px;background:transparent;font-size:12px;text-decoration:underline}
+.property-workspace .pw-sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.property-workspace .pw-dialog{width:min(680px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 40px);padding:0;border:1px solid #d5e2d9;border-radius:16px;background:#fff;color:#14221d;box-shadow:0 24px 70px #10261e3d;overflow:hidden}
+.property-workspace .pw-dialog[open]{display:flex;flex-direction:column}
+.property-workspace .pw-dialog::backdrop{background:#10251e73}
+.property-workspace .pw-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;flex:none;padding:19px 23px;border-bottom:1px solid #e1e9e4}
+.property-workspace .pw-dialog-heading h3{overflow-wrap:anywhere}
+.property-workspace .pw-dialog-close{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:40px;min-height:40px;padding:8px;border:1px solid #c9d9ce;border-radius:9px;background:#fff;color:#256742;cursor:pointer}
+.property-workspace .pw-dialog-body{padding:23px;min-height:0;overflow:auto;overscroll-behavior:contain}
+.property-workspace .pw-dialog .pw-filter-actions{justify-content:flex-end}
+.property-workspace .pw-table .pw-dialog :is(h3,p){font-size:inherit}
+.property-workspace .pw-table .pw-dialog h3{font-size:19px}
+@media(max-width:700px){
+ .property-workspace .pw-heading{flex-wrap:wrap}
+ .property-workspace .pw-directory-toolbar{gap:8px}
+ .property-workspace .pw-directory-search{padding-left:10px;gap:7px}
+ .property-workspace .pw-directory-search>input{font-size:16px}
+ .property-workspace .pw-directory-search>.pw-button{padding-inline:8px}
+ .property-workspace .pw-directory-filters{position:static}
+ .property-workspace .pw-directory-filters>summary{padding-inline:10px}
+ .property-workspace .pw-filter-popover{left:0;right:0;width:100%;max-width:100%;max-height:65dvh;padding:17px}
+ .property-workspace .pw-filter-popover .pw-filter-grid{grid-template-columns:1fr}
+ .property-workspace .pw-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px)}
+ .property-workspace .pw-dialog-heading{padding:15px 16px}
+ .property-workspace .pw-dialog-body{padding:17px 16px}
+ .property-workspace .pw-dialog .pw-form-grid{grid-template-columns:1fr}
+ .property-workspace .pw-dialog .pw-field :is(input,select,textarea){font-size:16px}
+}
+
+/* Contacts shares the compact directory search and native modal controls. */
+.property-workspace .pw-contact-actions>.pw-button{min-height:36px;padding:7px 12px;font-size:13px}
+.property-workspace .pw-property-choices{display:grid;gap:8px;margin-top:15px}
+.property-workspace .pw-property-choice{display:grid;gap:5px;width:100%;text-align:left;padding:12px 14px;border:1px solid #d4e2d8;border-radius:9px;background:#fff;color:#183e2a;font:inherit;cursor:pointer}
+.property-workspace .pw-property-choice:hover{background:#f4f9f6}
+.property-workspace .pw-property-choice span{font-size:12px;color:#65796d;overflow-wrap:anywhere}
+.property-workspace #contact-property-dialog .pw-inline-hint{margin-top:12px}

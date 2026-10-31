@@ -114,7 +114,7 @@ export function createApp(config: ServerConfig, database: Database) {
     const result: PublicConfig = { appUrl: config.appUrl, databaseReady: state === 'ready', demoEnabled: false, integrationsMode: config.integrationsMode, outboundMode: config.outboundMode };
     if (state === 'unconfigured') result.setupMessage = 'PostgreSQL is not configured. Set DATABASE_URL, then run npm run db:migrate and npm run db:seed.';
     if (state === 'unavailable') result.setupMessage = 'PostgreSQL cannot be reached. Check that it is running and DATABASE_URL is correct.';
-    if (state === 'migration-required') result.setupMessage = 'PostgreSQL is connected. Run npm run db:migrate, then npm run db:seed to prepare the isolated demo.';
+    if (state === 'migration-required') result.setupMessage = config.demoMode ? 'PostgreSQL is connected. Run npm run db:migrate, then npm run db:seed to prepare the isolated demo.' : 'Ootla needs its pending database update. Ask your administrator to apply the release migrations; existing records are preserved.';
     if (state === 'ready' && config.demoMode) {
       if (await preparedDemoAccount(config, database)) {
         result.demoEnabled = true;

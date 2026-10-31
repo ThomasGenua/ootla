@@ -22,6 +22,7 @@ export function createAskRouter(config:ServerConfig,db:Database,requireUser:Requ
  r.put('/policy',async(q,s)=>s.json(await service.setPolicy(actor(s),digest(q,config),body(q,z.object({allowTaskCreation:z.boolean()}).strict()).allowTaskCreation)));
  r.get('/threads',async(q,s)=>s.json(await service.list(actor(s),digest(q,config),parse(conversationPageSchema.extend({propertyId:z.uuid().optional(),leadId:z.uuid().optional(),applicationId:z.uuid().optional(),maintenanceRequestId:z.uuid().optional()}).strict(),q.query))));
  r.post('/threads',async(q,s)=>s.status(201).json(await service.create(actor(s),digest(q,config),body(q,askCreateSchema))));
+ r.delete('/threads/:id',async(q,s)=>{parse(empty,q.query);parse(empty,q.body??{});s.json(await service.remove(actor(s),digest(q,config),id(q.params.id)));});
  r.get('/threads/:id',async(q,s)=>s.json(await service.detail(actor(s),digest(q,config),id(q.params.id),parse(conversationPageSchema,q.query))));
  r.post('/threads/:id/messages',async(q,s)=>s.json(await service.message(actor(s),digest(q,config),id(q.params.id),body(q,askMessageSchema))));
  r.post('/threads/:id/actions/:actionId/confirm',async(q,s)=>s.json(await service.confirm(actor(s),digest(q,config),id(q.params.id),id(q.params.actionId),body(q,actionConfirmSchema).requestKey)));

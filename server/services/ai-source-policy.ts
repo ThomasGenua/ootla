@@ -1,7 +1,7 @@
 import type {PoolClient} from 'pg';
 import {ApiError} from '../http/errors.js';
 /** Recheck current approval/scope/version after inference and immediately before queued delivery. */
-export async function assertAiKnowledgeCurrent(c:PoolClient,org:string,propertyId:string,sources:ReadonlyArray<{id?:string;version?:number;verifiedAt?:string|null}>,publicOnly=false):Promise<void>{
+export async function assertAiKnowledgeCurrent(c:PoolClient,org:string,propertyId:string|null,sources:ReadonlyArray<{id?:string;version?:number;verifiedAt?:string|null}>,publicOnly=false):Promise<void>{
  const knowledge=sources.filter(s=>s.id?.startsWith('knowledge:'));if(!knowledge.length)return;
  const ids=knowledge.map(s=>s.id!.slice(10));const rows=(await c.query("SELECT id,property_id,version,approved_at FROM ai_knowledge WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND (property_id=$3 OR property_id IS NULL) AND status='approved' AND (NOT $4::boolean OR public_enabled) FOR SHARE",[org,ids,propertyId,publicOnly])).rows;
  if(knowledge.some(s=>{const r=rows.find(r=>r.id===s.id!.slice(10));return !r||s.version!==undefined&&r.version!==s.version||s.verifiedAt&&new Date(r.approved_at).getTime()!==new Date(s.verifiedAt).getTime();}))throw new ApiError(409,'AI_KNOWLEDGE_CHANGED','Approved knowledge changed or was retired. No stale answer or automated action was released. Ask again using the current approved sources.');

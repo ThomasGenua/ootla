@@ -5,8 +5,8 @@ export const yardiCanonicalFields:Readonly<Record<YardiRecordKind,readonly strin
  property:['name','address','city','type'],
  unit:['label','bedrooms','status','monthlyRent','availabilitySource','lastVerifiedAt'],
  contact:['displayName','email','phone'],
- application:['contactId','householdId','propertyId','unitId','leadId','status'],
- lease:['contactId','householdId','propertyId','unitId','applicationId','leadId','status','startsOn','endsOn'],
+ application:['contactId','propertyId','unitId','leadId','status'],
+ lease:['contactId','propertyId','unitId','applicationId','leadId','status','startsOn','endsOn'],
  resident:[],
  payment_status:[],
 };

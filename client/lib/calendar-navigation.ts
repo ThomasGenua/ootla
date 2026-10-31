@@ -4,7 +4,6 @@ import {loadCalendarWorkspace,initializeCalendarWorkspace,type CalendarWorkspace
 import {calendarWorkspacePage} from '../pages/calendar';
 import {adminShell} from '../pages/admin';
 import {initializeTablePagination} from './table-pagination-controller';
-import {initializeAskOotla,type AskOotlaController} from './ask-ootla';
 import {patchLocalElement,captureLocalScroll} from './local-update';
 import type {AskContext} from '../../shared/conversation-contracts';
 import type {AdminPageSummary} from '../../shared/admin-summary-contracts';
@@ -13,18 +12,17 @@ type Navigate=(path:string,replace?:boolean,focusSelector?:string)=>void;
 export type CalendarNavigator=(url:URL,replace?:boolean,focusSelector?:string,fromHistory?:boolean)=>void;
 
 /** Calendar period, settings and booking updates retain the shared shell and current reading position. */
-export function createCalendarNavigation(signal:AbortSignal,navigate:Navigate,initial:CalendarWorkspacePayload,user:AuthUser,overview:Overview):CalendarNavigator{
- let assistantHandle:AskOotlaController|undefined;
- let current=initial,revision=0,request:AbortController|null=null,controls=new AbortController(),assistant=new AbortController();
+export function createCalendarNavigation(signal:AbortSignal,navigate:Navigate,initial:CalendarWorkspacePayload,user:AuthUser,overview:Overview,updateAssistant:(context:AskContext,label?:string)=>void):CalendarNavigator{
+ let current=initial,revision=0,request:AbortController|null=null,controls=new AbortController();
  const active=(controller:AbortController)=>AbortSignal.any([signal,controller.signal]);
  const bind=()=>{
   initializeTablePagination(active(controls),navigate);initializeCalendarWorkspace(active(controls),navigate);
   const context:AskContext={page:'/admin/calendar'};
-  if(current.kind==='detail'){context.propertyId=current.detail.viewing.property.id;context.leadId=current.detail.viewing.lead.id;}
+  if(current.kind==='detail'){context.propertyId=current.detail.viewing.property.id;context.viewingId=current.detail.viewing.id;context.leadId=current.detail.viewing.lead.id;if(current.detail.viewing.unit)context.unitId=current.detail.viewing.unit.id;}
   else if(current.kind!=='google'&&current.kind!=='restricted'&&current.options.selectedProperty)context.propertyId=current.options.selectedProperty.id;
-  if(assistantHandle)assistantHandle.updateContext(context);else assistantHandle=initializeAskOotla(active(assistant),context,user);
+  updateAssistant(context);
  };
- bind();signal.addEventListener('abort',()=>{request?.abort();controls.abort();assistant.abort();},{once:true});
+ bind();signal.addEventListener('abort',()=>{request?.abort();controls.abort();},{once:true});
  return(url,replace=false,focusSelector,fromHistory=false)=>{
   if(signal.aborted)return;const host=document.querySelector<HTMLElement>('[data-calendar-workspace]');if(!host)return;
   request?.abort();request=new AbortController();const requestSignal=active(request),generation=++revision;host.setAttribute('aria-busy','true');

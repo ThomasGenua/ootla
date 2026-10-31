@@ -11,7 +11,7 @@ const page={page:z.coerce.number().int().min(1).max(1000000).default(1),pageSize
 export const calendarQuerySchema=z.object({...page,view:z.enum(['month','day','week','agenda']).default('week'),date:date.optional(),timeZone:viewingTimeZoneSchema.default('Africa/Lagos'),propertyId:uuid.optional(),ownerMembershipId:uuid.optional(),status:z.union([viewingStatusSchema,z.literal('all')]).default('all')}).strict();
 export const calendarOptionsSchema=z.object({propertyId:uuid.optional(),leadId:uuid.optional(),propertySearch:text(200).default(''),leadSearch:text(200).default(''),ownerSearch:text(200).default('')}).strict();
 export const calendarSlotsSchema=z.object({...page,propertyId:uuid,leadId:uuid,ownerMembershipId:uuid,unitId:uuid.nullable().optional(),date,days:z.coerce.number().int().min(1).max(7).default(1),durationMinutes:z.coerce.number().int().min(15).max(180).multipleOf(5).optional(),excludeViewingId:uuid.optional()}).strict();
-export const calendarBookSchema=z.object({requestKey,leadId:uuid,propertyId:uuid,unitId:uuid.nullable().default(null),ownerMembershipId:uuid,startsAt:start,durationMinutes:minutes.optional(),location:text(500).optional()}).strict();
+export const calendarBookSchema=z.object({requestKey,taskId:uuid.optional(),followupNextAction:text(500).min(1).optional(),notifyClient:z.boolean().optional(),notificationTimeZone:viewingTimeZoneSchema.optional(),leadId:uuid,propertyId:uuid,unitId:uuid.nullable().default(null),ownerMembershipId:uuid,startsAt:start,durationMinutes:minutes.optional(),location:text(500).optional()}).strict().refine(value=>!value.followupNextAction||Boolean(value.taskId),'An agreed task next step requires its linked task.');
 export const calendarRescheduleSchema=z.object({requestKey,version:z.number().int().positive(),ownerMembershipId:uuid,startsAt:start,durationMinutes:minutes.optional(),location:text(500).optional()}).strict();
 export const calendarStatusSchema=z.object({requestKey,version:z.number().int().positive(),status:z.enum(['completed','cancelled','no_show']),reason:text(1000).default('')}).strict();
 export const calendarSettingsSchema=z.object({version:z.number().int().positive(),enabled:z.boolean(),timeZone:viewingTimeZoneSchema,durationMinutes:minutes,bufferBeforeMinutes:z.number().int().min(0).max(60),bufferAfterMinutes:z.number().int().min(0).max(60),location:text(500).min(1),publicBookingEnabled:z.boolean()}).strict();
@@ -27,7 +27,9 @@ export interface CalendarPerson {membershipId:string;name:string;role:string}
 export interface CalendarWindow {weekday:number;start:string;end:string}
 export interface CalendarAvailability {enabled:boolean;windows:CalendarWindow[];version:number}
 export interface CalendarPropertySettings {configured:boolean;enabled:boolean;timeZone:string;durationMinutes:number;bufferBeforeMinutes:number;bufferAfterMinutes:number;location:string;publicBookingEnabled:boolean;version:number}
+export interface CalendarEmailNotification {state:'not_requested'|'draft'|'unavailable'|'preview_processed';message:string}
 export interface CalendarViewing {
+ notification?:CalendarEmailNotification;
  id:string;property:{id:string;name:string};lead:{id:string;name:string};
  unit:{id:string;label:string}|null;owner:CalendarPerson|null;
  startsAt:string;endsAt:string|null;timeZone:string|null;durationMinutes:number|null;
@@ -38,6 +40,7 @@ export interface CalendarViewing {
 export interface CalendarEvent {id:string;kind:string;summary:string;actorLabel:string;origin:'staff'|'public';occurredAt:string;notification:'simulation'}
 export interface CalendarDirectory extends Paginated<CalendarViewing> {range:{from:string;until:string;timeZone:string;view:'month'|'day'|'week'|'agenda'};access:{canManage:boolean}}
 export interface CalendarOptions {
+ emailNotificationMode?:'preview'|'not_configured';
  properties:Paginated<{id:string;name:string}>;
  selectedProperty:{id:string;name:string}|null;settings:CalendarPropertySettings|null;
  owners:Array<CalendarPerson&{availability:CalendarAvailability}>;ownerTotal:number;

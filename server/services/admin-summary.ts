@@ -119,7 +119,7 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
       (SELECT count(*)::int FROM ai_requests r WHERE ${aiScope} AND r.status='completed') AS completed,
       (SELECT count(*)::int FROM task_creation_receipts tc JOIN ai_requests r ON r.organization_id=tc.organization_id AND r.id::text=split_part(tc.request_key,':',1) WHERE tc.namespace='ai_follow_up' AND ${aiScope}) AS tasks,
       (SELECT count(*)::int FROM ai_requests r WHERE ${aiScope} AND r.status='handoff') AS handoffs`,[...args,user.id]);
-    return result([metric('requests','Your requests',count(row,'requests'),'sparkles'),metric('completed','Completed requests',count(row,'completed'),'check'),metric('tasks','Saved tasks',count(row,'tasks'),'document','Tasks verified after successful domain-service execution.'),metric('handoffs','Needs staff help',count(row,'handoffs'),'users','Requests requiring authorized staff assistance.')],'Your actual scoped AI request records; mode is shown in the AI workspace.');
+    return result([metric('requests','Your requests',count(row,'requests'),'sparkles'),metric('completed','Completed requests',count(row,'completed'),'check'),metric('tasks','Saved tasks',count(row,'tasks'),'document','Tasks verified after successful domain-service execution.'),metric('handoffs','Needs staff help',count(row,'handoffs'),'users','Requests requiring authorized staff assistance.')],'');
   }
   if (page === 'tasks') {
 
@@ -180,12 +180,10 @@ export async function loadAdminPageSummary(database: Database, user: AuthUser, p
         WHERE pa.organization_id=cp.organization_id AND pa.property_id=cp.property_id AND pa.membership_id=$3)))`;
     const row = await read(`SELECT
       (SELECT count(*)::int FROM contacts c WHERE ${contactScope}) AS contacts,
-      (SELECT count(*)::int FROM households h WHERE h.organization_id=$1 AND ($2='organization_admin' OR EXISTS(
-        SELECT 1 FROM household_property_links hp WHERE hp.organization_id=h.organization_id AND hp.household_id=h.id
-          AND EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=hp.organization_id AND pa.property_id=hp.property_id AND pa.membership_id=$3)))) AS households,
+      (SELECT count(*)::int FROM contacts c WHERE ${contactScope} AND EXISTS(SELECT 1 FROM leads l WHERE l.organization_id=c.organization_id AND l.contact_id=c.id AND ${leadScope})) AS leads,
       (SELECT count(*)::int FROM contacts c WHERE ${contactScope} AND btrim(c.email)<>'') AS email,
       (SELECT count(*)::int FROM contacts c WHERE ${contactScope} AND btrim(c.phone)<>'') AS phone`);
-    return result([metric('contacts','Contacts',count(row,'contacts'),'users'),metric('households','Households',count(row,'households'),'home'),metric('email','With email',count(row,'email'),'document'),metric('phone','With phone',count(row,'phone'),'users')]);
+    return result([metric('contacts','Contacts',count(row,'contacts'),'users'),metric('leads','Linked to leads',count(row,'leads'),'home'),metric('email','With email',count(row,'email'),'document'),metric('phone','With phone',count(row,'phone'),'users')]);
   }
   const row = await read(`SELECT count(*)::int AS total,
     count(*) FILTER(WHERE a.status='draft')::int AS draft,

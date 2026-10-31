@@ -207,3 +207,7 @@ body[data-account-motion="reduce"] .header-summary-toggle>.icon{transition:none}
 
 .admin-app:not(.is-preview):not(.homepage-preview-app) .summary-metric:last-child .metric-note>span{left:auto;right:0}
 @media(max-width:700px){.admin-app:not(.is-preview):not(.homepage-preview-app) .summary-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Give every real admin record table a white card surface. Keep its existing
+   header/status styling and horizontal scroll wrapper; public previews are excluded. */
+body.admin-body .admin-app:not(.is-preview):not(.homepage-preview-app) .workspace-content :is(table,[class*="-table-wrap"]){background-color:#fff}

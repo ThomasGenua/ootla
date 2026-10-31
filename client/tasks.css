@@ -67,3 +67,25 @@
 @media(max-width:700px){.task-workspace .tw-directory-toolbar{gap:8px}.task-workspace .tw-directory-search{flex-basis:100%;min-width:0}.task-workspace .tw-directory-filters>summary{min-height:43px;padding:8px 11px}.task-workspace .tw-filter-popover{padding:17px;max-height:65vh}.task-workspace .tw-filter-popover .tw-form-grid{grid-template-columns:1fr}.task-workspace .tw-results-toolbar{gap:9px}.task-workspace .tw-results-toolbar>.tw-result-count{width:100%}.task-workspace :is(.tw-sort-control,.tw-rows-control){gap:5px}.task-workspace :is(.tw-sort-control,.tw-rows-control) .tw-field{gap:5px}.task-workspace :is(.tw-sort-control,.tw-rows-control) .tw-field>select{max-width:145px}.task-workspace .tw-suggestion-actions{grid-template-columns:1fr}.task-workspace .tw-suggestions-heading .tw-button{width:100%}.task-workspace .tw-confirm-dialog{padding:21px}.task-workspace .tw-confirm-dialog .tw-actions>.tw-button{flex:1}}
 
 .task-workspace .tw-saved-drafts{margin-top:22px}.task-workspace .tw-saved-draft-body{padding:17px}.task-workspace .tw-saved-draft-body .tw-field{margin-top:13px}
+
+/* Reviewed lead-task actions reuse the native task history and application services. */
+dialog.tf-dialog{width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0;border:1px solid #dbe3dd;border-radius:16px;background:#fff;color:#1f3027;font-family:inherit;box-shadow:0 16px 56px #14251c30;overflow:hidden}
+dialog.tf-dialog[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.tf-dialog::backdrop{background:#10231955}
+.tf-dialog header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 22px;border-bottom:1px solid #e4ebe6}
+.tf-dialog header h3{margin:0;font-size:20px;font-weight:500}
+.tf-body{padding:20px 22px;overflow:auto;overscroll-behavior:contain;min-height:0}
+.tf-dialog h4{margin:0 0 9px;font-size:17px;font-weight:500}
+.tf-preserve{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
+.tf-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:13px 0}
+.tf-actions .tw-button{white-space:normal;text-align:left;line-height:1.5}
+.tf-dialog label{display:block;margin:13px 0;font-size:13px;font-weight:500}
+.tf-dialog input,.tf-dialog textarea{box-sizing:border-box;display:block;width:100%;min-width:0;border:1px solid #cbd9ce;border-radius:9px;margin-top:7px;padding:10px 12px;font:inherit;background:#fff;color:inherit}
+.tf-dialog textarea{resize:vertical;line-height:1.6}
+.tf-dialog input[readonly]{background:#f7faf8}
+.tf-dialog button:focus-visible,.tf-dialog input:focus-visible,.tf-dialog textarea:focus-visible{outline:3px solid #81b794;outline-offset:2px}
+.tf-summary{font-size:14px;line-height:1.6}
+.tf-history{margin-top:20px;border-top:1px solid #e2eae4;padding-top:14px}
+.tf-history ol{padding-left:20px}.tf-history li{padding:8px 0}.tf-history p{font-size:13px}
+@media(max-width:600px){.tf-dialog header{padding:14px 16px}.tf-body{padding:16px}.tf-dialog :is(input,textarea){font-size:16px}.tf-dialog button{min-height:44px}}
+.tf-dialog .tw-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:9px 14px;border:1px solid #c4d2c8;border-radius:9px;background:#fff;color:#1f603d;font:inherit;font-size:14px;cursor:pointer;text-decoration:none}.tf-dialog .tw-button.tw-primary{background:#216342;border-color:#216342;color:#fff}.tf-dialog .tw-button:disabled{opacity:.55;cursor:default}.tf-dialog .tw-hint{color:#64766a;font-size:12px;line-height:1.6}.tf-dialog .tw-error{color:#a33d34;font-size:13px;line-height:1.6}.tf-dialog [hidden]{display:none!important}

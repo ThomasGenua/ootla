@@ -311,6 +311,7 @@ async function undoCheck(c: PoolClient, b: Row, r: Row, lock = false): Promise<I
     const column = referenceColumn[b.entity as ImportEntity];
     if ((await c.query(`SELECT id FROM external_record_mappings WHERE organization_id=$1 AND ${column}=$2 AND id IS DISTINCT FROM $3 LIMIT 1`, [b.organization_id, r.record_id, r.mapping_id])).rowCount)
         return { ...item, reason: 'Another source mapping now depends on the record.' };
+    // Legacy relationship references remain deletion guards so safe undo cannot erase archived staff work.
     const tables: Record<ImportEntity, [
         string,
         string

@@ -15,3 +15,27 @@
 @media(max-width:600px){.admin-app:not(.is-preview):not(.homepage-preview-app) .admin-header-actions{flex-basis:100%;justify-content:flex-end;margin-top:-5px}.ask-header-entry{margin-right:auto}.ask-header-entry span{position:static;width:auto;height:auto;clip:auto;overflow:visible}.ask-header-entry{width:auto;padding:9px 10px}.cv-filter-grid,.cv-form-grid,.cv-directory{grid-template-columns:1fr}.cv-heading{flex-direction:column;gap:12px}.cv-heading h2{font-size:25px}.cv-panel{padding:18px}.public-chat-launcher{right:14px;bottom:14px;padding:11px 14px;font-size:12px}.ootla-dialog{inset:0;width:100vw;height:100dvh;border-radius:0;border:0}.public-chat-dialog{top:auto;height:min(760px,100dvh)}.ootla-dialog-head{padding:16px 18px}.ootla-dialog-scroll{padding:17px 18px}.cv-detail-top h2{font-size:24px}.ask-context-search{flex-wrap:wrap}.ask-context-search label{flex-basis:100%}}
 @media(max-width:380px){.ask-header-entry span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.ask-header-entry{width:44px;padding:0}}
 @media(prefers-reduced-motion:reduce){.ootla-dialog *,.public-chat-launcher,.ask-header-entry{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Opened customer conversation: transcript and same-channel reply only. */
+.cv-thread-workspace{max-width:1160px}
+.cv-chat{display:flex;flex-direction:column;height:min(700px,calc(100dvh - 145px));min-height:440px;background:#fff;border:1px solid #dce6df;border-radius:17px;overflow:hidden}
+.cv-chat [hidden]{display:none!important}
+.cv-chat-header{display:flex;align-items:center;gap:12px;padding:16px 20px;flex:none;border-bottom:1px solid #e2e9e5}
+.cv-chat-header>div:not(.cv-chat-tools){min-width:0;flex:1}.cv-chat-header h2{font-size:20px;font-weight:500;margin:0;letter-spacing:-.4px}.cv-chat-header p{font-size:12px;color:#6a7c70;margin:5px 0 0}
+.cv-chat-back{width:37px;min-height:37px;padding:8px;flex:none}.cv-chat-tools{display:flex;gap:6px;align-items:center;flex:none}.cv-chat-tools>.cv-button,.cv-chat-menu>summary{min-height:37px;width:37px;padding:8px}
+.cv-chat-menu{position:relative}.cv-chat-menu>summary{list-style:none}.cv-chat-menu>summary::-webkit-details-marker{display:none}.cv-chat-menu>div{position:absolute;z-index:20;right:0;top:calc(100% + 8px);display:grid;gap:6px;padding:10px;border:1px solid #d2ded6;border-radius:11px;background:#fff;box-shadow:0 10px 25px #203c2420;min-width:190px}
+.cv-chat-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;overflow-anchor:none;padding:20px clamp(16px,5vw,58px)}
+.cv-chat .cv-stream{gap:19px;margin:0}.cv-chat .cv-message{max-width:85%;justify-self:start;border:1px solid #e0e8e3;padding:13px 16px;border-radius:15px 15px 15px 3px;background:#f8faf9}
+.cv-chat .cv-message[data-role=staff],.cv-chat .cv-message[data-role=draft]{justify-self:end;background:#edf5ef;border-color:#d8e6dc;border-radius:15px 15px 3px 15px}
+.cv-chat .cv-message[data-role=customer]{background:#fff}.cv-chat .cv-message[data-role=system]{justify-self:center;max-width:94%;background:#fff;border:0;padding:5px 10px;color:#607164}
+.cv-chat .cv-message p{font-size:14px;line-height:1.65}.cv-chat .cv-message small{font-size:10px}.cv-chat .cv-message header{font-size:11px}.cv-chat .cv-status{font-size:10px;padding:3px 7px}
+.cv-chat-draft summary{font-size:12px}.cv-chat-draft textarea{font-size:14px}
+.cv-chat-composer{flex:none;padding:14px clamp(16px,5vw,58px) 16px;border-top:1px solid #e2e9e5;background:#fff}
+.cv-chat-compose-row{display:flex;gap:9px;align-items:flex-end}.cv-chat-compose-row textarea{min-height:60px;max-height:120px;resize:none;font-size:14px;margin:0}.cv-chat-compose-row button{flex:none}
+.cv-chat-feedback{display:flex;gap:9px;align-items:center;justify-content:space-between;font-size:12px;color:#65796b;margin-top:7px}.cv-chat-feedback:has(span:empty):has(button[hidden]){display:none}
+.cv-chat-latest{background:transparent;border:0;padding:4px 0;font:inherit;font-size:12px;color:#2c6642;text-decoration:underline;cursor:pointer}.cv-chat-pages{margin-bottom:9px}.cv-chat-pages:empty{display:none}
+.cv-chat-channel-action{padding:15px 20px;border-top:1px solid #e2e9e5}
+@media(max-width:700px){.cv-chat{height:calc(100dvh - 160px);min-height:430px;border-radius:13px}.cv-chat-header{padding:13px 12px;gap:9px}.cv-chat-header h2{font-size:18px}.cv-chat-header p{font-size:11px}.cv-chat-scroll{padding:18px 12px}.cv-chat .cv-message{max-width:94%}.cv-chat-composer{padding:12px}.cv-chat-compose-row textarea{font-size:16px}.cv-chat-compose-row button{min-height:43px;padding:9px 12px}}
+
+/* Leave the floating staff assistant clear of same-channel Send controls. */
+@media(max-width:700px){.cv-chat-composer,.cv-chat-channel-action{padding-right:calc(84px + env(safe-area-inset-right,0px))}}

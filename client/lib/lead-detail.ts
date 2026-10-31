@@ -51,6 +51,22 @@ export function initializeLeadDetail(signal: AbortSignal, navigate: Navigate): v
     const id = target.hasAttribute('data-lead-ai-open') ? 'lead-ai-dialog' : target.hasAttribute('data-lead-edit-open') ? 'lead-edit-dialog' : target.dataset.leadDialogOpen!;
     openDialog(workspace.querySelector<HTMLDialogElement>('#' + id), target);
   }, { signal });
+  workspace.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-select-property-match]') : null;
+    if (!target) return;
+    const form = target.closest<HTMLFormElement>('form'), propertyId = target.dataset.selectPropertyMatch;
+    if (!form || !propertyId) return;
+    const interest = [...form.querySelectorAll<HTMLInputElement>('[name="interestPropertyIds"]')].find(item => item.value === propertyId && item.type === 'checkbox');
+    if (interest) interest.checked = true;
+    const unit = form.elements.namedItem('unitId');
+    const primary = form.querySelector<HTMLInputElement>('input[type="hidden"][name="interestPropertyIds"]')?.value;
+    if (propertyId === primary && unit instanceof HTMLSelectElement) {
+      if (![...unit.options].some(item => item.value === target.dataset.matchUnit)) unit.add(new Option(target.dataset.matchLabel, target.dataset.matchUnit));
+      unit.value = target.dataset.matchUnit ?? '';
+    }
+    const status = form.querySelector<HTMLElement>('[data-property-match-status]');
+    if (status) status.textContent = 'Property selected. Save lead to update its interests' + (propertyId !== primary ? '; the primary property is unchanged.' : '.');
+  }, { signal });
   workspace.addEventListener('keydown', event => {
     const tab = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('[data-lead-tab]') : null;
     if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -61,28 +77,24 @@ export function initializeLeadDetail(signal: AbortSignal, navigate: Navigate): v
   }, { signal });
   workspace.addEventListener('submit', async event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement) || (!form.hasAttribute('data-contact-edit') && !form.hasAttribute('data-lead-household-create'))) return;
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-contact-edit')) return;
     event.preventDefault();
     const submit = form.querySelector<HTMLButtonElement>('button[type=submit]'); if (submit?.disabled) return;
-    const isContact = form.hasAttribute('data-contact-edit');
-    const error = form.querySelector<HTMLElement>(isContact ? '[data-contact-error]' : '[data-household-error]');
+    const error = form.querySelector<HTMLElement>('[data-contact-error]');
     const status = form.querySelector<HTMLElement>('[data-contact-status]');
     if (error) error.textContent = ''; if (status) status.textContent = '';
     const data = new FormData(form);
     const body: Record<string, unknown> = {};
-    if (isContact) {
+    {
       const original = JSON.parse(form.dataset.original ?? '{}') as Record<string, string>;
       for (const key of ['displayName', 'email', 'phone']) {
         const value = data.get(key); if (typeof value === 'string' && value.trim() !== original[key]) body[key] = value.trim();
       }
       if (!Object.keys(body).length) { if (status) status.textContent = 'No contact changes to save.'; return; }
-    } else {
-      body.name = String(data.get('name') ?? '').trim(); body.propertyIds = [String(data.get('propertyId') ?? '')];
-      body.members = [{ contactId: form.dataset.contactId, relationship: 'member' }];
     }
     if (submit) { submit.disabled = true; submit.setAttribute('aria-busy', 'true'); }
     try {
-      if (isContact) {
+      {
         const result = await api<{ contact: ContactRecord }>('/api/property-foundation/contacts/' + encodeURIComponent(form.dataset.contactId!), { method: 'PATCH', body: JSON.stringify(body), signal });
         if (signal.aborted) return;
         const contact = result.contact;
@@ -94,11 +106,6 @@ export function initializeLeadDetail(signal: AbortSignal, navigate: Navigate): v
         workspace.querySelectorAll<HTMLElement>('[data-lead-contact-email]').forEach(item => { item.textContent = contact.email || 'Email not supplied'; });
         workspace.querySelectorAll<HTMLElement>('[data-lead-contact-phone]').forEach(item => { item.textContent = contact.phone || 'Phone not supplied'; });
         if (status) status.textContent = 'Contact saved. Opportunity changes are saved separately below.';
-      } else {
-        await api('/api/property-foundation/households', { method: 'POST', body: JSON.stringify(body), signal });
-        if (signal.aborted) return;
-        const query = new URLSearchParams(location.search); query.set('leadTab', 'activity'); query.set('editor','1'); query.set('saved08', 'household');
-        navigate('/admin/leads?' + query + '#lead08-contact', true, '#lead08-contact');
       }
     } catch (issue) {
       if (!signal.aborted && error) { error.textContent = productError(issue); error.tabIndex = -1; error.focus({preventScroll:true}); }

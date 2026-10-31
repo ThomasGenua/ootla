@@ -4,7 +4,6 @@ import {loadPortfolioWorkspace,initializePortfolioWorkspace} from './portfolio-r
 import {portfolioReportsPage,portfolioHeaderSummary,portfolioScopeLabel,type PortfolioWorkspace} from '../pages/portfolio-reports';
 import {adminShell} from '../pages/admin';
 import {initializeTablePagination} from './table-pagination-controller';
-import {initializeAskOotla,type AskOotlaController} from './ask-ootla';
 import {patchLocalElement,captureLocalScroll} from './local-update';
 import type {AskContext} from '../../shared/conversation-contracts';
 
@@ -13,16 +12,15 @@ export type ReportNavigator=(url:URL,replace?:boolean,focusSelector?:string,from
 const scopeKeys=['from','to','propertyId','groupId','region','agentMembershipId','teamId'];
 
 /** Same-route report interactions retain the shell and replace only the report region that changed. */
-export function createPortfolioNavigation(signal:AbortSignal,navigate:Navigate,initial:PortfolioWorkspace,user:AuthUser,overview:Overview):ReportNavigator{
- let assistantHandle:AskOotlaController|undefined;
+export function createPortfolioNavigation(signal:AbortSignal,navigate:Navigate,initial:PortfolioWorkspace,user:AuthUser,overview:Overview,updateAssistant:(context:AskContext,label?:string)=>void):ReportNavigator{
  let current=initial,appliedQuery=new URLSearchParams(location.search),revision=0;
- let request:AbortController|null=null,controls=new AbortController(),assistant=new AbortController();
+ let request:AbortController|null=null,controls=new AbortController();
  const activeSignal=(controller:AbortController)=>AbortSignal.any([signal,controller.signal]);
  const bindControls=()=>{const controlSignal=activeSignal(controls);initializeTablePagination(controlSignal,navigate);initializePortfolioWorkspace(controlSignal,navigate,current);};
  const bindAssistant=()=>{
   const context:AskContext={page:'/admin/reports'};
   if(current.kind==='ready'&&current.report){const q=current.report.query;context.report={from:q.from,to:q.to,attention:q.attention,q:q.q,...(q.groupId?{groupId:q.groupId}:{}),...(q.region?{region:q.region}:{}),...(q.agentMembershipId?{agentMembershipId:q.agentMembershipId}:{}),...(q.teamId?{teamId:q.teamId}:{})};if(q.propertyId)context.propertyId=q.propertyId;}
-  if(assistantHandle)assistantHandle.updateContext(context,portfolioScopeLabel(current));else assistantHandle=initializeAskOotla(activeSignal(assistant),context,user,portfolioScopeLabel(current));
+  updateAssistant(context,portfolioScopeLabel(current));
  };
  const refreshHeader=()=>{
   const template=document.createElement('template');template.innerHTML=adminShell('/admin/reports',user,overview,false,undefined,appliedQuery,'',undefined,portfolioHeaderSummary(current));
@@ -30,7 +28,7 @@ export function createPortfolioNavigation(signal:AbortSignal,navigate:Navigate,i
   const context=document.querySelector('.header-summary-context'),freshContext=template.content.querySelector('.header-summary-context');if(context&&freshContext)context.textContent=freshContext.textContent;
  };
  bindControls();bindAssistant();
- signal.addEventListener('abort',()=>{request?.abort();controls.abort();assistant.abort();},{once:true});
+ signal.addEventListener('abort',()=>{request?.abort();controls.abort();},{once:true});
  return(url,replace=false,focusSelector,fromHistory=false)=>{
   if(signal.aborted)return;
   request?.abort();request=new AbortController();const controller=request,requestSignal=activeSignal(controller),generation=++revision;

@@ -6,6 +6,9 @@ import type { Paginated } from '../../shared/property-contracts.js';
 import type { CalendarAvailability,CalendarDirectory,CalendarEvent,CalendarInvitation,CalendarIssuedInvitation,CalendarOptions,CalendarPropertySettings,CalendarSlots,CalendarViewing,PublicCalendarConfirmation,PublicCalendarInvitation,ViewingStatus,calendarAvailabilitySchema,calendarBookSchema,calendarInvitationQuerySchema,calendarInvitationSchema,calendarOptionsSchema,calendarQuerySchema,calendarRescheduleSchema,calendarSettingsSchema,calendarSlotsSchema,calendarStatusSchema,publicCalendarBookSchema,publicCalendarReadSchema } from '../../shared/calendar-contracts.js';
 import type { ServerConfig } from '../config/env.js';
 import type { Database } from '../db/pool.js';
+import {Tasks}from'./tasks.js';
+import {isIsolatedDemo} from './demo-environment.js';
+import {prepareViewingEmail,viewingEmailStatus} from './viewing-notifications.js';
 import { enqueueGoogleViewingSync } from './google-calendar.js';
 import { ApiError } from '../http/errors.js';
 import { addLocalDays,localDate,localDayBounds,localInstants,localMinute,validatesOffsetDateTime,weekday,zonedIso } from './calendar-time.js';
@@ -181,7 +184,7 @@ export class Calendar{
     owners=(await c.query("SELECT m.id AS membership_id,m.role,u.display_name AS name,a.enabled,a.windows,a.version,count(*) OVER()::int AS total FROM organization_memberships m JOIN users u ON u.id=m.user_id AND u.active AND u.account_kind='staff' LEFT JOIN viewing_staff_availability a ON a.organization_id=m.organization_id AND a.property_id=$2 AND a.membership_id=m.id WHERE m.organization_id=$1 AND m.active AND EXISTS(SELECT 1 FROM role_permissions rp WHERE rp.role_key=m.role AND rp.permission='leasing.manage') AND ($3='' OR strpos(lower(u.display_name),lower($3))>0) AND (m.role='organization_admin' OR (EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=m.organization_id AND pa.membership_id=m.id AND pa.property_id=$2) AND ($4::uuid IS NULL OR NOT EXISTS(SELECT 1 FROM lead_property_interests li WHERE li.organization_id=m.organization_id AND li.lead_id=$4 AND NOT EXISTS(SELECT 1 FROM property_access_assignments pa WHERE pa.organization_id=li.organization_id AND pa.membership_id=m.id AND pa.property_id=li.property_id))))) ORDER BY lower(u.display_name),m.id LIMIT 50",[u.organization.id,selected.id,i.ownerSearch,i.leadId??null])).rows;
     units=(await c.query('SELECT id,label,count(*) OVER()::int AS total FROM units WHERE organization_id=$1 AND property_id=$2 ORDER BY lower(label),id LIMIT 100',[u.organization.id,selected.id])).rows;
    }
-   return{properties:paged(properties.map(r=>({id:r.id,name:r.name})),properties[0]?.total??0,{page:1,pageSize:25}),selectedProperty:selected?{id:selected.id,name:selected.name}:null,settings:selected?settingsDto(s):null,
+   return{emailNotificationMode:this.config.outboundMode==='simulation'&&await isIsolatedDemo(this.config,c)?'preview':'not_configured',properties:paged(properties.map(r=>({id:r.id,name:r.name})),properties[0]?.total??0,{page:1,pageSize:25}),selectedProperty:selected?{id:selected.id,name:selected.name}:null,settings:selected?settingsDto(s):null,
     owners:owners.map(r=>({membershipId:r.membership_id,name:r.name,role:r.role,availability:availabilityDto(r.version?r:undefined)})),ownerTotal:owners[0]?.total??0,
     leads:paged(leads.map(r=>({id:r.id,name:r.name,propertyId:r.property_id})),leads[0]?.total??0,{page:1,pageSize:25}),
     units:units.map(r=>({id:r.id,label:r.label})),unitTotal:units[0]?.total??0,access:{canManage:true,canConfigure:u.organization.role==='organization_admin'||u.permissions.includes('properties.manage'),canManageOwnAvailability:true}};
@@ -193,7 +196,7 @@ export class Calendar{
    const u=await authorize(c,user,digest),v=await actualViewing(c,u,id);
    const total=Number((await c.query('SELECT count(*) AS total FROM viewing_events WHERE organization_id=$1 AND viewing_id=$2',[u.organization.id,id])).rows[0].total);
    const rows=(await c.query('SELECT e.*,u.display_name AS actor_name FROM viewing_events e LEFT JOIN users u ON u.id=e.actor_user_id WHERE e.organization_id=$1 AND e.viewing_id=$2 ORDER BY e.occurred_at DESC,e.id LIMIT $3 OFFSET $4',[u.organization.id,id,p.pageSize,(p.page-1)*p.pageSize])).rows;
-   return{viewing:viewingDto(v),events:paged(rows.map(r=>({id:r.id,kind:r.kind,summary:'Viewing '+r.kind.replaceAll('_',' ')+(r.origin==='public'?' through a secure booking link.':'.'),actorLabel:r.origin==='public'?'Public booking':r.actor_name,origin:r.origin,occurredAt:iso(r.occurred_at)!,notification:'simulation' as const})),total,p)};
+   return{viewing:{...viewingDto(v),notification:await viewingEmailStatus(c,u.organization.id,v.id)},events:paged(rows.map(r=>({id:r.id,kind:r.kind,summary:'Viewing '+r.kind.replaceAll('_',' ')+(r.origin==='public'?' through a secure booking link.':'.'),actorLabel:r.origin==='public'?'Public booking':r.actor_name,origin:r.origin,occurredAt:iso(r.occurred_at)!,notification:'simulation' as const})),total,p)};
   });
  }
  async book(user:Actor,digest:string,i:z.infer<typeof calendarBookSchema>):Promise<{viewing:CalendarViewing}>{
@@ -201,8 +204,19 @@ export class Calendar{
    const raw=(await c.query('SELECT user_id FROM organization_memberships WHERE id=$1 AND organization_id=$2',[i.ownerMembershipId,user.organization.id])).rows[0];if(!raw)throw new ApiError(400,'INVALID_VIEWING_OWNER','Choose an eligible assigned agent.');
    await resources(c,['staff:'+raw.user_id,'property:'+i.propertyId,'lead:'+i.leadId,...(i.unitId?['unit:'+i.unitId]:[]),'request:'+user.organization.id+':'+user.membershipId+':'+i.requestKey]);
    const u=await authorize(c,user,digest);
-   const result=await receipt(c,u,'staff:'+u.membershipId,i.requestKey,'book',i,async()=>({viewingId:(await reserve(c,u,i,'staff',null)).id}));
-   return{viewing:viewingDto(await actualViewing(c,u,String(result.result.viewingId)))};
+   const result=await receipt(c,u,'staff:'+u.membershipId,i.requestKey,'book',i,async()=>{
+    const tasks=new Tasks(this.database),linked=i.taskId?await tasks.lockForAction(c,u,i.taskId):null;
+    if(linked&&(linked.task.status!=='open'||linked.task.lead_id!==i.leadId||linked.task.property_id!==i.propertyId))throw new ApiError(409,'TASK_BOOKING_CONTEXT_CHANGED','This task is no longer open for the selected lead and property.');
+    const viewing=await reserve(c,u,i,'staff',null);
+    if(linked){
+     await c.query('UPDATE tasks SET tour_id=$3,version=version+1,updated_at=clock_timestamp() WHERE organization_id=$1 AND id=$2',[u.organization.id,linked.task.id,viewing.id]);
+     await tasks.recordAction(c,linked.actor,linked.task,{fields:[],reason:'Viewing booked in Calendar. Next step: '+(i.followupNextAction??'Confirm viewing arrangements'),viewingId:viewing.id,startsAt:iso(viewing.starts_at),nextAction:i.followupNextAction??'Confirm viewing arrangements'});
+     await c.query("UPDATE leads SET next_action=$4,next_action_at=$3,version=version+1,updated_at=clock_timestamp() WHERE organization_id=$1 AND id=$2",[u.organization.id,i.leadId,viewing.starts_at,i.followupNextAction??'Confirm viewing arrangements']);
+    }
+    if(i.notifyClient)await prepareViewingEmail(c,this.config,u,viewing,i.notificationTimeZone);
+    return{viewingId:viewing.id};
+   });
+   return{viewing:{...viewingDto(await actualViewing(c,u,String(result.result.viewingId))),notification:await viewingEmailStatus(c,u.organization.id,String(result.result.viewingId))}};
   });
  }
  async reschedule(user:Actor,digest:string,id:string,i:z.infer<typeof calendarRescheduleSchema>):Promise<{viewing:CalendarViewing}>{

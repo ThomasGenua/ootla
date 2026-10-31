@@ -6,6 +6,14 @@ The user has designated revised **Prompt 00** as the authoritative foundation. P
 
 
 
+## Current verified architecture - 2026-10-31
+
+This section supersedes historical stack/module status below. The independent app remains Vite with vanilla TypeScript/HTML/CSS, Express and PostgreSQL; no framework/database rewrite was introduced. Shared source now matches across the separate demo and customer worktrees. Both have35 applied additive migrations. Only instance selection, safe defaults, private configuration, cookies and persistent data differ. Authentication, roles and organization/property/record scope remain enforced server-side.
+
+Core boundaries are canonical contacts/properties/units/leads/applications/leases; independent applicant/resident grants; staff tasks/native Calendar; conversations/shared outbox; authorized bounded Ask tools/provider synthesis; connector ownership/mappings/durable jobs; scoped reporting; and protected administration/audit/retention. Households is retired from active workflows while historical rows/links remain. Dedicated and floating Ask use the same persistent thread/action service. Seven bounded workers run in the existing API process, with no startup migration/reset/seed.
+
+Live is ootla-v1-branch in Ootla with DEMO_MODE=false, its own restricted ootla_live database and no demo/sample CRM rows. Demo remains ootla-v1-demo in ootlademo with its separate prepared database. Native functionality is real; actual external inference, Google authorization and missing Yardi/communications/screening/signing/payment-status/phone transports remain distinct gates. The existing first customer administrator has an expired unused invitation; no account was reset/impersonated to review the UI. No hosted deployment occurred. See [holistic review](ootla-holistic-review.md) and [current pending register](ootla-pending-work.md).
+
 ## Current boundaries after Stages 26-28 - 2026-10-25
 
 This is the latest architecture section and supersedes historical future-module/stop-before-26 statements below. The authorized final batch preserves the existing independent Ootla application, database and approved public/admin presentation. See the [final handover](ootla-final-handover.md), [demo walkthrough](ootla-demo-walkthrough.md) and [activation register](ootla-live-activation-checklist.md). Stage 28 local preparation is complete: startup, clean installation/environment, disposable recovery, final build/compiled serving and compiled restart pass. No remote deployment or live provider activation occurred.

@@ -1,2 +1,54 @@
 .ai19-workspace{max-width:1320px;min-width:0}.ai19-workspace .ap-panel{overflow-wrap:anywhere}.ai19-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,1fr);gap:24px;align-items:start}.ai19-scenarios{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.ai19-scenarios .ap-button{justify-content:flex-start;white-space:normal}.ai19-response{white-space:pre-wrap;font-size:16px;line-height:1.8;margin:18px 0}.ai19-result-header{display:flex;gap:12px;justify-content:space-between;align-items:start}.ai19-result-header h3{margin:0}.ai19-sources{list-style:none;margin:16px 0;padding:0;display:grid;gap:12px}.ai19-sources li{padding:14px;border:1px solid #dfe7de;border-radius:10px}.ai19-sources p{font-size:13px;color:#617367;margin:6px 0;line-height:1.6}.ai19-sources a{color:#225c38;text-decoration:underline;text-underline-offset:3px}.ai19-actions{list-style:none;padding:0;display:grid;gap:12px;margin:16px 0}.ai19-actions li{padding:15px;border:1px solid #dbe5d9;border-radius:10px}.ai19-trace{margin-top:24px}.ai19-trace summary{color:#315e3a;cursor:pointer;font-size:14px}.ai19-trace dl{margin:14px 0}.ai19-trace ul{padding-left:20px;font-size:13px}.ai19-knowledge-head{display:flex;gap:12px;justify-content:space-between;align-items:start}.ai19-knowledge-head h3{margin:0}.ai19-label{font-size:12px;color:#617367}.ai19-workspace details>form{margin-top:18px}.ai19-workspace .ap-tag{white-space:normal}.ai19-workspace [aria-busy=true]{opacity:.85}.ai19-workspace .ap-field textarea{min-height:130px}.ai19-workspace .ap-panel>h4{margin-top:20px;margin-bottom:12px}.ai19-workspace .ap-message{margin-top:14px}.ai19-workspace .ap-intro .ap-tag{flex-shrink:0}@media(max-width:1050px){.ai19-layout{grid-template-columns:1fr}}@media(max-width:480px){.ai19-result-header,.ai19-knowledge-head{flex-direction:column}.ai19-scenarios .ap-button{flex:1 1 130px}.ai19-layout{gap:12px}}@media(prefers-reduced-motion:reduce){.ai19-workspace *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .ai-public-opt-in label{display:flex;align-items:center;gap:9px}.ai-public-opt-in input[type=checkbox]{width:18px;height:18px;min-height:18px;flex-shrink:0;margin:0}.ai-public-opt-in .ap-muted{font-size:12px;line-height:1.6}
+
+/* Dedicated assistant: one property selector, transcript and composer. */
+.ai-page-chat{display:flex;flex-direction:column;height:min(720px,calc(100dvh - 145px));min-height:460px;width:100%;max-width:1160px;border:1px solid #dce6df;border-radius:18px;background:#fff;overflow:hidden}
+.ai-page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid #e2e9e5;flex:none}
+.ai-page-header>div{display:flex;align-items:center;gap:22px;min-width:0;flex:1}
+.ai-page-header h2{margin:0;font-size:22px;font-weight:500;letter-spacing:-.5px;white-space:nowrap}
+.ai-page-property{display:flex;align-items:center;gap:9px;color:#5f7265;font-size:12px;min-width:0}
+.ai-page-property select{min-height:39px;max-width:min(330px,35vw);width:auto;min-width:160px;margin:0;padding:8px 30px 8px 10px;border:1px solid #cbd9d0;border-radius:9px;background:#fff;color:#183c29;font:inherit;font-size:13px}
+.ai-page-chat [hidden]{display:none!important}
+.ai-property-search{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 24px;background:#f7faf8;border-bottom:1px solid #e2e9e5}
+.ai-property-search input{min-height:39px;flex:1;min-width:100px;border:1px solid #cbd9d0;border-radius:8px;padding:8px 10px;font:inherit;font-size:14px}
+.ai-property-search span{font-size:12px;color:#64776a}.ai-property-pages{display:flex;gap:8px}
+.ai-chat-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;padding:24px clamp(16px,5vw,65px)}
+.ai-chat-messages{display:grid;gap:23px}.ai-page-chat .ask-message{width:fit-content;max-width:92%;border:0;padding:9px 0;background:#fff}
+.ai-page-chat .ask-message[data-role=staff]{justify-self:end;max-width:80%;padding:13px 17px;background:#edf4ef;border-radius:18px 18px 3px 18px}
+.ai-page-chat .ask-message-body{font-size:15px;line-height:1.75;margin-top:7px}.ai-page-chat .ask-message-head{font-size:12px}
+.ai-page-chat .ask-message-head strong{font-size:13px}.ai-page-chat .ask-message>.cv-hint{margin-bottom:0;font-size:10px}
+.ai-page-chat [data-ai-local-turn]{display:grid;gap:8px;margin-top:16px}.ai-page-chat [data-ai-local-turn]:empty{margin:0}
+.ai-chat-empty{display:grid;place-content:center;text-align:center;min-height:150px;color:#1b3f2a}.ai-chat-empty h3{font-size:27px;font-weight:500;letter-spacing:-.6px;margin:0 0 10px}.ai-chat-empty p{font-size:14px;color:#697a70;margin:0}
+.ai-page-composer{flex:none;padding:15px clamp(16px,5vw,65px) 17px;border-top:1px solid #e2e9e5;background:#fff}
+.ai-compose-row{display:flex;gap:10px;align-items:flex-end;border:1px solid #cfddd3;border-radius:14px;padding:9px;background:#fff}
+.ai-compose-row:focus-within{border-color:#3b7e59;box-shadow:0 0 0 2px #27724512}
+.ai-compose-row textarea{width:100%;flex:1;min-width:0;min-height:52px;max-height:120px;padding:8px;border:0;background:transparent;color:#203529;resize:none;font:inherit;font-size:14px;line-height:1.55}
+.ai-compose-row textarea:focus-visible{outline:0}.ai-compose-row button{flex:none;white-space:nowrap;margin:0}
+.ai-chat-suggestions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ai-chat-suggestions button{min-height:35px;padding:7px 11px;border:1px solid #d8e4dc;border-radius:20px;background:#f8faf9;color:#315d40;font:inherit;font-size:12px;text-align:left;cursor:pointer}
+.ai-composer-tools{display:flex;gap:12px;justify-content:space-between;margin-top:7px}.ai-text-button{border:0;background:transparent;color:#386849;padding:4px 0;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ai-chat-feedback,.ai-chat-pending{font-size:12px;color:#5b7062;line-height:1.5;margin:7px 0 0}.ai-chat-feedback:empty,.ai-page-composer .ap-error:empty{display:none}.ai-chat-pending{padding:10px 0}
+.ai-page-chat .ask-task-preview{margin-top:13px;max-width:480px}.ai-page-chat .ask-task-preview h3{font-size:14px}
+@media(max-width:700px){
+ .ai-page-chat{height:calc(100dvh - 160px);min-height:450px;border-radius:13px}
+ .ai-page-header{padding:15px;gap:9px}.ai-page-header>div{align-items:flex-start;gap:10px;flex-direction:column}.ai-page-header h2{font-size:21px}
+ .ai-page-property{width:100%;flex-wrap:wrap;gap:5px}.ai-page-property select{max-width:100%;width:100%;min-width:0;font-size:16px}
+ .ai-page-header>.ap-button{align-self:flex-start;white-space:nowrap;padding:8px 10px}
+ .ai-property-search{padding:12px 15px}.ai-property-search input{font-size:16px}
+ .ai-chat-scroll{padding:20px 15px}.ai-page-composer{padding:12px 13px}
+ .ai-compose-row{flex-wrap:wrap;gap:5px}.ai-compose-row textarea{flex-basis:100%;font-size:16px;min-height:48px}.ai-compose-row button{margin-left:auto;min-height:37px;padding:8px 12px}
+ .ai-page-chat .ask-message{max-width:100%}.ai-page-chat .ask-message[data-role=staff]{max-width:90%}
+ .ai-chat-suggestions{gap:6px}.ai-chat-suggestions button{font-size:11px}
+}
+
+/* Shared message markup also needs readable references on the full-page chat. */
+.ai-page-chat .ask-message-head{display:flex;align-items:center;flex-wrap:wrap;gap:5px 9px;color:#65796d}
+.ai-page-chat .ask-message-body{white-space:pre-wrap;overflow-wrap:anywhere}
+.ai-page-chat .ask-record-links{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:10px}
+.ai-page-chat .ask-record-links a{display:inline-block;max-width:100%;padding:5px 8px;border:1px solid #dbe6de;border-radius:7px;background:#f8fbf9;color:#28613c;font-size:12px;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.ai-page-chat .ask-choice-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.ai-page-chat .ask-choice-list button{min-height:38px;padding:7px 11px;border:1px solid #d4e1d8;border-radius:9px;background:#f6faf7;color:#2a6140;font:inherit;font-size:13px;text-align:left;cursor:pointer}
+.ai-page-chat .ask-task-preview{padding:13px;border:1px solid #d6e3d8;border-radius:10px;background:#f7faf7}
+.ai-page-chat .ask-task-preview dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 12px;font-size:13px}
+.ai-page-chat .ask-task-preview dd{margin:0;overflow-wrap:anywhere}.ai-page-chat .ask-task-preview .cv-button{margin-top:8px}
+@media(max-width:700px){.ai-page-composer{padding-right:calc(84px + env(safe-area-inset-right,0px))}.ai-page-chat .ask-choice-list button{min-height:44px}}

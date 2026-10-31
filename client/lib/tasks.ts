@@ -1,3 +1,4 @@
+import {initializeTaskFollowups}from'./task-followups';
 import { api, ApiError } from './api';
 import { presentRecordText } from './presentation';
 import type { TaskSuggestions, TaskSuggestionResult } from '../../shared/task-suggestion-contracts';
@@ -216,7 +217,7 @@ export function initializeTasksWorkspace(signal: AbortSignal, navigate: (path: s
   const workspace = document.querySelector<HTMLElement>('[data-task-workspace]');
   if (!workspace) return;
   initializeTaskDirectoryFilters(workspace, signal);
-  initializeTaskSuggestions(workspace, signal, navigate);
+  initializeTaskFollowups(workspace, signal, navigate);
   function updateRelated(): void {
     const kind = workspace!.querySelector<HTMLSelectElement>('#task-related-kind')?.value;
     for (const section of workspace!.querySelectorAll<HTMLElement>('[data-task-related]')) {
